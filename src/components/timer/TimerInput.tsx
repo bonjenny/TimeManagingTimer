@@ -68,8 +68,6 @@ const TimerInput: React.FC = () => {
           sx={{ flexGrow: 2, minWidth: 200 }}
         />
         
-        {/* 구분선 */}
-        <Box sx={{ width: 1, height: 24, bgcolor: 'divider' }} />
 
         {/* 게시판 번호 */}
         <InputBase
