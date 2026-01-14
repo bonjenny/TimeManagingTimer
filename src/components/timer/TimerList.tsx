@@ -10,34 +10,39 @@ import {
   FormControlLabel, 
   Switch, 
   Paper,
-  Divider
+  Divider,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  TextField,
+  Autocomplete
 } from '@mui/material';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import EditIcon from '@mui/icons-material/Edit';
 import { useTimerStore, TimerLog } from '../../store/useTimerStore';
 import { formatTimeRange, formatDuration } from '../../utils/timeUtils';
 
-const TimerList: React.FC = () => {
-  const { logs, deleteLog, startTimer } = useTimerStore();
-  const [showCompleted, setShowCompleted] = useState(false);
+const CATEGORIES = ['분석', '개발', '개발자테스트', '테스트오류수정', '센터오류수정', '환경세팅', '회의', '기타'];
 
-  // 오늘 날짜의 로그만 필터링 (06:00 ~ 다음날 06:00 기준)
-  // PRD 84: "06:00 부터 다음날 06:00까지를 하루로 본다."
-  // -> 하지만 일단 단순하게 당일(Local Time) 기준으로 먼저 보여주고,
-  //    추후 날짜 경계 로직이 필요하면 보강. 지금은 "오늘 시작된 것"만 보여주자.
+const TimerList: React.FC = () => {
+  const { logs, deleteLog, startTimer, updateLog } = useTimerStore();
+  const [showCompleted, setShowCompleted] = useState(false);
   
+  // 수정 모달 상태
+  const [editingLog, setEditingLog] = useState<TimerLog | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editBoardNo, setEditBoardNo] = useState('');
+  const [editCategory, setEditCategory] = useState<string | null>(null);
+
   const today = new Date().toLocaleDateString();
   
-  // 역순 정렬 (최신순)
   const filteredLogs = logs
     .filter(log => {
-      const logDate = new Date(log.startTime).toLocaleDateString();
-      // "완료된 타이머 표시" 체크 안되어 있으면 COMPLETED 제외
+      // const logDate = new Date(log.startTime).toLocaleDateString();
       if (!showCompleted && log.status === 'COMPLETED') return false;
-      // 오늘 날짜만 (임시: 실제로는 startTime 기준 날짜 비교가 더 정확해야 함)
-      // return logDate === today; 
-      // -> 개발 편의상 전체 다 보여주되 정렬만 함 (테스트 위해). 
-      //    나중에는 날짜 필터링 필수. 지금은 전체 다 보여주기로 함.
       return true;
     })
     .sort((a, b) => b.startTime - a.startTime);
@@ -49,20 +54,33 @@ const TimerList: React.FC = () => {
   const getDuration = (log: TimerLog) => {
     const end = log.endTime || Date.now();
     let duration = (end - log.startTime) / 1000 - log.pausedDuration;
-    
-    // 진행중이거나 일시정지 상태인 경우, 아직 완료되지 않았으므로 표시 방식이 다를 수 있음
-    // TimerList에는 주로 "완료된" 혹은 "일시정지된" 타이머가 보일 것임.
-    // ActiveTimer는 상단에 따로 있으므로, 여기 리스트에는 RUNNING 상태가 안 뜨는게 맞을까?
-    // 보통 Linear 같은 툴은 RUNNING 상태도 리스트에 포함하되 하이라이트 함.
-    // 하지만 우리 기획은 "ActiveTimer 컴포넌트"가 따로 있으므로 중복 표시를 피하거나,
-    // ActiveTimer는 상단에 고정하고, 리스트에서는 제외하는게 깔끔할 수 있음.
-    
-    // 여기서는 일단 모든 로그를 보여주되, RUNNING인 경우(즉 ActiveTimer인 경우)는 리스트에서 뺄 수도 있음.
-    // useTimerStore에서 activeTimer는 logs 배열에 포함되지 않고 별도 필드로 관리됨!
-    // -> 따라서 logs 배열에는 "완료"되거나 "일시정지(Active에 의해 밀려난)" 녀석들만 있음.
-    // -> 즉, 중복 걱정 없음.
-    
     return Math.max(0, Math.floor(duration));
+  };
+
+  // 수정 핸들러
+  const handleEditClick = (log: TimerLog) => {
+    setEditingLog(log);
+    setEditTitle(log.title);
+    setEditBoardNo(log.boardNo || '');
+    setEditCategory(log.category || null);
+  };
+
+  const handleEditSave = () => {
+    if (editingLog && editTitle.trim()) {
+      updateLog(editingLog.id, {
+        title: editTitle,
+        boardNo: editBoardNo,
+        category: editCategory || undefined
+      });
+      handleEditClose();
+    }
+  };
+
+  const handleEditClose = () => {
+    setEditingLog(null);
+    setEditTitle('');
+    setEditBoardNo('');
+    setEditCategory(null);
   };
 
   if (logs.length === 0) {
@@ -96,13 +114,16 @@ const TimerList: React.FC = () => {
               {index > 0 && <Divider />}
               <ListItem
                 sx={{
-                  bgcolor: log.status === 'COMPLETED' ? 'transparent' : '#fafafa', // 일시정지 등은 배경색 약간 다르게
+                  bgcolor: log.status === 'COMPLETED' ? 'transparent' : '#fafafa',
                   '&:hover': {
                     bgcolor: 'action.hover',
                   },
                 }}
                 secondaryAction={
                   <Box>
+                    <IconButton edge="end" aria-label="edit" onClick={() => handleEditClick(log)} size="small" sx={{ mr: 1 }}>
+                      <EditIcon fontSize="small" />
+                    </IconButton>
                     <IconButton edge="end" aria-label="restart" onClick={() => handleRestart(log)} size="small" sx={{ mr: 1 }}>
                       <PlayArrowIcon fontSize="small" />
                     </IconButton>
@@ -114,7 +135,7 @@ const TimerList: React.FC = () => {
               >
                 <ListItemText
                   primary={
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, cursor: 'pointer' }} onClick={() => handleEditClick(log)}>
                       <Typography variant="body1" sx={{ fontWeight: 500 }}>
                         {log.title}
                       </Typography>
@@ -154,6 +175,41 @@ const TimerList: React.FC = () => {
           )}
         </List>
       </Paper>
+
+      {/* 수정 다이얼로그 */}
+      <Dialog open={!!editingLog} onClose={handleEditClose} maxWidth="sm" fullWidth>
+        <DialogTitle>업무 기록 수정</DialogTitle>
+        <DialogContent>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+                <TextField
+                    label="업무 제목"
+                    fullWidth
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    autoFocus
+                />
+                <Box sx={{ display: 'flex', gap: 2 }}>
+                    <TextField
+                        label="게시판 번호"
+                        value={editBoardNo}
+                        onChange={(e) => setEditBoardNo(e.target.value)}
+                        sx={{ flex: 1 }}
+                    />
+                    <Autocomplete
+                        options={CATEGORIES}
+                        value={editCategory}
+                        onChange={(_e, newValue) => setEditCategory(newValue)}
+                        renderInput={(params) => <TextField {...params} label="카테고리" />}
+                        sx={{ flex: 1 }}
+                    />
+                </Box>
+            </Box>
+        </DialogContent>
+        <DialogActions>
+            <Button onClick={handleEditClose}>취소</Button>
+            <Button onClick={handleEditSave} variant="contained" color="primary">저장</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

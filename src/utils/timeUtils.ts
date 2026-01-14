@@ -14,19 +14,17 @@ export const formatDuration = (seconds: number): string => {
   return `${minutes}분 / ${hh}:${mm} 시간`;
 };
 
-// 00:00:00 형식 (타이머 디스플레이용 단순 시:분:초)
+// HH:MM 형식 (큰 디스플레이용)
 export const formatTimeDisplay = (seconds: number): string => {
   const validSeconds = Math.max(0, Math.floor(seconds));
   
   const hours = Math.floor(validSeconds / 3600);
   const minutes = Math.floor((validSeconds % 3600) / 60);
-  const secs = validSeconds % 60;
 
   const hh = hours.toString().padStart(2, '0');
   const mm = minutes.toString().padStart(2, '0');
-  const ss = secs.toString().padStart(2, '0');
 
-  return `${hh}:${mm}:${ss}`;
+  return `${hh}:${mm}`;
 };
 
 export const formatTimeRange = (startTime: number, endTime?: number): string => {
