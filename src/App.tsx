@@ -6,6 +6,7 @@ import ActiveTimer from './components/timer/ActiveTimer';
 import TimerInput from './components/timer/TimerInput';
 import TimerList from './components/timer/TimerList';
 import GanttChart from './components/gantt/GanttChart';
+import ReportView from './components/report/ReportView';
 import { Box, Typography, Divider } from '@mui/material';
 
 function App() {
@@ -36,9 +37,8 @@ function App() {
           </Box>
         )}
         {currentTab === 1 && (
-          <Box sx={{ p: 3 }}>
-            <Typography variant="h5">리포트 뷰</Typography>
-            <Typography variant="body1">이곳에 통계 리포트가 표시됩니다.</Typography>
+          <Box sx={{ p: 0 }}>
+            <ReportView />
           </Box>
         )}
       </Layout>
