@@ -2,10 +2,12 @@ import { useState } from 'react';
 import { ThemeProvider } from '@mui/material/styles';
 import { theme } from './theme';
 import Layout from './components/Layout';
-import { Box, Typography } from '@mui/material';
+import ActiveTimer from './components/timer/ActiveTimer';
+import TimerInput from './components/timer/TimerInput';
+import TimerList from './components/timer/TimerList';
+import { Box, Typography, Divider } from '@mui/material';
 
 function App() {
-  // 탭 상태 관리: 0 = 타이머+간트, 1 = 리포트
   const [currentTab, setCurrentTab] = useState(0);
 
   const handleTabChange = (newValue: number) => {
@@ -16,9 +18,24 @@ function App() {
     <ThemeProvider theme={theme}>
       <Layout currentTab={currentTab} onTabChange={handleTabChange}>
         {currentTab === 0 && (
-          <Box sx={{ p: 3 }}>
-            <Typography variant="h5">타이머 & 간트 차트 뷰</Typography>
-            <Typography variant="body1">이곳에 타이머 목록과 간트 차트가 표시됩니다.</Typography>
+          <Box sx={{ maxWidth: 800, mx: 'auto' }}>
+            <ActiveTimer />
+            
+            <Box sx={{ mb: 4 }}>
+              <TimerInput />
+            </Box>
+
+            <Divider sx={{ my: 4 }} />
+            
+            <Box>
+                {/* 간트 차트 자리 (Phase 4 예정) */}
+                <Typography variant="h6" sx={{ mb: 2 }}>타임라인 (Gantt Chart)</Typography>
+                <Box sx={{ p: 4, bgcolor: '#f5f5f5', borderRadius: 2, textAlign: 'center', color: 'text.secondary', mb: 6 }}>
+                    간트 차트가 여기에 표시됩니다.
+                </Box>
+            </Box>
+
+            <TimerList />
           </Box>
         )}
         {currentTab === 1 && (
