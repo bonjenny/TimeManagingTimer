@@ -36,8 +36,11 @@ import {
   PALETTE_STORAGE_KEY,
   getPaletteList,
   getPalette,
+  generateToneOnTonePalette,
 } from '../../utils/colorPalette';
 import { applyPaletteHighlight } from '../../styles/tokens';
+import EditIcon from '@mui/icons-material/Edit';
+import AddIcon from '@mui/icons-material/Add';
 
 // 설정 저장 키
 const SETTINGS_STORAGE_KEY = 'timekeeper-settings';
@@ -90,6 +93,12 @@ const SettingsPage: React.FC = () => {
 
   // 컬러 팔레트 설정
   const [palette_type, setPaletteType] = useState<PaletteType>('navy-orange');
+  
+  // 커스텀 팔레트 상태
+  const [custom_colors, setCustomColors] = useState<string[]>([]);
+  const [custom_base_color, setCustomBaseColor] = useState('#3b82f6');
+  const [editing_color_index, setEditingColorIndex] = useState<number | null>(null);
+  const [temp_color, setTempColor] = useState('');
 
   // 초기화 확인 모달
   const [reset_dialog_open, setResetDialogOpen] = useState(false);
@@ -117,6 +126,14 @@ const SettingsPage: React.FC = () => {
       // 컬러 팔레트 설정 로드
       const palette_settings = loadPaletteSettings();
       setPaletteType(palette_settings.type);
+      
+      // 커스텀 팔레트 로드
+      if (palette_settings.custom_colors && palette_settings.custom_colors.length > 0) {
+        setCustomColors(palette_settings.custom_colors);
+      }
+      if (palette_settings.custom_base_color) {
+        setCustomBaseColor(palette_settings.custom_base_color);
+      }
     } catch {
       // 무시
     }
@@ -127,8 +144,48 @@ const SettingsPage: React.FC = () => {
 
   // 컬러 팔레트 미리보기 가져오기
   const getCurrentPalettePreview = () => {
+    if (palette_type === 'custom' && custom_colors.length > 0) {
+      return custom_colors.slice(0, 8);
+    }
     const palette = getPalette({ type: palette_type });
     return palette.slice(0, 8);
+  };
+  
+  // 커스텀 팔레트 생성 (톤온톤 기반)
+  const handleGenerateCustomPalette = () => {
+    const generated = generateToneOnTonePalette(custom_base_color);
+    setCustomColors(generated.slice(0, 10)); // 10개 색상만 사용
+    setPaletteType('custom');
+  };
+  
+  // 커스텀 색상 수정
+  const handleEditColor = (index: number) => {
+    setEditingColorIndex(index);
+    setTempColor(custom_colors[index]);
+  };
+  
+  // 커스텀 색상 저장
+  const handleSaveColor = () => {
+    if (editing_color_index !== null && temp_color) {
+      const new_colors = [...custom_colors];
+      new_colors[editing_color_index] = temp_color;
+      setCustomColors(new_colors);
+      setEditingColorIndex(null);
+      setTempColor('');
+    }
+  };
+  
+  // 커스텀 색상 추가
+  const handleAddCustomColor = () => {
+    if (custom_colors.length < 15) {
+      setCustomColors([...custom_colors, '#888888']);
+    }
+  };
+  
+  // 커스텀 색상 삭제
+  const handleRemoveCustomColor = (index: number) => {
+    const new_colors = custom_colors.filter((_, i) => i !== index);
+    setCustomColors(new_colors);
   };
 
   // 컬러 팔레트 변경 핸들러
@@ -177,6 +234,10 @@ const SettingsPage: React.FC = () => {
     // 컬러 팔레트 설정 저장 및 CSS 변수 적용
     const palette_settings: PaletteSettings = {
       type: palette_type,
+      ...(palette_type === 'custom' && {
+        custom_colors: custom_colors,
+        custom_base_color: custom_base_color,
+      }),
     };
     savePaletteSettings(palette_settings);
     
@@ -201,6 +262,8 @@ const SettingsPage: React.FC = () => {
 
     // 컬러 팔레트 기본값 복원
     setPaletteType('navy-orange');
+    setCustomColors([]);
+    setCustomBaseColor('#3b82f6');
 
     setSnackbarMessage('기본값으로 복원되었습니다.');
     setSnackbarSeverity('success');
@@ -444,6 +507,179 @@ const SettingsPage: React.FC = () => {
               </Box>
             </Box>
           ))}
+        </Box>
+
+        {/* 사용자 커스텀 팔레트 */}
+        <Divider sx={{ my: 3 }} />
+        
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="body2" sx={{ fontWeight: 600, mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+            <EditIcon fontSize="small" />
+            사용자 커스텀 팔레트
+          </Typography>
+          
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2 }}>
+            기본 색상을 선택하면 톤온톤 팔레트가 자동 생성됩니다. 생성된 각 색상을 클릭하여 수정할 수 있습니다.
+          </Typography>
+          
+          {/* 기본 색상 선택 */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+            <TextField
+              size="small"
+              label="기본 색상"
+              type="color"
+              value={custom_base_color}
+              onChange={(e) => setCustomBaseColor(e.target.value)}
+              sx={{ width: 100 }}
+              InputProps={{
+                sx: { height: 40 },
+              }}
+            />
+            <TextField
+              size="small"
+              value={custom_base_color}
+              onChange={(e) => setCustomBaseColor(e.target.value)}
+              placeholder="#3b82f6"
+              sx={{ width: 120 }}
+            />
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={handleGenerateCustomPalette}
+              sx={{ whiteSpace: 'nowrap' }}
+            >
+              팔레트 생성
+            </Button>
+          </Box>
+          
+          {/* 커스텀 색상 편집 */}
+          {custom_colors.length > 0 && (
+            <Box
+              onClick={() => setPaletteType('custom')}
+              sx={{
+                p: 2,
+                borderRadius: 2,
+                border: palette_type === 'custom' ? '2px solid var(--highlight-color)' : '1px solid var(--border-color)',
+                bgcolor: palette_type === 'custom' ? 'var(--highlight-light)' : 'transparent',
+                cursor: 'pointer',
+              }}
+            >
+              <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
+                내 커스텀 팔레트
+                {palette_type === 'custom' && (
+                  <Chip label="선택됨" size="small" sx={{ ml: 1, height: 20, fontSize: '0.7rem' }} />
+                )}
+              </Typography>
+              
+              <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', alignItems: 'center' }}>
+                {custom_colors.map((color, index) => (
+                  <Box
+                    key={index}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEditColor(index);
+                    }}
+                    sx={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: 1,
+                      bgcolor: color,
+                      border: editing_color_index === index ? '2px solid #000' : '1px solid rgba(0,0,0,0.2)',
+                      cursor: 'pointer',
+                      position: 'relative',
+                      '&:hover': {
+                        transform: 'scale(1.1)',
+                        zIndex: 1,
+                      },
+                      '&:hover::after': {
+                        content: '"✎"',
+                        position: 'absolute',
+                        top: '50%',
+                        left: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        fontSize: '12px',
+                        color: '#fff',
+                        textShadow: '0 0 2px #000',
+                      },
+                    }}
+                  />
+                ))}
+                
+                {/* 색상 추가 버튼 */}
+                {custom_colors.length < 15 && (
+                  <Box
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleAddCustomColor();
+                    }}
+                    sx={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: 1,
+                      border: '1px dashed var(--border-color)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      '&:hover': {
+                        bgcolor: 'var(--bg-hover)',
+                      },
+                    }}
+                  >
+                    <AddIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+                  </Box>
+                )}
+              </Box>
+              
+              {/* 색상 편집 입력 */}
+              {editing_color_index !== null && (
+                <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <TextField
+                    size="small"
+                    type="color"
+                    value={temp_color}
+                    onChange={(e) => setTempColor(e.target.value)}
+                    sx={{ width: 60 }}
+                    InputProps={{ sx: { height: 32 } }}
+                  />
+                  <TextField
+                    size="small"
+                    value={temp_color}
+                    onChange={(e) => setTempColor(e.target.value)}
+                    placeholder="#000000"
+                    sx={{ width: 100 }}
+                    InputProps={{ sx: { height: 32 } }}
+                  />
+                  <Button
+                    size="small"
+                    variant="contained"
+                    onClick={handleSaveColor}
+                    sx={{ minWidth: 48, height: 32, bgcolor: 'var(--highlight-color)', '&:hover': { bgcolor: 'var(--highlight-hover)' } }}
+                  >
+                    확인
+                  </Button>
+                  <Button
+                    size="small"
+                    onClick={() => handleRemoveCustomColor(editing_color_index)}
+                    color="error"
+                    sx={{ minWidth: 48, height: 32 }}
+                  >
+                    삭제
+                  </Button>
+                  <Button
+                    size="small"
+                    onClick={() => {
+                      setEditingColorIndex(null);
+                      setTempColor('');
+                    }}
+                    sx={{ minWidth: 48, height: 32 }}
+                  >
+                    취소
+                  </Button>
+                </Box>
+              )}
+            </Box>
+          )}
         </Box>
 
         {/* 선택된 팔레트 미리보기 */}
@@ -690,7 +926,7 @@ const SettingsPage: React.FC = () => {
             variant="contained"
             disabled={reset_confirm_text !== '초기화'}
           >
-            초기화 실행
+            초기화(Enter)
           </Button>
         </DialogActions>
       </Dialog>

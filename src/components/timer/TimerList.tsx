@@ -506,7 +506,7 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
         </DialogContent>
         <DialogActions>
           <Button onClick={handleEditClose}>취소</Button>
-          <Button onClick={handleEditSave} variant="contained" color="primary">저장</Button>
+          <Button onClick={handleEditSave} variant="contained" color="primary">저장(Enter)</Button>
         </DialogActions>
       </Dialog>
 
