@@ -1,17 +1,17 @@
 /**
- * v0.1.0 테스트: 타이머 스토어 테스트
+ * 타이머 스토어 테스트
+ * v0.1.0: 기본 타이머 기능
+ * v0.7.0: 휴지통 기능
  */
-import { useTimerStore } from '../../store/useTimerStore';
+import { useTimerStore, DeletedLog } from '../../store/useTimerStore';
 import { act } from '@testing-library/react';
 
 describe('useTimerStore', () => {
   beforeEach(() => {
     // 스토어 초기화
     const store = useTimerStore.getState();
-    store.logs.forEach((log) => store.deleteLog(log.id));
-    if (store.activeTimer) {
-      store.completeTimer();
-    }
+    // 로그 직접 초기화 (휴지통으로 이동하지 않고)
+    useTimerStore.setState({ logs: [], deleted_logs: [], activeTimer: null });
     localStorage.clear();
   });
 
@@ -224,6 +224,186 @@ describe('useTimerStore', () => {
       expect(titles).toContain('작업 A');
       expect(titles).toContain('작업 B');
       expect(titles.filter((t) => t === '작업 A').length).toBe(1); // 중복 제거됨
+    });
+  });
+
+  /**
+   * v0.7.0 테스트: 휴지통 기능
+   */
+  describe('deleteLog (휴지통으로 이동)', () => {
+    it('삭제된 로그가 휴지통(deleted_logs)으로 이동한다', () => {
+      const { startTimer, completeTimer, deleteLog } = useTimerStore.getState();
+
+      act(() => {
+        startTimer('휴지통 테스트 작업');
+        completeTimer();
+      });
+
+      const { logs } = useTimerStore.getState();
+      const log_id = logs[0].id;
+
+      act(() => {
+        deleteLog(log_id);
+      });
+
+      const state = useTimerStore.getState();
+      expect(state.logs.length).toBe(0);
+      expect(state.deleted_logs.length).toBe(1);
+      expect(state.deleted_logs[0].title).toBe('휴지통 테스트 작업');
+    });
+
+    it('삭제된 로그에 deleted_at 타임스탬프가 추가된다', () => {
+      const { startTimer, completeTimer, deleteLog } = useTimerStore.getState();
+
+      act(() => {
+        startTimer('휴지통 테스트 작업');
+        completeTimer();
+      });
+
+      const before = Date.now();
+      const { logs } = useTimerStore.getState();
+      const log_id = logs[0].id;
+
+      act(() => {
+        deleteLog(log_id);
+      });
+
+      const after = Date.now();
+      const { deleted_logs } = useTimerStore.getState();
+      const deleted_log = deleted_logs[0] as DeletedLog;
+      
+      expect(deleted_log.deleted_at).toBeGreaterThanOrEqual(before);
+      expect(deleted_log.deleted_at).toBeLessThanOrEqual(after);
+    });
+  });
+
+  describe('restoreLog', () => {
+    it('휴지통에서 로그를 복원하면 logs에 추가된다', () => {
+      const { startTimer, completeTimer, deleteLog, restoreLog } = useTimerStore.getState();
+
+      act(() => {
+        startTimer('복원 테스트 작업');
+        completeTimer();
+      });
+
+      const { logs: original_logs } = useTimerStore.getState();
+      const log_id = original_logs[0].id;
+
+      act(() => {
+        deleteLog(log_id);
+      });
+
+      expect(useTimerStore.getState().logs.length).toBe(0);
+      expect(useTimerStore.getState().deleted_logs.length).toBe(1);
+
+      act(() => {
+        restoreLog(log_id);
+      });
+
+      const state = useTimerStore.getState();
+      expect(state.logs.length).toBe(1);
+      expect(state.deleted_logs.length).toBe(0);
+      expect(state.logs[0].title).toBe('복원 테스트 작업');
+    });
+
+    it('복원된 로그에서 deleted_at이 제거된다', () => {
+      const { startTimer, completeTimer, deleteLog, restoreLog } = useTimerStore.getState();
+
+      act(() => {
+        startTimer('복원 테스트 작업');
+        completeTimer();
+      });
+
+      const { logs } = useTimerStore.getState();
+      const log_id = logs[0].id;
+
+      act(() => {
+        deleteLog(log_id);
+        restoreLog(log_id);
+      });
+
+      const restored_log = useTimerStore.getState().logs[0];
+      expect((restored_log as DeletedLog).deleted_at).toBeUndefined();
+    });
+
+    it('존재하지 않는 ID로 복원을 시도해도 에러가 발생하지 않는다', () => {
+      const { restoreLog } = useTimerStore.getState();
+
+      expect(() => {
+        act(() => {
+          restoreLog('non-existent-id');
+        });
+      }).not.toThrow();
+    });
+  });
+
+  describe('permanentlyDeleteLog', () => {
+    it('휴지통에서 로그를 영구 삭제한다', () => {
+      const { startTimer, completeTimer, deleteLog, permanentlyDeleteLog } = useTimerStore.getState();
+
+      act(() => {
+        startTimer('영구 삭제 테스트 작업');
+        completeTimer();
+      });
+
+      const { logs } = useTimerStore.getState();
+      const log_id = logs[0].id;
+
+      act(() => {
+        deleteLog(log_id);
+      });
+
+      expect(useTimerStore.getState().deleted_logs.length).toBe(1);
+
+      act(() => {
+        permanentlyDeleteLog(log_id);
+      });
+
+      expect(useTimerStore.getState().deleted_logs.length).toBe(0);
+      expect(useTimerStore.getState().logs.length).toBe(0);
+    });
+  });
+
+  describe('emptyTrash', () => {
+    it('휴지통의 모든 로그를 삭제한다', () => {
+      const { startTimer, completeTimer, deleteLog, emptyTrash } = useTimerStore.getState();
+
+      // 여러 작업 생성 및 삭제
+      act(() => {
+        startTimer('작업 1');
+        completeTimer();
+        startTimer('작업 2');
+        completeTimer();
+        startTimer('작업 3');
+        completeTimer();
+      });
+
+      const { logs } = useTimerStore.getState();
+      const log_ids = logs.map(log => log.id);
+
+      act(() => {
+        log_ids.forEach(id => deleteLog(id));
+      });
+
+      expect(useTimerStore.getState().deleted_logs.length).toBe(3);
+
+      act(() => {
+        emptyTrash();
+      });
+
+      expect(useTimerStore.getState().deleted_logs.length).toBe(0);
+    });
+
+    it('빈 휴지통에서 emptyTrash를 호출해도 에러가 발생하지 않는다', () => {
+      const { emptyTrash } = useTimerStore.getState();
+
+      expect(() => {
+        act(() => {
+          emptyTrash();
+        });
+      }).not.toThrow();
+
+      expect(useTimerStore.getState().deleted_logs.length).toBe(0);
     });
   });
 });
