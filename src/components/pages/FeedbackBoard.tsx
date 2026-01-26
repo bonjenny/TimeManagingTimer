@@ -483,7 +483,16 @@ const FeedbackBoard: React.FC = () => {
       {view === 'write' && renderWriteView()}
 
       {/* 비밀번호 확인 모달 */}
-      <Dialog open={password_modal_open} onClose={() => setPasswordModalOpen(false)}>
+      <Dialog 
+        open={password_modal_open} 
+        onClose={() => setPasswordModalOpen(false)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && !e.shiftKey && password_input.trim()) {
+            e.preventDefault();
+            handlePasswordConfirm();
+          }
+        }}
+      >
         <DialogTitle>비밀번호 확인</DialogTitle>
         <DialogContent>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>

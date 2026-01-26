@@ -849,7 +849,18 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
       </Tooltip>
 
       {/* 수동 입력 모달 */}
-      <Dialog open={showCreateModal} onClose={handleCreateClose} maxWidth="sm" fullWidth>
+      <Dialog 
+        open={showCreateModal} 
+        onClose={handleCreateClose} 
+        maxWidth="sm" 
+        fullWidth
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && !e.shiftKey && (isAddingSession || newTitle.trim())) {
+            e.preventDefault();
+            handleCreateSave();
+          }
+        }}
+      >
         <DialogTitle>
           {isAddingSession ? `"${newTitle}" 세션 추가` : '새 업무 기록 (수동)'}
         </DialogTitle>

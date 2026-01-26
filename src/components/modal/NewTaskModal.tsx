@@ -175,9 +175,9 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ open, onClose }) => {
           disabled={!title.trim()}
           startIcon={<PlayArrowIcon />}
           sx={{
-            bgcolor: '#000',
-            '&:hover': { bgcolor: '#333' },
-            '&.Mui-disabled': { bgcolor: '#e0e0e0' },
+            bgcolor: 'var(--highlight-color)',
+            '&:hover': { bgcolor: 'var(--highlight-hover)' },
+            '&.Mui-disabled': { bgcolor: 'var(--bg-tertiary)' },
           }}
         >
           타이머 시작

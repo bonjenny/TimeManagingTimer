@@ -16,6 +16,8 @@ import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import TodayIcon from '@mui/icons-material/Today';
 import { useTimerStore } from './store/useTimerStore';
+import { applyThemeColors, applyPaletteHighlight } from './styles/tokens';
+import { loadPaletteSettings, getPalette } from './utils/colorPalette';
 
 // 설정 저장 키
 const SETTINGS_STORAGE_KEY = 'timekeeper-settings';
@@ -23,10 +25,9 @@ const SETTINGS_STORAGE_KEY = 'timekeeper-settings';
 // 하루 시작 기준 (06:00)
 const DAY_START_HOUR = 6;
 
-// 테마 적용 함수
+// 테마 적용 함수 (tokens.ts의 applyThemeColors 래퍼)
 const applyTheme = (primary_color: string, accent_color: string) => {
-  document.documentElement.style.setProperty('--primary-color', primary_color);
-  document.documentElement.style.setProperty('--accent-color', accent_color);
+  applyThemeColors({ primary: primary_color, accent: accent_color });
 };
 
 function App() {
@@ -95,9 +96,10 @@ function App() {
     return `${year}. ${month}. ${day}. (${day_of_week})`;
   };
 
-  // 저장된 테마 적용 (초기 로드)
+  // 저장된 테마 및 팔레트 적용 (초기 로드)
   useEffect(() => {
     try {
+      // 테마 설정 적용
       const saved_settings = localStorage.getItem(SETTINGS_STORAGE_KEY);
       if (saved_settings) {
         const settings = JSON.parse(saved_settings);
@@ -105,6 +107,11 @@ function App() {
           applyTheme(settings.primaryColor, settings.accentColor);
         }
       }
+      
+      // 컬러 팔레트 적용
+      const palette_settings = loadPaletteSettings();
+      const palette = getPalette(palette_settings);
+      applyPaletteHighlight(palette);
     } catch {
       // 무시
     }
@@ -225,8 +232,8 @@ function App() {
             px: 3,
             py: 0.75,
             borderRadius: 2,
-            bgcolor: isToday ? '#000' : '#f5f5f5',
-            color: isToday ? '#fff' : 'text.primary',
+            bgcolor: isToday ? 'var(--highlight-color)' : 'var(--bg-tertiary)',
+            color: isToday ? 'var(--text-inverse)' : 'var(--text-primary)',
             minWidth: 180,
             textAlign: 'center',
           }}

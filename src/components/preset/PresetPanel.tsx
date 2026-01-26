@@ -29,6 +29,7 @@ import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import HistoryIcon from '@mui/icons-material/History';
 import { useTimerStore } from '../../store/useTimerStore';
+import { getPalette, loadPaletteSettings } from '../../utils/colorPalette';
 
 // 프리셋 데이터 타입
 interface PresetItem {
@@ -43,23 +44,31 @@ interface PresetItem {
 // 카테고리 목록
 const CATEGORIES = ['분석', '개발', '개발자테스트', '테스트오류수정', '센터오류수정', '환경세팅', '회의', '기타'];
 
-// 프리셋 색상 옵션
-const PRESET_COLORS = [
-  { name: '기본', value: undefined },
-  { name: '파랑', value: '#3b82f6' },
-  { name: '초록', value: '#10b981' },
-  { name: '보라', value: '#8b5cf6' },
-  { name: '빨강', value: '#ef4444' },
-  { name: '주황', value: '#f97316' },
-  { name: '청록', value: '#06b6d4' },
-  { name: '노랑', value: '#eab308' },
-];
-
 // LocalStorage 키
 const PRESETS_STORAGE_KEY = 'timekeeper-manual-presets';
 
 const PresetPanel: React.FC = () => {
   const { startTimer, logs } = useTimerStore();
+
+  // 컬러 팔레트 로드
+  const [colorPalette, setColorPalette] = useState<string[]>(() => {
+    const settings = loadPaletteSettings();
+    return getPalette(settings);
+  });
+
+  // 팔레트 설정 변경 감지
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const settings = loadPaletteSettings();
+      setColorPalette(getPalette(settings));
+    };
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('focus', handleStorageChange);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('focus', handleStorageChange);
+    };
+  }, []);
 
   // 프리셋 목록 (LocalStorage에서 로드)
   const [presets, setPresets] = useState<PresetItem[]>(() => {
@@ -400,8 +409,8 @@ const PresetPanel: React.FC = () => {
       <Box
         sx={{
           p: 2,
-          borderTop: '1px solid var(--border-color, #eaeaea)',
-          bgcolor: '#fafafa',
+          borderTop: '1px solid var(--border-color)',
+          bgcolor: 'var(--bg-primary)',
         }}
       >
         <Typography variant="caption" color="text.secondary">
@@ -410,7 +419,18 @@ const PresetPanel: React.FC = () => {
       </Box>
 
       {/* 프리셋 추가/수정 모달 */}
-      <Dialog open={is_modal_open} onClose={handleCloseModal} maxWidth="sm" fullWidth>
+      <Dialog 
+        open={is_modal_open} 
+        onClose={handleCloseModal} 
+        maxWidth="sm" 
+        fullWidth
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && !e.shiftKey && modal_title.trim()) {
+            e.preventDefault();
+            handleSavePreset();
+          }
+        }}
+      >
         <DialogTitle>{edit_preset ? '프리셋 수정' : '새 프리셋 추가'}</DialogTitle>
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, mt: 1 }}>
@@ -447,36 +467,49 @@ const PresetPanel: React.FC = () => {
             {/* 색상 선택 */}
             <Box>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                프리셋 색상
+                프리셋 색상 (설정의 컬러 팔레트)
               </Typography>
-              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                {PRESET_COLORS.map((color) => (
-                  <Tooltip key={color.name} title={color.name}>
+              <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap' }}>
+                {/* 기본(색상 없음) 옵션 */}
+                <Tooltip title="기본 (자동)">
+                  <Box
+                    onClick={() => setModalColor(undefined)}
+                    sx={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: 1,
+                      bgcolor: '#f5f5f5',
+                      border: modal_color === undefined ? '2px solid #000' : '1px solid #ddd',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      '&:hover': { transform: 'scale(1.1)' },
+                      transition: 'transform 0.15s',
+                    }}
+                  >
+                    <Typography variant="caption" sx={{ color: '#999', fontSize: '0.65rem' }}>
+                      자동
+                    </Typography>
+                  </Box>
+                </Tooltip>
+                
+                {/* 팔레트 색상들 */}
+                {colorPalette.slice(0, 10).map((color, index) => (
+                  <Tooltip key={index} title={`색상 ${index + 1}`}>
                     <Box
-                      onClick={() => setModalColor(color.value)}
+                      onClick={() => setModalColor(color)}
                       sx={{
-                        width: 32,
-                        height: 32,
+                        width: 28,
+                        height: 28,
                         borderRadius: 1,
-                        bgcolor: color.value || '#f5f5f5',
-                        border:
-                          modal_color === color.value
-                            ? '2px solid #000'
-                            : '1px solid #ddd',
+                        bgcolor: color,
+                        border: modal_color === color ? '2px solid #000' : '1px solid #ddd',
                         cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
                         '&:hover': { transform: 'scale(1.1)' },
                         transition: 'transform 0.15s',
                       }}
-                    >
-                      {!color.value && (
-                        <Typography variant="caption" sx={{ color: '#999' }}>
-                          X
-                        </Typography>
-                      )}
-                    </Box>
+                    />
                   </Tooltip>
                 ))}
               </Box>
@@ -503,7 +536,7 @@ const PresetPanel: React.FC = () => {
             onClick={handleSavePreset}
             variant="contained"
             disabled={!modal_title.trim()}
-            sx={{ bgcolor: '#000', '&:hover': { bgcolor: '#333' } }}
+            sx={{ bgcolor: 'var(--highlight-color)', '&:hover': { bgcolor: 'var(--highlight-hover)' } }}
           >
             {edit_preset ? '수정' : '추가'}
           </Button>
