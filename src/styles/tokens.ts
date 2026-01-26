@@ -112,6 +112,7 @@ export interface ThemeColors {
   primary: string;
   accent: string;
   highlight?: string;
+  isDark?: boolean;
 }
 
 /**
@@ -123,13 +124,47 @@ export const applyThemeColors = (colors: ThemeColors): void => {
   root.style.setProperty('--primary-color', colors.primary);
   root.style.setProperty('--accent-color', colors.accent);
   
-  // 강조색 (하이라이트) - 테마 색상 사용
-  root.style.setProperty('--highlight-color', colors.primary);
-  root.style.setProperty('--highlight-hover', colors.accent);
+  // 강조색 (하이라이트) - 테마 색상 중 가장 진한 색(Accent) 사용
+  root.style.setProperty('--highlight-color', colors.accent);
+  root.style.setProperty('--highlight-hover', adjustBrightness(colors.accent, -10));
   
   // 연한 강조색 (primary 기반)
   const light_highlight = hexToRgba(colors.primary, 0.1);
   root.style.setProperty('--highlight-light', light_highlight);
+
+  // 다크 모드 색상 반전
+  if (colors.isDark) {
+    root.style.setProperty('--text-primary', '#ffffff');
+    root.style.setProperty('--text-secondary', '#b0b0b0');
+    root.style.setProperty('--text-disabled', '#666666');
+    root.style.setProperty('--text-inverse', '#000000');
+
+    root.style.setProperty('--bg-primary', '#121212');
+    root.style.setProperty('--bg-secondary', '#1e1e1e');
+    root.style.setProperty('--bg-tertiary', '#2d2d2d');
+    root.style.setProperty('--bg-hover', '#333333');
+    root.style.setProperty('--bg-selected', '#444444');
+
+    root.style.setProperty('--border-color', '#333333');
+    root.style.setProperty('--border-hover', '#555555');
+    root.style.setProperty('--border-focus', '#ffffff');
+  } else {
+    // 라이트 모드 (기본값)
+    root.style.setProperty('--text-primary', '#000000');
+    root.style.setProperty('--text-secondary', '#666666');
+    root.style.setProperty('--text-disabled', '#999999');
+    root.style.setProperty('--text-inverse', '#ffffff');
+
+    root.style.setProperty('--bg-primary', '#fafafa');
+    root.style.setProperty('--bg-secondary', '#ffffff');
+    root.style.setProperty('--bg-tertiary', '#f5f5f5');
+    root.style.setProperty('--bg-hover', '#f0f0f0');
+    root.style.setProperty('--bg-selected', '#e8e8e8');
+
+    root.style.setProperty('--border-color', '#eaeaea');
+    root.style.setProperty('--border-hover', '#cccccc');
+    root.style.setProperty('--border-focus', '#000000');
+  }
 };
 
 /**

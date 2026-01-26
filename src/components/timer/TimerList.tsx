@@ -261,15 +261,16 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
         {/* 헤더 */}
         <Box sx={{ 
           display: 'grid', 
-          gridTemplateColumns: '40px 1fr 90px 110px 120px 60px',
+          gridTemplateColumns: '40px 1fr 90px 140px 120px 60px',
           gap: 1,
           px: 2,
           py: 1,
-          bgcolor: '#f5f5f5',
-          borderBottom: '1px solid #e0e0e0',
+          bgcolor: 'var(--bg-secondary)', // action.hover 대신 background.paper 사용
+          borderBottom: 1,
+          borderColor: 'var(--border-color)',
           fontSize: '0.75rem',
           fontWeight: 600,
-          color: 'text.secondary'
+          color: 'var(--text-secondary)'
         }}>
           <Box></Box>
           <Box>업무명</Box>
@@ -291,16 +292,18 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                 onClick={() => toggleExpand(task.title)}
                 sx={{ 
                   display: 'grid', 
-                  gridTemplateColumns: '40px 1fr 90px 110px 120px 60px',
+                  gridTemplateColumns: '40px 1fr 90px 140px 120px 60px',
                   gap: 1,
                   px: 2,
                   py: 1.5,
                   alignItems: 'center',
-                  borderBottom: '1px solid #f0f0f0',
-                  bgcolor: task.has_running ? 'rgba(25, 118, 210, 0.04)' : 'transparent',
+                  borderBottom: 1,
+                  borderColor: 'var(--border-color)',
+                  bgcolor: task.has_running ? 'var(--highlight-light)' : 'var(--card-bg)',
                   cursor: 'pointer',
+                  transition: 'background-color 0.2s',
                   '&:hover': {
-                    bgcolor: 'action.hover',
+                    bgcolor: 'var(--bg-hover)',
                   }
                 }}
               >
@@ -367,7 +370,11 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                     <Chip 
                       label={task.category} 
                       size="small" 
-                      sx={{ height: 20, fontSize: '0.65rem', bgcolor: '#f0f0f0' }} 
+                      sx={{ 
+                        height: 20, 
+                        fontSize: '0.65rem', 
+                        // bgcolor 제거 -> MUI default
+                      }} 
                     />
                   )}
                 </Box>
@@ -390,7 +397,7 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
 
               {/* 세션 상세 (펼침) */}
               <Collapse in={is_expanded}>
-                <Box sx={{ bgcolor: '#fafafa', py: 1, px: 2 }}>
+                <Box sx={{ bgcolor: 'var(--bg-tertiary)', py: 1, px: 2, borderBottom: 1, borderColor: 'var(--border-color)' }}>
                   <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
                     작업 이력 (총 {task.sessions.length}회 작업)
                   </Typography>
@@ -427,20 +434,26 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                             </TableCell>
                             <TableCell sx={{ py: 0.5 }}>
                               <Box sx={{ display: 'flex', gap: 0.5 }}>
-                                <IconButton 
-                                  size="small" 
-                                  onClick={() => handleEditClick(session)}
-                                  sx={{ p: 0.25 }}
-                                >
-                                  <EditIcon sx={{ fontSize: 16 }} />
-                                </IconButton>
-                                <IconButton 
-                                  size="small" 
-                                  onClick={() => deleteLog(session.id)}
-                                  sx={{ p: 0.25 }}
-                                >
-                                  <DeleteOutlineIcon sx={{ fontSize: 16 }} />
-                                </IconButton>
+                                <Tooltip title="수정">
+                                  <IconButton 
+                                    size="small" 
+                                    onClick={() => handleEditClick(session)}
+                                    sx={{ p: 0.25 }}
+                                    aria-label="수정"
+                                  >
+                                    <EditIcon sx={{ fontSize: 16 }} />
+                                  </IconButton>
+                                </Tooltip>
+                                <Tooltip title="삭제">
+                                  <IconButton 
+                                    size="small" 
+                                    onClick={() => deleteLog(session.id)}
+                                    sx={{ p: 0.25 }}
+                                    aria-label="삭제"
+                                  >
+                                    <DeleteOutlineIcon sx={{ fontSize: 16 }} />
+                                  </IconButton>
+                                </Tooltip>
                               </Box>
                             </TableCell>
                           </TableRow>
@@ -563,7 +576,7 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                       </TableCell>
                       <TableCell>
                         {log.category && (
-                          <Chip label={log.category} size="small" sx={{ height: 18, fontSize: '0.65rem', bgcolor: '#f0f0f0' }} />
+                          <Chip label={log.category} size="small" sx={{ height: 18, fontSize: '0.65rem', bgcolor: 'var(--bg-tertiary)' }} />
                         )}
                       </TableCell>
                       <TableCell>

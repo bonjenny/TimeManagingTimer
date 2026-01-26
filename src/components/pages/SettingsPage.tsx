@@ -7,27 +7,23 @@ import {
   Button,
   Divider,
   Grid,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Switch,
   FormControlLabel,
+  Switch,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
   Alert,
   Snackbar,
-  ToggleButton,
-  ToggleButtonGroup,
   Chip,
 } from '@mui/material';
-import SaveIcon from '@mui/icons-material/Save';
-import RestoreIcon from '@mui/icons-material/Restore';
 import DeleteForeverIcon from '@mui/icons-material/DeleteForever';
 import WarningIcon from '@mui/icons-material/Warning';
 import PaletteIcon from '@mui/icons-material/Palette';
+import EditIcon from '@mui/icons-material/Edit';
+import AddIcon from '@mui/icons-material/Add';
+import RestoreIcon from '@mui/icons-material/Restore';
+import { useTimerStore } from '../../store/useTimerStore';
 import {
   PaletteType,
   PaletteSettings,
@@ -37,55 +33,25 @@ import {
   getPaletteList,
   getPalette,
   generateToneOnTonePalette,
+  getPaletteThemeColors,
 } from '../../utils/colorPalette';
 import { applyPaletteHighlight } from '../../styles/tokens';
-import EditIcon from '@mui/icons-material/Edit';
-import AddIcon from '@mui/icons-material/Add';
 
 // 설정 저장 키
 const SETTINGS_STORAGE_KEY = 'timekeeper-settings';
 
-// 프리셋 테마 색상
-const THEME_PRESETS = [
-  { name: '기본 (검정)', primary: '#000000', accent: '#000000' },
-  { name: '초록', primary: '#10b981', accent: '#059669' },
-  { name: '보라', primary: '#8b5cf6', accent: '#7c3aed' },
-  { name: '빨강', primary: '#ef4444', accent: '#dc2626' },
-  { name: '주황', primary: '#f97316', accent: '#ea580c' },
-  { name: '청록', primary: '#06b6d4', accent: '#0891b2' },
-  { name: '파랑', primary: '#3b82f6', accent: '#2563eb' },
-];
-
 // 기본 설정값
 const DEFAULT_SETTINGS = {
-  themePreset: '기본 (검정)',
-  primaryColor: '#000000',
-  accentColor: '#000000',
-  customColor: '#000000',
   lunchStart: '12:00',
   lunchEnd: '13:00',
   lunchExcludeEnabled: true,
   autoCompleteEnabled: true,
 };
 
-// 테마 적용 함수
-const applyTheme = (primary_color: string, accent_color: string) => {
-  document.documentElement.style.setProperty('--primary-color', primary_color);
-  document.documentElement.style.setProperty('--accent-color', accent_color);
-};
-
-/**
- * 설정 페이지
- * - 테마 커스터마이징 (RGB 값 직접 입력)
- * - 점심시간 설정
- * - 단축키 설정
- * - 데이터 관리 (내보내기/가져오기)
- * - 초기화 기능
- */
 const SettingsPage: React.FC = () => {
-  // 설정 상태 (LocalStorage에서 로드)
-  const [selected_preset, setSelectedPreset] = useState(DEFAULT_SETTINGS.themePreset);
-  const [custom_color, setCustomColor] = useState(DEFAULT_SETTINGS.customColor);
+  const { setThemeConfig } = useTimerStore();
+  
+  // 설정 상태
   const [lunch_start, setLunchStart] = useState(DEFAULT_SETTINGS.lunchStart);
   const [lunch_end, setLunchEnd] = useState(DEFAULT_SETTINGS.lunchEnd);
   const [lunch_exclude_enabled, setLunchExcludeEnabled] = useState(DEFAULT_SETTINGS.lunchExcludeEnabled);
@@ -109,14 +75,15 @@ const SettingsPage: React.FC = () => {
   const [snackbar_message, setSnackbarMessage] = useState('');
   const [snackbar_severity, setSnackbarSeverity] = useState<'success' | 'error'>('success');
 
+  // 초기 로드 여부 감지
+  const isInitialMount = React.useRef(true);
+
   // 저장된 설정 로드
   useEffect(() => {
     try {
       const saved = localStorage.getItem(SETTINGS_STORAGE_KEY);
       if (saved) {
         const settings = JSON.parse(saved);
-        setSelectedPreset(settings.themePreset || DEFAULT_SETTINGS.themePreset);
-        setCustomColor(settings.customColor || DEFAULT_SETTINGS.customColor);
         setLunchStart(settings.lunchStart || DEFAULT_SETTINGS.lunchStart);
         setLunchEnd(settings.lunchEnd || DEFAULT_SETTINGS.lunchEnd);
         setLunchExcludeEnabled(settings.lunchExcludeEnabled ?? DEFAULT_SETTINGS.lunchExcludeEnabled);
@@ -127,7 +94,6 @@ const SettingsPage: React.FC = () => {
       const palette_settings = loadPaletteSettings();
       setPaletteType(palette_settings.type);
       
-      // 커스텀 팔레트 로드
       if (palette_settings.custom_colors && palette_settings.custom_colors.length > 0) {
         setCustomColors(palette_settings.custom_colors);
       }
@@ -138,6 +104,54 @@ const SettingsPage: React.FC = () => {
       // 무시
     }
   }, []);
+
+  // 설정 자동 저장 및 적용
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+
+    // 일반 설정 저장
+    const settings = {
+      lunchStart: lunch_start,
+      lunchEnd: lunch_end,
+      lunchExcludeEnabled: lunch_exclude_enabled,
+      autoCompleteEnabled: auto_complete_enabled,
+    };
+    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+    
+    // 컬러 팔레트 설정 저장
+    const palette_settings: PaletteSettings = {
+      type: palette_type,
+      ...(palette_type === 'custom' && {
+        custom_colors: custom_colors,
+        custom_base_color: custom_base_color,
+      }),
+    };
+    savePaletteSettings(palette_settings);
+    
+    // 앱 테마 색상 적용 (Primary, Accent)
+    const { primary, accent } = getPaletteThemeColors(palette_settings);
+    setThemeConfig({
+      primaryColor: primary,
+      accentColor: accent,
+    });
+
+    // CSS 변수에 팔레트 색상 적용 (간트 차트용)
+    const palette = getPalette(palette_settings);
+    applyPaletteHighlight(palette);
+
+  }, [
+    lunch_start, 
+    lunch_end, 
+    lunch_exclude_enabled, 
+    auto_complete_enabled, 
+    palette_type, 
+    custom_colors, 
+    custom_base_color,
+    setThemeConfig
+  ]);
 
   // 팔레트 목록
   const palette_list = getPaletteList();
@@ -193,73 +207,13 @@ const SettingsPage: React.FC = () => {
     setPaletteType(new_type);
   };
 
-  // 프리셋 변경 시 테마 미리보기
-  const handlePresetChange = (preset_name: string) => {
-    setSelectedPreset(preset_name);
-    const preset = THEME_PRESETS.find(p => p.name === preset_name);
-    if (preset) {
-      applyTheme(preset.primary, preset.accent);
-    }
-  };
-
-  // 커스텀 색상 변경 시 테마 미리보기
-  const handleCustomColorChange = (color: string) => {
-    setCustomColor(color);
-    if (/^#[0-9A-Fa-f]{6}$/.test(color)) {
-      setSelectedPreset('커스텀');
-      applyTheme(color, color);
-    }
-  };
-
-  // 설정 저장
-  const handleSaveSettings = () => {
-    const preset = THEME_PRESETS.find(p => p.name === selected_preset);
-    const primary_color = preset ? preset.primary : custom_color;
-    const accent_color = preset ? preset.accent : custom_color;
-
-    const settings = {
-      themePreset: selected_preset,
-      primaryColor: primary_color,
-      accentColor: accent_color,
-      customColor: custom_color,
-      lunchStart: lunch_start,
-      lunchEnd: lunch_end,
-      lunchExcludeEnabled: lunch_exclude_enabled,
-      autoCompleteEnabled: auto_complete_enabled,
-    };
-
-    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
-    applyTheme(primary_color, accent_color);
-
-    // 컬러 팔레트 설정 저장 및 CSS 변수 적용
-    const palette_settings: PaletteSettings = {
-      type: palette_type,
-      ...(palette_type === 'custom' && {
-        custom_colors: custom_colors,
-        custom_base_color: custom_base_color,
-      }),
-    };
-    savePaletteSettings(palette_settings);
-    
-    // CSS 변수에 팔레트 색상 적용
-    const palette = getPalette(palette_settings);
-    applyPaletteHighlight(palette);
-
-    setSnackbarMessage('설정이 저장되었습니다.');
-    setSnackbarSeverity('success');
-    setSnackbarOpen(true);
-  };
-
   // 기본값 복원
   const handleResetSettings = () => {
-    setSelectedPreset(DEFAULT_SETTINGS.themePreset);
-    setCustomColor(DEFAULT_SETTINGS.customColor);
     setLunchStart(DEFAULT_SETTINGS.lunchStart);
     setLunchEnd(DEFAULT_SETTINGS.lunchEnd);
     setLunchExcludeEnabled(DEFAULT_SETTINGS.lunchExcludeEnabled);
     setAutoCompleteEnabled(DEFAULT_SETTINGS.autoCompleteEnabled);
-    applyTheme(DEFAULT_SETTINGS.primaryColor, DEFAULT_SETTINGS.accentColor);
-
+    
     // 컬러 팔레트 기본값 복원
     setPaletteType('navy-orange');
     setCustomColors([]);
@@ -372,8 +326,8 @@ const SettingsPage: React.FC = () => {
         sx={{
           p: 3,
           mb: 3,
-          bgcolor: '#f8f9fa',
-          borderColor: 'var(--border-color, #eaeaea)',
+          bgcolor: 'var(--card-bg)',
+          borderColor: 'var(--border-color)',
         }}
       >
         <Typography variant="h5" sx={{ fontWeight: 600, mb: 1 }}>
@@ -384,82 +338,17 @@ const SettingsPage: React.FC = () => {
         </Typography>
       </Paper>
 
-      {/* 테마 설정 */}
-      <Paper variant="outlined" sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
-          테마 커스터마이징
-        </Typography>
-
-        <Grid container spacing={3}>
-          <Grid item xs={12} md={6}>
-            <FormControl fullWidth size="small">
-              <InputLabel>테마 프리셋</InputLabel>
-              <Select
-                value={selected_preset}
-                label="테마 프리셋"
-                onChange={(e) => setSelectedPreset(e.target.value)}
-              >
-                {THEME_PRESETS.map((preset) => (
-                  <MenuItem key={preset.name} value={preset.name}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Box
-                        sx={{
-                          width: 16,
-                          height: 16,
-                          borderRadius: '50%',
-                          bgcolor: preset.primary,
-                        }}
-                      />
-                      {preset.name}
-                    </Box>
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-
-          <Grid item xs={12} md={6}>
-            <TextField
-              fullWidth
-              size="small"
-              label="커스텀 색상 (HEX)"
-              value={custom_color}
-              onChange={(e) => setCustomColor(e.target.value)}
-              placeholder="#000000"
-              InputProps={{
-                startAdornment: (
-                  <Box
-                    sx={{
-                      width: 24,
-                      height: 24,
-                      borderRadius: 1,
-                      bgcolor: custom_color,
-                      mr: 1,
-                      border: '1px solid #eaeaea',
-                    }}
-                  />
-                ),
-              }}
-            />
-          </Grid>
-        </Grid>
-
-        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2 }}>
-          💡 커스텀 색상은 상단 바 및 주요 버튼에 적용됩니다.
-        </Typography>
-      </Paper>
-
-      {/* 작업 컬러 팔레트 */}
+      {/* 작업 컬러 팔레트 & 테마 */}
       <Paper variant="outlined" sx={{ p: 3, mb: 3 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
           <PaletteIcon sx={{ color: 'text.secondary' }} />
           <Typography variant="h6" sx={{ fontWeight: 600 }}>
-            작업 컬러 팔레트
+            테마 및 컬러 팔레트
           </Typography>
         </Box>
         
         <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-          타임라인에서 작업별로 표시되는 색상 스타일을 선택하세요.
+          작업 컬러 팔레트를 선택하면 앱의 주요 테마 색상(버튼, 상단 바 등)도 함께 변경됩니다.
         </Typography>
 
         {/* 팔레트 선택 그리드 */}
@@ -476,23 +365,24 @@ const SettingsPage: React.FC = () => {
               sx={{
                 p: 2,
                 borderRadius: 2,
-                border: palette_type === palette.type ? '2px solid #000' : '1px solid #eaeaea',
+                border: palette_type === palette.type ? '2px solid' : '1px solid',
+                borderColor: palette_type === palette.type ? 'primary.main' : 'divider',
                 cursor: 'pointer',
                 transition: 'all 0.2s',
-                bgcolor: palette_type === palette.type ? '#f5f5f5' : 'transparent',
+                bgcolor: palette_type === palette.type ? 'action.selected' : 'transparent',
                 '&:hover': {
-                  borderColor: '#999',
+                  borderColor: 'text.secondary',
                   transform: 'translateY(-2px)',
                 },
               }}
             >
               {/* 팔레트 이름 */}
-              <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
+              <Typography variant="body2" sx={{ fontWeight: 600, mb: 1, color: 'var(--text-primary)' }}>
                 {palette.name}
               </Typography>
               
               {/* 색상 미리보기 */}
-              <Box sx={{ display: 'flex', gap: 0.25 }}>
+              <Box sx={{ display: 'flex', gap: 0.25, mb: 1 }}>
                 {palette.colors.slice(0, 5).map((color, idx) => (
                   <Box
                     key={idx}
@@ -504,6 +394,12 @@ const SettingsPage: React.FC = () => {
                     }}
                   />
                 ))}
+              </Box>
+
+              {/* 대표 색상 표시 */}
+              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                <Box sx={{ width: 12, height: 12, borderRadius: '50%', bgcolor: palette.primary }} />
+                <Typography variant="caption" color="text.secondary">Primary</Typography>
               </Box>
             </Box>
           ))}
@@ -559,8 +455,9 @@ const SettingsPage: React.FC = () => {
               sx={{
                 p: 2,
                 borderRadius: 2,
-                border: palette_type === 'custom' ? '2px solid var(--highlight-color)' : '1px solid var(--border-color)',
-                bgcolor: palette_type === 'custom' ? 'var(--highlight-light)' : 'transparent',
+                border: palette_type === 'custom' ? '2px solid' : '1px solid',
+                borderColor: palette_type === 'custom' ? 'primary.main' : 'var(--border-color)',
+                bgcolor: palette_type === 'custom' ? 'var(--bg-selected)' : 'transparent',
                 cursor: 'pointer',
               }}
             >
@@ -584,7 +481,8 @@ const SettingsPage: React.FC = () => {
                       height: 32,
                       borderRadius: 1,
                       bgcolor: color,
-                      border: editing_color_index === index ? '2px solid #000' : '1px solid rgba(0,0,0,0.2)',
+                      border: editing_color_index === index ? '2px solid' : '1px solid',
+                      borderColor: editing_color_index === index ? 'text.primary' : 'divider',
                       cursor: 'pointer',
                       position: 'relative',
                       '&:hover': {
@@ -616,7 +514,8 @@ const SettingsPage: React.FC = () => {
                       width: 32,
                       height: 32,
                       borderRadius: 1,
-                      border: '1px dashed var(--border-color)',
+                      border: '1px dashed',
+                      borderColor: 'text.secondary',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -626,7 +525,7 @@ const SettingsPage: React.FC = () => {
                       },
                     }}
                   >
-                    <AddIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+                    <AddIcon fontSize="small" sx={{ color: 'var(--text-secondary)' }} />
                   </Box>
                 )}
               </Box>
@@ -654,7 +553,7 @@ const SettingsPage: React.FC = () => {
                     size="small"
                     variant="contained"
                     onClick={handleSaveColor}
-                    sx={{ minWidth: 48, height: 32, bgcolor: 'var(--highlight-color)', '&:hover': { bgcolor: 'var(--highlight-hover)' } }}
+                    sx={{ minWidth: 48, height: 32 }}
                   >
                     확인
                   </Button>
@@ -696,7 +595,8 @@ const SettingsPage: React.FC = () => {
                   height: 24,
                   borderRadius: 0.5,
                   bgcolor: color,
-                  border: '1px solid rgba(0,0,0,0.1)',
+                  border: '1px solid',
+                  borderColor: 'divider',
                 }}
               />
             ))}
@@ -784,22 +684,23 @@ const SettingsPage: React.FC = () => {
                 gap: 1.5,
                 p: 1,
                 borderRadius: 1,
-                bgcolor: '#f5f5f5',
-                '&:hover': { bgcolor: '#efefef' },
+                bgcolor: 'var(--bg-hover)',
+                '&:hover': { bgcolor: 'var(--bg-selected)' },
               }}
             >
               <Box
                 sx={{
                   px: 1,
                   py: 0.5,
-                  bgcolor: '#e0e0e0',
+                  bgcolor: 'action.disabledBackground',
                   borderRadius: 0.5,
                   fontFamily: 'monospace',
                   fontSize: '0.75rem',
-                  fontWeight: 600,
-                  minWidth: 70,
-                  textAlign: 'center',
-                }}
+                fontWeight: 600,
+                minWidth: 70,
+                textAlign: 'center',
+                color: 'var(--text-primary)'
+              }}
               >
                 {shortcut.key}
               </Box>
@@ -855,7 +756,7 @@ const SettingsPage: React.FC = () => {
         </Box>
       </Paper>
 
-      {/* 저장 버튼 */}
+      {/* 저장 버튼 (삭제됨 - 자동 저장) */}
       <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
         <Button
           variant="outlined"
@@ -863,14 +764,6 @@ const SettingsPage: React.FC = () => {
           onClick={handleResetSettings}
         >
           기본값 복원
-        </Button>
-        <Button
-          variant="contained"
-          startIcon={<SaveIcon />}
-          onClick={handleSaveSettings}
-          sx={{ bgcolor: '#000', '&:hover': { bgcolor: '#333' } }}
-        >
-          설정 저장
         </Button>
       </Box>
 

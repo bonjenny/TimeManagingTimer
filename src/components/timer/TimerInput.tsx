@@ -39,11 +39,13 @@ const TimerInput: React.FC = () => {
         display: 'flex', 
         alignItems: 'center', 
         width: '100%', 
-        border: '1px solid #eaeaea',
+        border: '1px solid',
+        borderColor: 'var(--border-color)',
+        bgcolor: 'var(--card-bg)',
         transition: 'all 0.2s',
         '&:focus-within': {
-          borderColor: '#000',
-          boxShadow: '0 0 0 1px #000'
+          borderColor: 'var(--border-focus)',
+          boxShadow: '0 0 0 1px var(--border-focus)'
         }
       }}
     >

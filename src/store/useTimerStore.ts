@@ -15,6 +15,7 @@ export interface TimerLog {
   
   startTime: number;   // 시작 시각 (timestamp ms)
   endTime?: number;    // 종료 시각 (timestamp ms)
+  deletedAt?: number;  // 삭제된 시각 (휴지통 기능용)
   
   status: TimerStatus;
   
@@ -25,18 +26,19 @@ export interface TimerLog {
   lastPausedAt?: number; 
 }
 
-// 삭제된 로그 타입 (삭제 시간 포함)
-export interface DeletedLog extends TimerLog {
-  deleted_at: number; // 삭제된 시각 (timestamp ms)
+export interface ThemeConfig {
+  primaryColor: string;
+  accentColor: string;
+  isDark: boolean;
 }
 
 interface TimerState {
   activeTimer: TimerLog | null;
   logs: TimerLog[];
-  deleted_logs: DeletedLog[]; // 휴지통
+  deleted_logs: TimerLog[]; // 휴지통
   
-  // Q1. recentTitles 제거 -> getRecentTitles 함수로 대체
-  
+  themeConfig: ThemeConfig;
+
   // --- Actions ---
   startTimer: (title: string, boardNo?: string, category?: string) => void;
   pauseTimer: () => void;
@@ -46,15 +48,18 @@ interface TimerState {
   
   addLog: (log: TimerLog) => void;
   updateLog: (id: string, updates: Partial<TimerLog>) => void;
-  deleteLog: (id: string) => void;
-  
-  // 휴지통 관련 액션
-  restoreLog: (id: string) => void;
-  permanentlyDeleteLog: (id: string) => void;
-  emptyTrash: () => void;
+  deleteLog: (id: string) => void; // 휴지통으로 이동
+  restoreLog: (id: string) => void; // 휴지통에서 복원
+  permanentlyDeleteLog: (id: string) => void; // 영구 삭제
+  emptyTrash: () => void; // 휴지통 비우기
 
-  // --- Selectors (or Helper Actions) ---
+  // --- Selectors ---
   getRecentTitles: () => string[];
+  getDeletedLogs: () => TimerLog[]; // 최근 30일 이내 삭제된 로그 반환
+
+  // --- Theme Actions ---
+  setThemeConfig: (config: Partial<ThemeConfig>) => void;
+  toggleDarkMode: () => void;
 }
 
 // ----------------------------------------------------------------------
@@ -67,6 +72,13 @@ export const useTimerStore = create<TimerState>()(
       activeTimer: null,
       logs: [],
       deleted_logs: [],
+      
+      // 테마 초기값
+      themeConfig: {
+        primaryColor: '#000000',
+        accentColor: '#000000',
+        isDark: false,
+      },
 
       // Q1. 자동완성 데이터 관리: logs 기반으로 최근 30일 내 고유 Title 추출
       getRecentTitles: () => {
@@ -78,12 +90,9 @@ export const useTimerStore = create<TimerState>()(
         const recentLogs = logs.filter(log => (now - log.startTime) <= thirtyDaysMs);
         
         // 2. 타이틀만 추출하여 역순 정렬 (최신순)
-        // Set을 이용해 중복 제거
         const uniqueTitles = new Set<string>();
         const result: string[] = [];
 
-        // logs는 생성 순서대로(오래된 -> 최신) 쌓인다고 가정하면 뒤에서부터 순회해야 최신
-        // 하지만 updateLog 등으로 순서가 섞일 수 있으니 startTime 기준 정렬 권장
         const sortedLogs = [...recentLogs].sort((a, b) => b.startTime - a.startTime);
 
         for (const log of sortedLogs) {
@@ -180,48 +189,62 @@ export const useTimerStore = create<TimerState>()(
       
       updateLog: (id, updates) => set((state) => ({
         logs: state.logs.map((log) => (log.id === id ? { ...log, ...updates } : log)),
-        // activeTimer도 수정 대상일 수 있음
         activeTimer: state.activeTimer?.id === id ? { ...state.activeTimer, ...updates } : state.activeTimer
       })),
 
-      deleteLog: (id) => set((state) => {
-        const log_to_delete = state.logs.find((log) => log.id === id);
-        if (!log_to_delete) return state;
+      // 삭제: 로그에서 제거하고 deleted_logs로 이동
+      deleteLog: (id) => {
+        const { logs, activeTimer, deleted_logs } = get();
+        const targetLog = logs.find(log => log.id === id);
         
-        // 휴지통으로 이동
-        const deleted_log: DeletedLog = {
-          ...log_to_delete,
-          deleted_at: Date.now(),
-        };
-        
-        return {
-          logs: state.logs.filter((log) => log.id !== id),
-          deleted_logs: [...state.deleted_logs, deleted_log],
-          activeTimer: state.activeTimer?.id === id ? null : state.activeTimer
-        };
-      }),
+        if (targetLog) {
+          const deletedLog: TimerLog = { ...targetLog, deletedAt: Date.now() };
+          set({
+            logs: logs.filter(log => log.id !== id),
+            deleted_logs: [...deleted_logs, deletedLog],
+            activeTimer: activeTimer?.id === id ? null : activeTimer
+          });
+        }
+      },
 
-      // 휴지통에서 복원
-      restoreLog: (id) => set((state) => {
-        const deleted_log = state.deleted_logs.find((log) => log.id === id);
-        if (!deleted_log) return state;
+      // 복원: deleted_logs에서 제거하고 logs로 이동
+      restoreLog: (id) => {
+        const { logs, deleted_logs } = get();
+        const targetLog = deleted_logs.find(log => log.id === id);
         
-        // deleted_at 제거하고 원래 로그로 복원
-        const { deleted_at: _, ...restored_log } = deleted_log;
-        
-        return {
-          deleted_logs: state.deleted_logs.filter((log) => log.id !== id),
-          logs: [...state.logs, restored_log as TimerLog],
-        };
-      }),
+        if (targetLog) {
+          const restoredLog: TimerLog = { ...targetLog, deletedAt: undefined };
+          set({
+            deleted_logs: deleted_logs.filter(log => log.id !== id),
+            logs: [...logs, restoredLog]
+          });
+        }
+      },
 
       // 영구 삭제
       permanentlyDeleteLog: (id) => set((state) => ({
-        deleted_logs: state.deleted_logs.filter((log) => log.id !== id),
+        deleted_logs: state.deleted_logs.filter(log => log.id !== id)
       })),
 
       // 휴지통 비우기
       emptyTrash: () => set({ deleted_logs: [] }),
+
+      // 삭제된 로그 조회 (최근 30일)
+      getDeletedLogs: () => {
+        const { deleted_logs } = get();
+        const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+        return deleted_logs.filter(log => (log.deletedAt || 0) > thirtyDaysAgo);
+      },
+
+      // 테마 설정 업데이트
+      setThemeConfig: (config) => set((state) => ({
+        themeConfig: { ...state.themeConfig, ...config }
+      })),
+
+      // 다크모드 토글
+      toggleDarkMode: () => set((state) => ({
+        themeConfig: { ...state.themeConfig, isDark: !state.themeConfig.isDark }
+      })),
     }),
     {
       name: 'timekeeper-storage',
