@@ -25,6 +25,14 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 
 // 게시글 타입
+interface Comment {
+  id: string;
+  nickname: string;
+  content: string;
+  password_hash: string;
+  created_at: number;
+}
+
 interface FeedbackPost {
   id: string;
   nickname: string;
@@ -34,6 +42,7 @@ interface FeedbackPost {
   created_at: number;
   updated_at: number;
   category: 'idea' | 'bug' | 'etc';
+  comments: Comment[];
 }
 
 // LocalStorage 키
@@ -82,9 +91,15 @@ const FeedbackBoard: React.FC = () => {
 
   // 비밀번호 확인 모달
   const [password_modal_open, setPasswordModalOpen] = useState(false);
-  const [password_modal_type, setPasswordModalType] = useState<'edit' | 'delete'>('edit');
+  const [password_modal_type, setPasswordModalType] = useState<'edit' | 'delete' | 'comment_delete'>('edit');
   const [password_input, setPasswordInput] = useState('');
   const [password_error, setPasswordError] = useState(false);
+  const [target_comment_id, setTargetCommentId] = useState<string | null>(null);
+
+  // 댓글 폼 상태
+  const [comment_nickname, setCommentNickname] = useState('');
+  const [comment_content, setCommentContent] = useState('');
+  const [comment_password, setCommentPassword] = useState('');
 
   // 스낵바
   const [snackbar_open, setSnackbarOpen] = useState(false);
@@ -167,6 +182,7 @@ const FeedbackBoard: React.FC = () => {
         created_at: now,
         updated_at: now,
         category: form_category,
+        comments: [],
       };
       setPosts((prev) => [...prev, new_post]);
       setSnackbarMessage('게시글이 등록되었습니다.');
@@ -192,11 +208,78 @@ const FeedbackBoard: React.FC = () => {
     setPasswordModalOpen(true);
   };
 
+  // 댓글 등록
+  const handleCommentSubmit = () => {
+    if (!selected_post) return;
+    if (!comment_content.trim() || !comment_password.trim()) {
+      setSnackbarMessage('내용과 비밀번호를 입력해주세요.');
+      setSnackbarOpen(true);
+      return;
+    }
+
+    const new_comment: Comment = {
+      id: crypto.randomUUID(),
+      nickname: comment_nickname || '익명',
+      content: comment_content,
+      password_hash: simpleHash(comment_password),
+      created_at: Date.now(),
+    };
+
+    const updated_post = {
+      ...selected_post,
+      comments: [...(selected_post.comments || []), new_comment],
+    };
+
+    // 로컬 상태 및 전체 포스트 업데이트
+    setSelectedPost(updated_post);
+    setPosts((prev) => prev.map((p) => (p.id === selected_post.id ? updated_post : p)));
+
+    // 폼 초기화
+    setCommentNickname('');
+    setCommentContent('');
+    setCommentPassword('');
+    setSnackbarMessage('댓글이 등록되었습니다.');
+    setSnackbarOpen(true);
+  };
+
+  // 댓글 삭제 클릭
+  const handleCommentDeleteClick = (comment_id: string) => {
+    setTargetCommentId(comment_id);
+    setPasswordModalType('comment_delete');
+    setPasswordInput('');
+    setPasswordError(false);
+    setPasswordModalOpen(true);
+  };
+
   // 비밀번호 확인
   const handlePasswordConfirm = () => {
     if (!selected_post) return;
 
     const input_hash = simpleHash(password_input);
+
+    // 댓글 삭제의 경우
+    if (password_modal_type === 'comment_delete') {
+      const target_comment = selected_post.comments?.find((c) => c.id === target_comment_id);
+      if (!target_comment || target_comment.password_hash !== input_hash) {
+        setPasswordError(true);
+        return;
+      }
+
+      const updated_post = {
+        ...selected_post,
+        comments: selected_post.comments.filter((c) => c.id !== target_comment_id),
+      };
+
+      setSelectedPost(updated_post);
+      setPosts((prev) => prev.map((p) => (p.id === selected_post.id ? updated_post : p)));
+      
+      setPasswordModalOpen(false);
+      setSnackbarMessage('댓글이 삭제되었습니다.');
+      setSnackbarOpen(true);
+      return;
+    }
+
+    // 게시글 수정/삭제의 경우
     if (input_hash !== selected_post.password_hash) {
       setPasswordError(true);
       return;
@@ -328,7 +411,7 @@ const FeedbackBoard: React.FC = () => {
           </Button>
         </Box>
 
-        <Paper variant="outlined" sx={{ p: 3, borderColor: 'var(--border-color, #eaeaea)' }}>
+        <Paper variant="outlined" sx={{ p: 3, borderColor: 'var(--border-color, #eaeaea)', mb: 3 }}>
           {/* 헤더 */}
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
             <Box>
@@ -367,11 +450,105 @@ const FeedbackBoard: React.FC = () => {
           {/* 본문 */}
           <Typography
             variant="body1"
-            sx={{ whiteSpace: 'pre-wrap', lineHeight: 1.8, minHeight: 200 }}
+            sx={{ whiteSpace: 'pre-wrap', lineHeight: 1.8, minHeight: 100 }}
           >
             {selected_post.content}
           </Typography>
         </Paper>
+
+        {/* 댓글 영역 */}
+        <Box sx={{ mt: 4 }}>
+          <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+            댓글 {selected_post.comments?.length || 0}
+          </Typography>
+
+          {/* 댓글 목록 */}
+          <Paper variant="outlined" sx={{ borderColor: 'var(--border-color, #eaeaea)', mb: 3 }}>
+            {!selected_post.comments || selected_post.comments.length === 0 ? (
+              <Box sx={{ p: 3, textAlign: 'center', color: 'text.secondary' }}>
+                <Typography variant="body2">첫 번째 댓글을 남겨보세요.</Typography>
+              </Box>
+            ) : (
+              <List disablePadding>
+                {selected_post.comments.map((comment, index) => (
+                  <React.Fragment key={comment.id}>
+                    {index > 0 && <Divider />}
+                    <ListItem alignItems="flex-start" sx={{ py: 2 }}>
+                      <ListItemText
+                        primary={
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                            <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                              {comment.nickname}
+                            </Typography>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <Typography variant="caption" color="text.secondary">
+                                {formatDate(comment.created_at)}
+                              </Typography>
+                              <IconButton
+                                size="small"
+                                onClick={() => handleCommentDeleteClick(comment.id)}
+                                sx={{ color: 'text.secondary', p: 0.5 }}
+                              >
+                                <DeleteIcon sx={{ fontSize: 16 }} />
+                              </IconButton>
+                            </Box>
+                          </Box>
+                        }
+                        secondary={
+                          <Typography variant="body2" color="text.primary" sx={{ whiteSpace: 'pre-wrap' }}>
+                            {comment.content}
+                          </Typography>
+                        }
+                      />
+                    </ListItem>
+                  </React.Fragment>
+                ))}
+              </List>
+            )}
+          </Paper>
+
+          {/* 댓글 작성 폼 */}
+          <Paper variant="outlined" sx={{ p: 2, borderColor: 'var(--border-color, #eaeaea)', bgcolor: '#f9fafb' }}>
+            <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+              <TextField
+                size="small"
+                label="닉네임"
+                placeholder="익명"
+                value={comment_nickname}
+                onChange={(e) => setCommentNickname(e.target.value)}
+                sx={{ width: 150 }}
+              />
+              <TextField
+                size="small"
+                type="password"
+                label="비밀번호"
+                placeholder="삭제 시 필요"
+                value={comment_password}
+                onChange={(e) => setCommentPassword(e.target.value)}
+                sx={{ width: 150 }}
+              />
+            </Box>
+            <TextField
+              fullWidth
+              multiline
+              rows={2}
+              placeholder="댓글을 입력하세요..."
+              value={comment_content}
+              onChange={(e) => setCommentContent(e.target.value)}
+              sx={{ mb: 2, bgcolor: '#fff' }}
+            />
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <Button
+                variant="contained"
+                onClick={handleCommentSubmit}
+                disabled={!comment_content.trim() || !comment_password.trim()}
+                sx={{ bgcolor: '#000', '&:hover': { bgcolor: '#333' } }}
+              >
+                댓글 등록
+              </Button>
+            </Box>
+          </Paper>
+        </Box>
       </>
     );
   };
