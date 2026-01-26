@@ -40,7 +40,6 @@ const TimerInput: React.FC = () => {
         alignItems: 'center', 
         width: '100%', 
         border: '1px solid #eaeaea',
-        mb: 3,
         transition: 'all 0.2s',
         '&:focus-within': {
           borderColor: '#000',

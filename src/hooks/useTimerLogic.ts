@@ -1,12 +1,21 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTimerStore, TimerLog } from '../store/useTimerStore';
 
+// 초반 몇 초 동안 1초 단위로 업데이트할지 결정하는 상수
+const SECONDS_DISPLAY_DURATION = 5;
+
 export const useTimerLogic = () => {
   const activeTimer = useTimerStore((state) => state.activeTimer);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [showSeconds, setShowSeconds] = useState(false); // 초 표시 여부
   
-  // 1분(60초) 단위 갱신을 위한 Interval Ref
-  const intervalRef = useRef<number | null>(null);
+  // interval refs
+  const secondIntervalRef = useRef<number | null>(null);
+  const minuteIntervalRef = useRef<number | null>(null);
+  const secondsDisplayTimeoutRef = useRef<number | null>(null);
+  
+  // 이전 status를 추적하여 PAUSED → RUNNING 전환 감지
+  const prevStatusRef = useRef<string | null>(null);
 
   const calculateElapsed = (timer: TimerLog) => {
     const now = Date.now();
@@ -23,41 +32,91 @@ export const useTimerLogic = () => {
     return Math.max(0, Math.floor(totalSeconds));
   };
 
+  const clearAllIntervals = () => {
+    if (secondIntervalRef.current) {
+      clearInterval(secondIntervalRef.current);
+      secondIntervalRef.current = null;
+    }
+    if (minuteIntervalRef.current) {
+      clearInterval(minuteIntervalRef.current);
+      minuteIntervalRef.current = null;
+    }
+    if (secondsDisplayTimeoutRef.current) {
+      clearTimeout(secondsDisplayTimeoutRef.current);
+      secondsDisplayTimeoutRef.current = null;
+    }
+  };
+
   // 타이머가 활성화될 때마다 초기값 세팅 및 인터벌 시작
   useEffect(() => {
     if (!activeTimer) {
       setElapsedSeconds(0);
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
+      setShowSeconds(false);
+      clearAllIntervals();
+      prevStatusRef.current = null;
       return;
     }
 
     // 1. 초기값 계산 (즉시 반영)
-    setElapsedSeconds(calculateElapsed(activeTimer));
+    const initialElapsed = calculateElapsed(activeTimer);
+    setElapsedSeconds(initialElapsed);
 
-    // 2. 타이머 상태가 RUNNING 일 때만 인터벌 가동
+    // 2. 타이머가 시작되거나 재개될 때 초 표시 활성화
+    const isResuming = prevStatusRef.current === 'PAUSED' && activeTimer.status === 'RUNNING';
+    const isStarting = prevStatusRef.current === null && activeTimer.status === 'RUNNING';
+    const should_show_seconds = isResuming || isStarting || initialElapsed <= SECONDS_DISPLAY_DURATION;
+    
+    prevStatusRef.current = activeTimer.status;
+
+    // 3. 타이머 상태가 RUNNING 일 때만 인터벌 가동
     if (activeTimer.status === 'RUNNING') {
-      // 1분(60000ms)마다 갱신 (요구사항: "시간은 중요하지 않음... 굳이 필요하다면 1분 단위")
-      intervalRef.current = window.setInterval(() => {
-        // document가 hidden 상태이면 갱신하지 않음 (브라우저 리소스 절약 & 요구사항 반영)
-        if (!document.hidden) {
+      // 시작/재개 시 5초 동안 초 표시
+      if (should_show_seconds) {
+        setShowSeconds(true);
+        
+        // 5초 후 초 표시 종료
+        secondsDisplayTimeoutRef.current = window.setTimeout(() => {
+          setShowSeconds(false);
+        }, SECONDS_DISPLAY_DURATION * 1000);
+        
+        // 초 표시 동안 1초마다 갱신
+        let seconds_count = 0;
+        secondIntervalRef.current = window.setInterval(() => {
+          if (!document.hidden) {
             setElapsedSeconds(calculateElapsed(activeTimer));
-        }
-      }, 60000); // 1분
+            seconds_count++;
+            
+            // 5초 후 1분 인터벌로 전환
+            if (seconds_count >= SECONDS_DISPLAY_DURATION) {
+              if (secondIntervalRef.current) {
+                clearInterval(secondIntervalRef.current);
+                secondIntervalRef.current = null;
+              }
+              // 1분 인터벌 시작
+              minuteIntervalRef.current = window.setInterval(() => {
+                if (!document.hidden) {
+                  setElapsedSeconds(calculateElapsed(activeTimer));
+                }
+              }, 60000);
+            }
+          }
+        }, 1000);
+      } else {
+        // 이미 초 표시 기간이 지난 경우 바로 1분 인터벌
+        setShowSeconds(false);
+        minuteIntervalRef.current = window.setInterval(() => {
+          if (!document.hidden) {
+            setElapsedSeconds(calculateElapsed(activeTimer));
+          }
+        }, 60000);
+      }
     } else {
       // PAUSED 상태면 인터벌 필요 없음 (시간 안 흐름)
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
+      clearAllIntervals();
     }
 
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
+      clearAllIntervals();
     };
   }, [activeTimer]);
 
@@ -79,5 +138,6 @@ export const useTimerLogic = () => {
   return {
     elapsedSeconds,
     activeTimer,
+    showSeconds, // 초 표시 여부 (시작/재개 후 5초 동안 true)
   };
 };
