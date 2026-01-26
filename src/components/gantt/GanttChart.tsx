@@ -19,14 +19,16 @@ import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import TodayIcon from '@mui/icons-material/Today';
 import { useTimerStore, TimerLog } from '../../store/useTimerStore';
 import { formatTimeRange, formatDuration } from '../../utils/timeUtils';
+import { getPalette, getColorForTask, loadPaletteSettings } from '../../utils/colorPalette';
 
 // 리사이즈 핸들 너비
 const RESIZE_HANDLE_WIDTH = 8;
 
-// 24시간 = 1440분
-const TOTAL_MINUTES = 1440;
-// 시작 시간: 06:00
-const START_HOUR = 6;
+// 기본 시간 범위 설정
+const DEFAULT_START_HOUR = 8;  // 기본 시작: 08:00
+const DEFAULT_END_HOUR = 19;   // 기본 종료: 19:00
+const DAY_START_HOUR = 6;      // 하루 시작 기준 (06:00)
+
 // 행 높이
 const ROW_HEIGHT = 32;
 // 행 간격
@@ -38,27 +40,35 @@ const LABEL_WIDTH = 180;
 
 const CATEGORIES = ['분석', '개발', '개발자테스트', '테스트오류수정', '센터오류수정', '환경세팅', '회의', '기타'];
 
-// 카테고리별 색상
-const CATEGORY_COLORS: Record<string, string> = {
-  '분석': '#3b82f6',      // 파랑
-  '개발': '#10b981',      // 초록
-  '개발자테스트': '#8b5cf6', // 보라
-  '테스트오류수정': '#ef4444', // 빨강
-  '센터오류수정': '#f97316',  // 주황
-  '환경세팅': '#06b6d4',   // 청록
-  '회의': '#eab308',       // 노랑
-  '기타': '#6b7280',       // 회색
-  'default': '#000000',    // 기본 검정
-};
-
 const GanttChart: React.FC = () => {
   const { logs, activeTimer, addLog, updateLog } = useTimerStore();
+
+  // 컬러 팔레트 설정 로드
+  const [paletteSettings, setPaletteSettings] = useState(() => loadPaletteSettings());
+  const colorPalette = useMemo(() => getPalette(paletteSettings), [paletteSettings]);
+
+  // 팔레트 설정 변경 감지 (다른 페이지에서 변경 시)
+  useEffect(() => {
+    const handleStorageChange = () => {
+      setPaletteSettings(loadPaletteSettings());
+    };
+    window.addEventListener('storage', handleStorageChange);
+    // 포커스 시에도 체크
+    const handleFocus = () => {
+      setPaletteSettings(loadPaletteSettings());
+    };
+    window.addEventListener('focus', handleFocus);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, []);
 
   // 선택된 날짜 상태 (기본값: 오늘)
   const [selectedDate, setSelectedDate] = useState<Date>(() => {
     const now = new Date();
     // 06:00 이전이면 어제 날짜로 설정
-    if (now.getHours() < START_HOUR) {
+    if (now.getHours() < DAY_START_HOUR) {
       now.setDate(now.getDate() - 1);
     }
     return now;
@@ -79,7 +89,7 @@ const GanttChart: React.FC = () => {
   const isToday = useMemo(() => {
     const now = new Date();
     let today = new Date(now);
-    if (now.getHours() < START_HOUR) {
+    if (now.getHours() < DAY_START_HOUR) {
       today.setDate(today.getDate() - 1);
     }
     return (
@@ -119,7 +129,7 @@ const GanttChart: React.FC = () => {
   const getBaseTime = useCallback((date?: Date) => {
     const target_date = date || selectedDate;
     const base = new Date(target_date);
-    base.setHours(START_HOUR, 0, 0, 0);
+    base.setHours(DAY_START_HOUR, 0, 0, 0);
     return base.getTime();
   }, [selectedDate]);
 
@@ -147,7 +157,7 @@ const GanttChart: React.FC = () => {
 
   const handleToday = () => {
     const now = new Date();
-    if (now.getHours() < START_HOUR) {
+    if (now.getHours() < DAY_START_HOUR) {
       now.setDate(now.getDate() - 1);
     }
     setSelectedDate(now);
@@ -165,7 +175,7 @@ const GanttChart: React.FC = () => {
   // 선택된 날짜의 로그만 필터링 (06:00 ~ 익일 06:00)
   const todayLogs = useMemo(() => {
     const base_time = getBaseTime();
-    const end_time = base_time + TOTAL_MINUTES * 60 * 1000;
+    const end_time = base_time + 24 * 60 * 60 * 1000; // 24시간
 
     let filtered_logs = logs.filter(log => {
       return log.startTime >= base_time && log.startTime < end_time;
@@ -180,19 +190,63 @@ const GanttChart: React.FC = () => {
     return filtered_logs.sort((a, b) => a.startTime - b.startTime);
   }, [logs, activeTimer, getBaseTime, isToday]);
 
-  // 06:00 기준 오프셋 계산 (분 단위)
-  const getOffsetMinutes = (timestamp: number) => {
+  // 동적 타임라인 범위 계산 (기본 08:00~19:00, 작업에 따라 확장)
+  const { timelineStartHour, timelineEndHour, totalMinutes } = useMemo(() => {
+    let min_hour = DEFAULT_START_HOUR;
+    let max_hour = DEFAULT_END_HOUR;
+
+    if (todayLogs.length > 0) {
+      todayLogs.forEach(log => {
+        const start_date = new Date(log.startTime);
+        let start_hour = start_date.getHours();
+        // 06:00 이전은 익일로 처리
+        if (start_hour < DAY_START_HOUR) start_hour += 24;
+        
+        const end_date = new Date(log.endTime || currentTime);
+        let end_hour = end_date.getHours();
+        if (end_hour < DAY_START_HOUR) end_hour += 24;
+        // 분이 있으면 다음 시간으로 올림
+        if (end_date.getMinutes() > 0) end_hour += 1;
+
+        // -1시간, +1시간 여유
+        min_hour = Math.min(min_hour, start_hour - 1);
+        max_hour = Math.max(max_hour, end_hour + 1);
+      });
+    }
+
+    // 오늘인 경우 현재 시간도 고려
+    if (isToday) {
+      const now = new Date();
+      let now_hour = now.getHours();
+      if (now_hour < DAY_START_HOUR) now_hour += 24;
+      if (now.getMinutes() > 0) now_hour += 1;
+      max_hour = Math.max(max_hour, now_hour + 1);
+    }
+
+    // 최소 범위: 06:00 ~ 30:00 (익일 06:00)
+    min_hour = Math.max(DAY_START_HOUR, min_hour);
+    max_hour = Math.min(30, max_hour); // 익일 06:00까지
+
+    return {
+      timelineStartHour: min_hour,
+      timelineEndHour: max_hour,
+      totalMinutes: (max_hour - min_hour) * 60
+    };
+  }, [todayLogs, currentTime, isToday]);
+
+  // 타임라인 기준 오프셋 계산 (분 단위)
+  const getOffsetMinutes = useCallback((timestamp: number) => {
     const date = new Date(timestamp);
     let hours = date.getHours();
     const minutes = date.getMinutes();
 
     // 06:00 이전이면(예: 01:00) 24시간을 더해서 계산 (익일 새벽)
-    if (hours < START_HOUR) {
+    if (hours < DAY_START_HOUR) {
       hours += 24;
     }
 
-    return (hours - START_HOUR) * 60 + minutes;
-  };
+    return (hours - timelineStartHour) * 60 + minutes;
+  }, [timelineStartHour]);
 
   // 너비 계산 (분 단위) - 실시간 업데이트를 위해 currentTime 사용
   const getWidthMinutes = (start: number, end?: number) => {
@@ -210,7 +264,8 @@ const GanttChart: React.FC = () => {
       if (!title_to_row_index.has(log.title)) {
         const row_index = rows.length;
         title_to_row_index.set(log.title, row_index);
-        const color = log.category ? (CATEGORY_COLORS[log.category] || CATEGORY_COLORS['default']) : CATEGORY_COLORS['default'];
+        // 작업 제목 기반 색상 할당 (컬러 팔레트 사용)
+        const color = getColorForTask(log.title, colorPalette);
         rows.push({
           title: log.title,
           boardNo: log.boardNo,
@@ -228,12 +283,12 @@ const GanttChart: React.FC = () => {
       // 최소 너비 (5분)
       if (width < 5) width = 5;
 
-      // 전체 1440분 중 비율 (%)
-      const left_percent = (start_offset / TOTAL_MINUTES) * 100;
-      const width_percent = (width / TOTAL_MINUTES) * 100;
+      // 동적 타임라인 범위에 따른 비율 (%)
+      const left_percent = Math.max(0, (start_offset / totalMinutes) * 100);
+      const width_percent = Math.min((width / totalMinutes) * 100, 100 - left_percent);
 
-      // 색상 결정
-      const color = log.category ? (CATEGORY_COLORS[log.category] || CATEGORY_COLORS['default']) : CATEGORY_COLORS['default'];
+      // 작업 제목 기반 색상 할당
+      const color = getColorForTask(log.title, colorPalette);
 
       const row_index = title_to_row_index.get(log.title) ?? 0;
 
@@ -247,21 +302,25 @@ const GanttChart: React.FC = () => {
     });
 
     return { chartItems: items, uniqueRows: rows };
-  }, [todayLogs, currentTime]);
+  }, [todayLogs, currentTime, colorPalette, getOffsetMinutes, totalMinutes]);
 
-  // 시간축 라벨 생성 (06, 08, 10 ... 04, 06)
+  // 시간축 라벨 생성 (동적 범위에 맞게)
   const timeLabels = useMemo(() => {
     const labels = [];
-    for (let i = 0; i <= 24; i += 2) {
-      let hour = START_HOUR + i;
+    // 시작 시간을 짝수로 맞춤
+    const start = timelineStartHour % 2 === 0 ? timelineStartHour : timelineStartHour - 1;
+    
+    for (let hour = start; hour <= timelineEndHour; hour += 2) {
+      if (hour < timelineStartHour) continue;
       const display_hour = hour >= 24 ? hour - 24 : hour;
+      const offset_minutes = (hour - timelineStartHour) * 60;
       labels.push({
         label: `${display_hour.toString().padStart(2, '0')}:00`,
-        left_percent: (i * 60 / TOTAL_MINUTES) * 100
+        left_percent: (offset_minutes / totalMinutes) * 100
       });
     }
     return labels;
-  }, []);
+  }, [timelineStartHour, timelineEndHour, totalMinutes]);
 
   // 전체 차트 높이 계산 (고유 행 수 기준 + 드래그 여유 공간)
   const chart_height = Math.max(
@@ -326,12 +385,14 @@ const GanttChart: React.FC = () => {
     const start_p = Math.min(dragStartPercent, dragCurrentPercent);
     const end_p = Math.max(dragStartPercent, dragCurrentPercent);
 
-    // 퍼센트 -> 분 (0~1440)
-    const start_minutes = (start_p / 100) * TOTAL_MINUTES;
-    const end_minutes = (end_p / 100) * TOTAL_MINUTES;
+    // 퍼센트 -> 분 (동적 범위 기준)
+    const start_minutes = (start_p / 100) * totalMinutes;
+    const end_minutes = (end_p / 100) * totalMinutes;
 
-    // 분 -> 실제 타임스탬프 (오늘 날짜 기준)
-    const base_time = getTodayBaseTime();
+    // 분 -> 실제 타임스탬프 (선택된 날짜 기준, 타임라인 시작 시간부터)
+    const base = new Date(selectedDate);
+    base.setHours(timelineStartHour, 0, 0, 0);
+    const base_time = base.getTime();
 
     const start_time = base_time + start_minutes * 60 * 1000;
     const end_time = base_time + end_minutes * 60 * 1000;
@@ -389,16 +450,17 @@ const GanttChart: React.FC = () => {
   };
 
   // 현재 시간 위치 계산 (실시간 업데이트)
-  const current_time_percent = (getOffsetMinutes(currentTime) / TOTAL_MINUTES) * 100;
+  const current_time_percent = (getOffsetMinutes(currentTime) / totalMinutes) * 100;
 
   // --- 리사이즈 핸들러 ---
   
   // 퍼센트를 타임스탬프로 변환
   const percentToTimestamp = useCallback((percent: number) => {
-    const base_time = getTodayBaseTime();
-    const minutes = (percent / 100) * TOTAL_MINUTES;
-    return base_time + minutes * 60 * 1000;
-  }, []);
+    const base = new Date(selectedDate);
+    base.setHours(timelineStartHour, 0, 0, 0);
+    const minutes = (percent / 100) * totalMinutes;
+    return base.getTime() + minutes * 60 * 1000;
+  }, [selectedDate, timelineStartHour, totalMinutes]);
 
   // 리사이즈 시작
   const handleResizeStart = useCallback((
@@ -438,7 +500,7 @@ const GanttChart: React.FC = () => {
     const handleMouseUp = () => {
       if (resizeLogId && resizeType && resizeStartPercent !== null && resizeCurrentPercent !== null) {
         const delta_percent = resizeCurrentPercent - resizeStartPercent;
-        const delta_ms = (delta_percent / 100) * TOTAL_MINUTES * 60 * 1000;
+        const delta_ms = (delta_percent / 100) * totalMinutes * 60 * 1000;
 
         let new_start = resizeOriginalStart;
         let new_end = resizeOriginalEnd;
@@ -481,7 +543,7 @@ const GanttChart: React.FC = () => {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isResizing, resizeLogId, resizeType, resizeStartPercent, resizeCurrentPercent, resizeOriginalStart, resizeOriginalEnd, updateLog]);
+  }, [isResizing, resizeLogId, resizeType, resizeStartPercent, resizeCurrentPercent, resizeOriginalStart, resizeOriginalEnd, updateLog, totalMinutes]);
 
   // 리사이즈 중인 아이템의 미리보기 계산
   const getResizePreview = useCallback((item: typeof chartItems[0]) => {

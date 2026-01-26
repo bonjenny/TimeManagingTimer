@@ -26,7 +26,7 @@ import {
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import EditIcon from '@mui/icons-material/Edit';
-import CheckIcon from '@mui/icons-material/Check';
+import RestoreIcon from '@mui/icons-material/Restore';
 import { useTimerStore, TimerLog } from '../../store/useTimerStore';
 import { formatDuration } from '../../utils/timeUtils';
 
@@ -244,24 +244,34 @@ const TimerList: React.FC = () => {
                   }
                 }}
               >
-                {/* 좌측: 완료 표시 또는 재시작 버튼 */}
+                {/* 좌측: 재시작/복원 버튼 */}
                 <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                   {all_completed ? (
-                    <Tooltip title="오늘 업무 완료">
-                      <CheckIcon fontSize="small" sx={{ color: 'success.main' }} />
+                    <Tooltip title="이 업무 다시 시작">
+                      <IconButton 
+                        size="small" 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRestart(task.title, task.boardNo, task.category);
+                        }}
+                        sx={{ p: 0.5, color: 'text.secondary', '&:hover': { color: 'primary.main' } }}
+                      >
+                        <RestoreIcon fontSize="small" />
+                      </IconButton>
                     </Tooltip>
                   ) : (
-                    <IconButton 
-                      size="small" 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleRestart(task.title, task.boardNo, task.category);
-                      }}
-                      title="이 업무 재시작"
-                      sx={{ p: 0.5 }}
-                    >
-                      <PlayArrowIcon fontSize="small" />
-                    </IconButton>
+                    <Tooltip title="이 업무 재시작">
+                      <IconButton 
+                        size="small" 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRestart(task.title, task.boardNo, task.category);
+                        }}
+                        sx={{ p: 0.5 }}
+                      >
+                        <PlayArrowIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
                   )}
                 </Box>
 

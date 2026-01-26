@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Paper,
@@ -13,9 +13,34 @@ import {
   MenuItem,
   Switch,
   FormControlLabel,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Alert,
+  Snackbar,
+  ToggleButton,
+  ToggleButtonGroup,
+  Chip,
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import RestoreIcon from '@mui/icons-material/Restore';
+import DeleteForeverIcon from '@mui/icons-material/DeleteForever';
+import WarningIcon from '@mui/icons-material/Warning';
+import PaletteIcon from '@mui/icons-material/Palette';
+import {
+  PaletteType,
+  PaletteSettings,
+  PASTEL_PALETTE,
+  DEFAULT_PALETTE,
+  generateToneOnTonePalette,
+  loadPaletteSettings,
+  savePaletteSettings,
+  PALETTE_STORAGE_KEY,
+} from '../../utils/colorPalette';
+
+// 설정 저장 키
+const SETTINGS_STORAGE_KEY = 'timekeeper-settings';
 
 // 프리셋 테마 색상
 const THEME_PRESETS = [
@@ -28,54 +53,234 @@ const THEME_PRESETS = [
   { name: '파랑', primary: '#3b82f6', accent: '#2563eb' },
 ];
 
+// 기본 설정값
+const DEFAULT_SETTINGS = {
+  themePreset: '기본 (검정)',
+  primaryColor: '#000000',
+  accentColor: '#000000',
+  customColor: '#000000',
+  lunchStart: '12:00',
+  lunchEnd: '13:00',
+  lunchExcludeEnabled: true,
+  autoCompleteEnabled: true,
+};
+
+// 테마 적용 함수
+const applyTheme = (primary_color: string, accent_color: string) => {
+  document.documentElement.style.setProperty('--primary-color', primary_color);
+  document.documentElement.style.setProperty('--accent-color', accent_color);
+};
+
 /**
  * 설정 페이지
  * - 테마 커스터마이징 (RGB 값 직접 입력)
  * - 점심시간 설정
  * - 단축키 설정
  * - 데이터 관리 (내보내기/가져오기)
+ * - 초기화 기능
  */
 const SettingsPage: React.FC = () => {
-  const [selected_preset, setSelectedPreset] = useState('기본 (검정)');
-  const [custom_color, setCustomColor] = useState('#000000');
-  const [lunch_start, setLunchStart] = useState('12:00');
-  const [lunch_end, setLunchEnd] = useState('13:00');
-  const [auto_complete_enabled, setAutoCompleteEnabled] = useState(true);
+  // 설정 상태 (LocalStorage에서 로드)
+  const [selected_preset, setSelectedPreset] = useState(DEFAULT_SETTINGS.themePreset);
+  const [custom_color, setCustomColor] = useState(DEFAULT_SETTINGS.customColor);
+  const [lunch_start, setLunchStart] = useState(DEFAULT_SETTINGS.lunchStart);
+  const [lunch_end, setLunchEnd] = useState(DEFAULT_SETTINGS.lunchEnd);
+  const [auto_complete_enabled, setAutoCompleteEnabled] = useState(DEFAULT_SETTINGS.autoCompleteEnabled);
 
-  const handleSaveSettings = () => {
-    // TODO: 설정 저장 로직 (localStorage 또는 Zustand store)
-    console.log('Settings saved:', {
-      theme: selected_preset,
-      customColor: custom_color,
-      lunchTime: { start: lunch_start, end: lunch_end },
-      autoComplete: auto_complete_enabled,
-    });
-  };
+  // 컬러 팔레트 설정
+  const [palette_type, setPaletteType] = useState<PaletteType>('pastel');
+  const [tone_base_color, setToneBaseColor] = useState('#3b82f6');
 
-  const handleResetSettings = () => {
-    setSelectedPreset('기본 (검정)');
-    setCustomColor('#000000');
-    setLunchStart('12:00');
-    setLunchEnd('13:00');
-    setAutoCompleteEnabled(true);
-  };
+  // 초기화 확인 모달
+  const [reset_dialog_open, setResetDialogOpen] = useState(false);
+  const [reset_confirm_text, setResetConfirmText] = useState('');
 
-  const handleExportData = () => {
-    // localStorage에서 데이터 가져오기
-    const data = localStorage.getItem('timekeeper-storage');
-    if (data) {
-      const blob = new Blob([data], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `timekeeper-backup-${new Date().toISOString().slice(0, 10)}.json`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+  // 스낵바
+  const [snackbar_open, setSnackbarOpen] = useState(false);
+  const [snackbar_message, setSnackbarMessage] = useState('');
+  const [snackbar_severity, setSnackbarSeverity] = useState<'success' | 'error'>('success');
+
+  // 저장된 설정 로드
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(SETTINGS_STORAGE_KEY);
+      if (saved) {
+        const settings = JSON.parse(saved);
+        setSelectedPreset(settings.themePreset || DEFAULT_SETTINGS.themePreset);
+        setCustomColor(settings.customColor || DEFAULT_SETTINGS.customColor);
+        setLunchStart(settings.lunchStart || DEFAULT_SETTINGS.lunchStart);
+        setLunchEnd(settings.lunchEnd || DEFAULT_SETTINGS.lunchEnd);
+        setAutoCompleteEnabled(settings.autoCompleteEnabled ?? DEFAULT_SETTINGS.autoCompleteEnabled);
+      }
+      
+      // 컬러 팔레트 설정 로드
+      const palette_settings = loadPaletteSettings();
+      setPaletteType(palette_settings.type);
+      if (palette_settings.custom_base_color) {
+        setToneBaseColor(palette_settings.custom_base_color);
+      }
+    } catch {
+      // 무시
+    }
+  }, []);
+
+  // 컬러 팔레트 미리보기 가져오기
+  const getCurrentPalettePreview = () => {
+    switch (palette_type) {
+      case 'pastel':
+        return PASTEL_PALETTE.slice(0, 8);
+      case 'default':
+        return DEFAULT_PALETTE.slice(0, 8);
+      case 'tone-on-tone':
+        return generateToneOnTonePalette(tone_base_color).slice(0, 8);
+      default:
+        return PASTEL_PALETTE.slice(0, 8);
     }
   };
 
+  // 컬러 팔레트 변경 핸들러
+  const handlePaletteTypeChange = (_: React.MouseEvent<HTMLElement>, new_type: PaletteType | null) => {
+    if (new_type !== null) {
+      setPaletteType(new_type);
+    }
+  };
+
+  // 톤온톤 베이스 색상 변경
+  const handleToneBaseColorChange = (color: string) => {
+    setToneBaseColor(color);
+  };
+
+  // 프리셋 변경 시 테마 미리보기
+  const handlePresetChange = (preset_name: string) => {
+    setSelectedPreset(preset_name);
+    const preset = THEME_PRESETS.find(p => p.name === preset_name);
+    if (preset) {
+      applyTheme(preset.primary, preset.accent);
+    }
+  };
+
+  // 커스텀 색상 변경 시 테마 미리보기
+  const handleCustomColorChange = (color: string) => {
+    setCustomColor(color);
+    if (/^#[0-9A-Fa-f]{6}$/.test(color)) {
+      setSelectedPreset('커스텀');
+      applyTheme(color, color);
+    }
+  };
+
+  // 설정 저장
+  const handleSaveSettings = () => {
+    const preset = THEME_PRESETS.find(p => p.name === selected_preset);
+    const primary_color = preset ? preset.primary : custom_color;
+    const accent_color = preset ? preset.accent : custom_color;
+
+    const settings = {
+      themePreset: selected_preset,
+      primaryColor: primary_color,
+      accentColor: accent_color,
+      customColor: custom_color,
+      lunchStart: lunch_start,
+      lunchEnd: lunch_end,
+      autoCompleteEnabled: auto_complete_enabled,
+    };
+
+    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+    applyTheme(primary_color, accent_color);
+
+    // 컬러 팔레트 설정 저장
+    const palette_settings: PaletteSettings = {
+      type: palette_type,
+      custom_base_color: palette_type === 'tone-on-tone' ? tone_base_color : undefined,
+    };
+    savePaletteSettings(palette_settings);
+
+    setSnackbarMessage('설정이 저장되었습니다.');
+    setSnackbarSeverity('success');
+    setSnackbarOpen(true);
+  };
+
+  // 기본값 복원
+  const handleResetSettings = () => {
+    setSelectedPreset(DEFAULT_SETTINGS.themePreset);
+    setCustomColor(DEFAULT_SETTINGS.customColor);
+    setLunchStart(DEFAULT_SETTINGS.lunchStart);
+    setLunchEnd(DEFAULT_SETTINGS.lunchEnd);
+    setAutoCompleteEnabled(DEFAULT_SETTINGS.autoCompleteEnabled);
+    applyTheme(DEFAULT_SETTINGS.primaryColor, DEFAULT_SETTINGS.accentColor);
+
+    // 컬러 팔레트 기본값 복원
+    setPaletteType('pastel');
+    setToneBaseColor('#3b82f6');
+
+    setSnackbarMessage('기본값으로 복원되었습니다.');
+    setSnackbarSeverity('success');
+    setSnackbarOpen(true);
+  };
+
+  // 모든 데이터 초기화
+  const handleResetAllData = () => {
+    if (reset_confirm_text !== '초기화') return;
+
+    // 모든 LocalStorage 데이터 삭제
+    const keys_to_remove = [
+      'timekeeper-storage',
+      SETTINGS_STORAGE_KEY,
+      'timekeeper-preset-favorites',
+      'timekeeper-manual-presets',
+      'timekeeper-feedback-posts',
+      PALETTE_STORAGE_KEY,
+    ];
+
+    keys_to_remove.forEach(key => localStorage.removeItem(key));
+
+    setResetDialogOpen(false);
+    setResetConfirmText('');
+
+    // 페이지 새로고침
+    window.location.reload();
+  };
+
+  // 데이터 내보내기
+  const handleExportData = () => {
+    // 모든 관련 데이터 수집
+    const export_data: Record<string, unknown> = {};
+
+    const keys_to_export = [
+      'timekeeper-storage',
+      SETTINGS_STORAGE_KEY,
+      'timekeeper-preset-favorites',
+      'timekeeper-manual-presets',
+      'timekeeper-feedback-posts',
+      PALETTE_STORAGE_KEY,
+    ];
+
+    keys_to_export.forEach(key => {
+      const data = localStorage.getItem(key);
+      if (data) {
+        try {
+          export_data[key] = JSON.parse(data);
+        } catch {
+          export_data[key] = data;
+        }
+      }
+    });
+
+    const blob = new Blob([JSON.stringify(export_data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `timekeeper-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    setSnackbarMessage('데이터가 내보내기되었습니다.');
+    setSnackbarSeverity('success');
+    setSnackbarOpen(true);
+  };
+
+  // 데이터 가져오기
   const handleImportData = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -83,15 +288,28 @@ const SettingsPage: React.FC = () => {
       reader.onload = (e) => {
         try {
           const content = e.target?.result as string;
-          JSON.parse(content); // 유효성 검사
-          localStorage.setItem('timekeeper-storage', content);
-          window.location.reload(); // 새로고침하여 데이터 반영
+          const data = JSON.parse(content);
+
+          // 각 키별로 데이터 복원
+          Object.entries(data).forEach(([key, value]) => {
+            localStorage.setItem(key, typeof value === 'string' ? value : JSON.stringify(value));
+          });
+
+          setSnackbarMessage('데이터를 가져왔습니다. 새로고침합니다.');
+          setSnackbarSeverity('success');
+          setSnackbarOpen(true);
+
+          setTimeout(() => window.location.reload(), 1500);
         } catch {
-          alert('유효하지 않은 파일입니다.');
+          setSnackbarMessage('유효하지 않은 파일입니다.');
+          setSnackbarSeverity('error');
+          setSnackbarOpen(true);
         }
       };
       reader.readAsText(file);
     }
+    // 파일 입력 초기화
+    event.target.value = '';
   };
 
   return (
@@ -178,6 +396,117 @@ const SettingsPage: React.FC = () => {
         </Typography>
       </Paper>
 
+      {/* 작업 컬러 팔레트 */}
+      <Paper variant="outlined" sx={{ p: 3, mb: 3 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+          <PaletteIcon sx={{ color: 'text.secondary' }} />
+          <Typography variant="h6" sx={{ fontWeight: 600 }}>
+            작업 컬러 팔레트
+          </Typography>
+        </Box>
+        
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          타임라인에서 작업별로 표시되는 색상 스타일을 선택하세요.
+        </Typography>
+
+        <ToggleButtonGroup
+          value={palette_type}
+          exclusive
+          onChange={handlePaletteTypeChange}
+          sx={{ mb: 2 }}
+        >
+          <ToggleButton value="pastel" sx={{ px: 3 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
+              <Typography variant="body2">파스텔톤</Typography>
+              <Typography variant="caption" color="text.secondary">부드러운 색상</Typography>
+            </Box>
+          </ToggleButton>
+          <ToggleButton value="default" sx={{ px: 3 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
+              <Typography variant="body2">기본</Typography>
+              <Typography variant="caption" color="text.secondary">선명한 색상</Typography>
+            </Box>
+          </ToggleButton>
+          <ToggleButton value="tone-on-tone" sx={{ px: 3 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
+              <Typography variant="body2">톤온톤</Typography>
+              <Typography variant="caption" color="text.secondary">단일 색상 변형</Typography>
+            </Box>
+          </ToggleButton>
+        </ToggleButtonGroup>
+
+        {/* 톤온톤 베이스 색상 선택 */}
+        {palette_type === 'tone-on-tone' && (
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="body2" sx={{ mb: 1 }}>
+              기준 색상
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1 }}>
+              {['#3b82f6', '#10b981', '#8b5cf6', '#ef4444', '#f97316', '#06b6d4', '#ec4899'].map((color) => (
+                <Box
+                  key={color}
+                  onClick={() => handleToneBaseColorChange(color)}
+                  sx={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 1,
+                    bgcolor: color,
+                    cursor: 'pointer',
+                    border: tone_base_color === color ? '3px solid #000' : '1px solid #eaeaea',
+                    transition: 'transform 0.15s',
+                    '&:hover': { transform: 'scale(1.1)' },
+                  }}
+                />
+              ))}
+            </Box>
+            <TextField
+              size="small"
+              label="커스텀 색상 (HEX)"
+              value={tone_base_color}
+              onChange={(e) => handleToneBaseColorChange(e.target.value)}
+              placeholder="#3b82f6"
+              sx={{ width: 180 }}
+              InputProps={{
+                startAdornment: (
+                  <Box
+                    sx={{
+                      width: 20,
+                      height: 20,
+                      borderRadius: 0.5,
+                      bgcolor: tone_base_color,
+                      mr: 1,
+                      border: '1px solid #eaeaea',
+                    }}
+                  />
+                ),
+              }}
+            />
+          </Box>
+        )}
+
+        {/* 팔레트 미리보기 */}
+        <Box sx={{ mt: 2 }}>
+          <Typography variant="body2" sx={{ mb: 1 }}>
+            미리보기
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+            {getCurrentPalettePreview().map((color, index) => (
+              <Box
+                key={index}
+                sx={{
+                  width: 36,
+                  height: 24,
+                  borderRadius: 0.5,
+                  bgcolor: color,
+                  border: '1px solid rgba(0,0,0,0.1)',
+                }}
+              />
+            ))}
+            <Chip label="..." size="small" sx={{ height: 24 }} />
+          </Box>
+        </Box>
+      </Paper>
+
       {/* 업무 환경 설정 */}
       <Paper variant="outlined" sx={{ p: 3, mb: 3 }}>
         <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
@@ -226,8 +555,13 @@ const SettingsPage: React.FC = () => {
           단축키
         </Typography>
         <Box sx={{ color: 'text.secondary' }}>
-          <Typography variant="body2">• F8: 새 작업 추가</Typography>
-          <Typography variant="body2">• Enter: 타이머 시작 (입력창 포커스 시)</Typography>
+          <Typography variant="body2">• <strong>F8</strong>: 새 작업 추가 팝업</Typography>
+          <Typography variant="body2">• <strong>Enter</strong>: 타이머 시작 (입력창 포커스 시)</Typography>
+          <Typography variant="body2">• <strong>Alt + N</strong>: 입력창 포커스</Typography>
+          <Typography variant="body2">• <strong>Alt + S</strong>: 타이머 일시정지/재개</Typography>
+          <Typography variant="body2">• <strong>Alt + 1</strong>: 일간 타이머 페이지</Typography>
+          <Typography variant="body2">• <strong>Alt + 2</strong>: 주간 일정 페이지</Typography>
+          <Typography variant="body2">• <strong>Alt + T</strong>: 오늘로 이동</Typography>
         </Box>
       </Paper>
 
@@ -237,7 +571,7 @@ const SettingsPage: React.FC = () => {
           데이터 관리
         </Typography>
 
-        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mb: 3 }}>
           <Button variant="outlined" onClick={handleExportData}>
             데이터 내보내기 (JSON)
           </Button>
@@ -247,9 +581,29 @@ const SettingsPage: React.FC = () => {
           </Button>
         </Box>
 
-        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2 }}>
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 3 }}>
           ⚠️ 데이터 가져오기 시 기존 데이터가 덮어씌워집니다.
         </Typography>
+
+        <Divider sx={{ my: 2 }} />
+
+        {/* 초기화 */}
+        <Box sx={{ mt: 2 }}>
+          <Typography variant="subtitle2" sx={{ mb: 1, color: 'error.main' }}>
+            위험 영역
+          </Typography>
+          <Button
+            variant="outlined"
+            color="error"
+            startIcon={<DeleteForeverIcon />}
+            onClick={() => setResetDialogOpen(true)}
+          >
+            모든 데이터 초기화
+          </Button>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+            모든 작업 기록, 설정, 프리셋, 게시글이 삭제됩니다. 이 작업은 되돌릴 수 없습니다.
+          </Typography>
+        </Box>
       </Paper>
 
       {/* 저장 버튼 */}
@@ -270,6 +624,66 @@ const SettingsPage: React.FC = () => {
           설정 저장
         </Button>
       </Box>
+
+      {/* 초기화 확인 모달 */}
+      <Dialog open={reset_dialog_open} onClose={() => setResetDialogOpen(false)}>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'error.main' }}>
+          <WarningIcon />
+          모든 데이터 초기화
+        </DialogTitle>
+        <DialogContent>
+          <Alert severity="error" sx={{ mb: 2 }}>
+            이 작업은 되돌릴 수 없습니다!
+          </Alert>
+          <Typography variant="body2" sx={{ mb: 2 }}>
+            다음 데이터가 모두 삭제됩니다:
+          </Typography>
+          <Box component="ul" sx={{ pl: 2, mb: 2 }}>
+            <li>모든 작업 기록 (타이머 로그)</li>
+            <li>설정 (테마, 점심시간 등)</li>
+            <li>프리셋 (즐겨찾기, 수동 프리셋)</li>
+            <li>건의사항 게시글</li>
+          </Box>
+          <Typography variant="body2" sx={{ mb: 1 }}>
+            계속하려면 <strong>"초기화"</strong>를 입력하세요:
+          </Typography>
+          <TextField
+            fullWidth
+            value={reset_confirm_text}
+            onChange={(e) => setResetConfirmText(e.target.value)}
+            placeholder="초기화"
+            autoFocus
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => {
+            setResetDialogOpen(false);
+            setResetConfirmText('');
+          }}>
+            취소
+          </Button>
+          <Button
+            onClick={handleResetAllData}
+            color="error"
+            variant="contained"
+            disabled={reset_confirm_text !== '초기화'}
+          >
+            초기화 실행
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 스낵바 */}
+      <Snackbar
+        open={snackbar_open}
+        autoHideDuration={3000}
+        onClose={() => setSnackbarOpen(false)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert severity={snackbar_severity} onClose={() => setSnackbarOpen(false)}>
+          {snackbar_message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };
