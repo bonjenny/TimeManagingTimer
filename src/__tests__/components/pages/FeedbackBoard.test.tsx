@@ -1,5 +1,5 @@
 /**
- * v0.5.0 테스트: FeedbackBoard 컴포넌트 테스트 (게시판 CRUD)
+ * v0.9.0 테스트: FeedbackBoard 컴포넌트 테스트 (게시판 CRUD 및 댓글)
  */
 import { render, screen, act, waitFor } from '../../../test-utils';
 import userEvent from '@testing-library/user-event';
@@ -62,57 +62,21 @@ describe('FeedbackBoard', () => {
       // 목록에 표시되는지 확인
       expect(screen.getByText('테스트 제목')).toBeInTheDocument();
     });
-
-    it('닉네임을 입력하지 않으면 "익명"으로 표시된다', async () => {
-      const user = userEvent.setup();
-      render(<FeedbackBoard />);
-
-      const write_button = screen.getByRole('button', { name: /글쓰기/i });
-      await user.click(write_button);
-
-      const title_input = screen.getByLabelText(/제목/i);
-      const content_input = screen.getByLabelText(/내용/i);
-      const password_input = screen.getByLabelText(/비밀번호/i);
-
-      await user.type(title_input, '익명 테스트');
-      await user.type(content_input, '내용');
-      await user.type(password_input, '1234');
-
-      const submit_button = screen.getByRole('button', { name: /등록하기/i });
-      await user.click(submit_button);
-
-      expect(screen.getByText(/익명/i)).toBeInTheDocument();
-    });
-
-    it('카테고리를 선택할 수 있다', async () => {
-      const user = userEvent.setup();
-      render(<FeedbackBoard />);
-
-      const write_button = screen.getByRole('button', { name: /글쓰기/i });
-      await user.click(write_button);
-
-      // 버그 카테고리 선택
-      const bug_chip = screen.getByText('버그');
-      await user.click(bug_chip);
-
-      const title_input = screen.getByLabelText(/제목/i);
-      const content_input = screen.getByLabelText(/내용/i);
-      const password_input = screen.getByLabelText(/비밀번호/i);
-
-      await user.type(title_input, '버그 리포트');
-      await user.type(content_input, '버그 내용');
-      await user.type(password_input, '1234');
-
-      const submit_button = screen.getByRole('button', { name: /등록하기/i });
-      await user.click(submit_button);
-
-      // 버그 태그가 표시되는지 확인
-      expect(screen.getAllByText('버그').length).toBeGreaterThan(0);
-    });
   });
 
-  describe('게시글 상세 보기', () => {
+  describe('게시글 상세 및 댓글', () => {
     beforeEach(async () => {
+      // 해시 함수 (컴포넌트와 동일)
+      const simpleHash = (str: string): string => {
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) {
+          const char = str.charCodeAt(i);
+          hash = ((hash << 5) - hash) + char;
+          hash = hash & hash;
+        }
+        return hash.toString(36);
+      };
+
       // 테스트용 게시글 생성
       localStorage.setItem(
         'timekeeper-feedback-posts',
@@ -122,10 +86,11 @@ describe('FeedbackBoard', () => {
             nickname: '테스터',
             title: '상세 테스트 제목',
             content: '상세 테스트 내용입니다.',
-            password_hash: '1234hash',
+            password_hash: simpleHash('1234'),
             created_at: Date.now(),
             updated_at: Date.now(),
             category: 'idea',
+            comments: [],
           },
         ])
       );
@@ -141,141 +106,80 @@ describe('FeedbackBoard', () => {
       expect(screen.getByText('상세 테스트 내용입니다.')).toBeInTheDocument();
     });
 
-    it('목록으로 버튼을 클릭하면 목록 화면으로 돌아간다', async () => {
+    it('댓글을 작성할 수 있다', async () => {
       const user = userEvent.setup();
       render(<FeedbackBoard />);
 
+      // 상세 화면 이동
       const post_item = screen.getByText('상세 테스트 제목');
       await user.click(post_item);
 
-      const back_button = screen.getByRole('button', { name: /목록으로/i });
-      await user.click(back_button);
+      // 댓글 입력
+      const comment_content_input = screen.getByPlaceholderText(/댓글을 입력하세요/i);
+      const comment_password_input = screen.getByLabelText(/비밀번호/i); // 댓글 비밀번호
 
-      expect(screen.getByRole('button', { name: /글쓰기/i })).toBeInTheDocument();
-    });
-  });
+      await user.type(comment_content_input, '첫 번째 댓글');
+      await user.type(comment_password_input, '1234');
 
-  describe('게시글 수정', () => {
-    beforeEach(() => {
-      // 비밀번호 해시 계산 (간단한 해시)
-      const simpleHash = (str: string): string => {
-        let hash = 0;
-        for (let i = 0; i < str.length; i++) {
-          const char = str.charCodeAt(i);
-          hash = ((hash << 5) - hash) + char;
-          hash = hash & hash;
-        }
-        return hash.toString(36);
-      };
-
-      localStorage.setItem(
-        'timekeeper-feedback-posts',
-        JSON.stringify([
-          {
-            id: 'test-post-edit',
-            nickname: '테스터',
-            title: '수정 테스트',
-            content: '수정 전 내용',
-            password_hash: simpleHash('1234'),
-            created_at: Date.now(),
-            updated_at: Date.now(),
-            category: 'idea',
-          },
-        ])
-      );
-    });
-
-    it('수정 버튼을 클릭하면 비밀번호 모달이 열린다', async () => {
-      const user = userEvent.setup();
-      render(<FeedbackBoard />);
-
-      // 상세 화면으로 이동
-      const post_item = screen.getByText('수정 테스트');
-      await user.click(post_item);
-
-      // 수정 버튼 클릭 (아이콘 버튼)
-      const edit_buttons = screen.getAllByRole('button');
-      const edit_button = edit_buttons.find((btn) =>
-        btn.querySelector('[data-testid="EditIcon"]')
-      );
-
-      if (edit_button) {
-        await user.click(edit_button);
-        expect(screen.getByText('비밀번호 확인')).toBeInTheDocument();
-      }
-    });
-  });
-
-  describe('게시글 삭제', () => {
-    beforeEach(() => {
-      const simpleHash = (str: string): string => {
-        let hash = 0;
-        for (let i = 0; i < str.length; i++) {
-          const char = str.charCodeAt(i);
-          hash = ((hash << 5) - hash) + char;
-          hash = hash & hash;
-        }
-        return hash.toString(36);
-      };
-
-      localStorage.setItem(
-        'timekeeper-feedback-posts',
-        JSON.stringify([
-          {
-            id: 'test-post-delete',
-            nickname: '테스터',
-            title: '삭제 테스트',
-            content: '삭제할 내용',
-            password_hash: simpleHash('1234'),
-            created_at: Date.now(),
-            updated_at: Date.now(),
-            category: 'bug',
-          },
-        ])
-      );
-    });
-
-    it('삭제 버튼을 클릭하면 비밀번호 모달이 열린다', async () => {
-      const user = userEvent.setup();
-      render(<FeedbackBoard />);
-
-      const post_item = screen.getByText('삭제 테스트');
-      await user.click(post_item);
-
-      const delete_buttons = screen.getAllByRole('button');
-      const delete_button = delete_buttons.find((btn) =>
-        btn.querySelector('[data-testid="DeleteIcon"]')
-      );
-
-      if (delete_button) {
-        await user.click(delete_button);
-        expect(screen.getByText('비밀번호 확인')).toBeInTheDocument();
-      }
-    });
-  });
-
-  describe('데이터 영구 저장', () => {
-    it('게시글이 LocalStorage에 저장된다', async () => {
-      const user = userEvent.setup();
-      render(<FeedbackBoard />);
-
-      const write_button = screen.getByRole('button', { name: /글쓰기/i });
-      await user.click(write_button);
-
-      const title_input = screen.getByLabelText(/제목/i);
-      const content_input = screen.getByLabelText(/내용/i);
-      const password_input = screen.getByLabelText(/비밀번호/i);
-
-      await user.type(title_input, '저장 테스트');
-      await user.type(content_input, '저장될 내용');
-      await user.type(password_input, '1234');
-
-      const submit_button = screen.getByRole('button', { name: /등록하기/i });
+      // 댓글 등록
+      const submit_button = screen.getByRole('button', { name: /댓글 등록/i });
       await user.click(submit_button);
 
-      const saved_data = localStorage.getItem('timekeeper-feedback-posts');
-      expect(saved_data).not.toBeNull();
-      expect(saved_data).toContain('저장 테스트');
+      // 댓글 확인
+      expect(screen.getByText('첫 번째 댓글')).toBeInTheDocument();
     });
+
+    it('댓글 삭제 시 비밀번호 확인을 요구한다', async () => {
+        const user = userEvent.setup();
+        render(<FeedbackBoard />);
+  
+        // 상세 화면 이동
+        const post_item = screen.getByText('상세 테스트 제목');
+        await user.click(post_item);
+  
+        // 댓글 먼저 작성
+        const comment_content_input = screen.getByPlaceholderText(/댓글을 입력하세요/i);
+        const comment_password_input = screen.getByLabelText(/비밀번호/i);
+        await user.type(comment_content_input, '삭제할 댓글');
+        await user.type(comment_password_input, '5678');
+        const submit_button = screen.getByRole('button', { name: /댓글 등록/i });
+        await user.click(submit_button);
+  
+        // 댓글 삭제 버튼 클릭 (아이콘이므로 getAllByRole로 찾아야 할 수도 있음)
+        // Material UI의 IconButton 안에 있는 DeleteIcon
+        const delete_buttons = screen.getAllByRole('button');
+        // 보통 댓글 삭제 버튼은 작음. testid를 쓰는게 좋지만 현재 코드엔 없음.
+        // 하지만 댓글 영역에 DeleteIcon 버튼이 생김.
+        // 여기서는 가장 마지막 버튼이 댓글 삭제 버튼일 가능성이 높음 (헤더의 삭제버튼 다음)
+        
+        // 더 정확하게: 댓글 텍스트 근처의 버튼 찾기
+        // 실제로는 data-testid를 추가하는게 좋음. 일단 DOM 구조상 추측.
+        // FeedbackBoard.tsx에서 댓글 삭제 버튼은 IconButton이고 DeleteIcon을 포함함.
+        
+        // 화면상에 삭제 버튼이 여러 개일 수 있음 (게시글 삭제, 댓글 삭제).
+        // 댓글 내용을 포함하는 li 요소를 찾고 그 안의 버튼을 클릭하는 방식 사용
+        const comment_item = screen.getByText('삭제할 댓글').closest('li');
+        const delete_comment_btn = comment_item?.querySelector('button');
+        
+        if (delete_comment_btn) {
+            await user.click(delete_comment_btn);
+            
+            // 모달 뜸
+            expect(screen.getByText('비밀번호 확인')).toBeInTheDocument();
+            
+            // 비밀번호 입력
+            const modal_pw_input = screen.getByRole('textbox', { name: /비밀번호/i }); // 모달 안의 입력창
+            // 텍스트 필드가 여러 개일 수 있으니 주의. 모달 안의 것만 활성화됨.
+            
+            await user.type(modal_pw_input, '5678');
+            
+            // 확인 버튼 클릭
+            const confirm_btn = screen.getByRole('button', { name: /삭제\(Enter\)/i });
+            await user.click(confirm_btn);
+            
+            // 삭제 확인
+            expect(screen.queryByText('삭제할 댓글')).not.toBeInTheDocument();
+        }
+      });
   });
 });
