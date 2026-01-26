@@ -12,14 +12,14 @@ import {
   TextField,
   Autocomplete,
   Chip,
-  IconButton,
 } from '@mui/material';
-import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
-import ChevronRightIcon from '@mui/icons-material/ChevronRight';
-import TodayIcon from '@mui/icons-material/Today';
 import { useTimerStore, TimerLog } from '../../store/useTimerStore';
 import { formatTimeRange, formatDuration } from '../../utils/timeUtils';
 import { getPalette, getColorForTask, loadPaletteSettings } from '../../utils/colorPalette';
+
+interface GanttChartProps {
+  selectedDate: Date;
+}
 
 // 리사이즈 핸들 너비
 const RESIZE_HANDLE_WIDTH = 8;
@@ -40,7 +40,7 @@ const LABEL_WIDTH_WITH_DATA = 180;
 
 const CATEGORIES = ['분석', '개발', '개발자테스트', '테스트오류수정', '센터오류수정', '환경세팅', '회의', '기타'];
 
-const GanttChart: React.FC = () => {
+const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
   const { logs, activeTimer, addLog, updateLog } = useTimerStore();
 
   // 컬러 팔레트 설정 로드
@@ -63,16 +63,6 @@ const GanttChart: React.FC = () => {
       window.removeEventListener('focus', handleFocus);
     };
   }, []);
-
-  // 선택된 날짜 상태 (기본값: 오늘)
-  const [selectedDate, setSelectedDate] = useState<Date>(() => {
-    const now = new Date();
-    // 06:00 이전이면 어제 날짜로 설정
-    if (now.getHours() < DAY_START_HOUR) {
-      now.setDate(now.getDate() - 1);
-    }
-    return now;
-  });
 
   // 실시간 업데이트를 위한 현재 시간 상태 (1초마다 갱신)
   const [currentTime, setCurrentTime] = useState(Date.now());
@@ -137,40 +127,6 @@ const GanttChart: React.FC = () => {
   const getTodayBaseTime = useCallback(() => {
     return getBaseTime(selectedDate);
   }, [getBaseTime, selectedDate]);
-
-  // 날짜 이동 핸들러
-  const handlePrevDay = () => {
-    setSelectedDate(prev => {
-      const new_date = new Date(prev);
-      new_date.setDate(new_date.getDate() - 1);
-      return new_date;
-    });
-  };
-
-  const handleNextDay = () => {
-    setSelectedDate(prev => {
-      const new_date = new Date(prev);
-      new_date.setDate(new_date.getDate() + 1);
-      return new_date;
-    });
-  };
-
-  const handleToday = () => {
-    const now = new Date();
-    if (now.getHours() < DAY_START_HOUR) {
-      now.setDate(now.getDate() - 1);
-    }
-    setSelectedDate(now);
-  };
-
-  // 날짜 포맷
-  const formatSelectedDate = () => {
-    const year = selectedDate.getFullYear();
-    const month = selectedDate.getMonth() + 1;
-    const day = selectedDate.getDate();
-    const day_of_week = ['일', '월', '화', '수', '목', '금', '토'][selectedDate.getDay()];
-    return `${year}. ${month}. ${day}. (${day_of_week})`;
-  };
 
   // 선택된 날짜의 로그만 필터링 (06:00 ~ 익일 06:00)
   const todayLogs = useMemo(() => {
@@ -589,55 +545,6 @@ const GanttChart: React.FC = () => {
 
   return (
     <Paper variant="outlined" sx={{ p: 2, overflowX: 'auto', userSelect: 'none' }}>
-      {/* 헤더: 날짜 선택 */}
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-        <Typography variant="h6">
-          일간 타임라인
-        </Typography>
-        
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          {/* 이전 날짜 */}
-          <Tooltip title="이전 날짜">
-            <IconButton size="small" onClick={handlePrevDay}>
-              <ChevronLeftIcon />
-            </IconButton>
-          </Tooltip>
-          
-          {/* 현재 선택된 날짜 */}
-          <Box
-            sx={{
-              px: 2,
-              py: 0.5,
-              borderRadius: 1,
-              bgcolor: isToday ? '#000' : '#f5f5f5',
-              color: isToday ? '#fff' : 'text.primary',
-              minWidth: 160,
-              textAlign: 'center',
-            }}
-          >
-            <Typography variant="body2" sx={{ fontWeight: 500 }}>
-              {formatSelectedDate()}
-            </Typography>
-          </Box>
-          
-          {/* 다음 날짜 */}
-          <Tooltip title="다음 날짜">
-            <IconButton size="small" onClick={handleNextDay}>
-              <ChevronRightIcon />
-            </IconButton>
-          </Tooltip>
-          
-          {/* 오늘로 이동 */}
-          {!isToday && (
-            <Tooltip title="오늘로 이동">
-              <IconButton size="small" onClick={handleToday} sx={{ ml: 1 }}>
-                <TodayIcon />
-              </IconButton>
-            </Tooltip>
-          )}
-        </Box>
-      </Box>
-
       <Tooltip
         title="빈 영역을 드래그하여 작업을 추가하세요"
         placement="top"

@@ -11,11 +11,17 @@ import WeeklySchedule from './components/pages/WeeklySchedule';
 import FeedbackBoard from './components/pages/FeedbackBoard';
 import SettingsPage from './components/pages/SettingsPage';
 import NewTaskModal from './components/modal/NewTaskModal';
-import { Box, useMediaQuery } from '@mui/material';
+import { Box, Typography, IconButton, Tooltip, useMediaQuery } from '@mui/material';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import TodayIcon from '@mui/icons-material/Today';
 import { useTimerStore } from './store/useTimerStore';
 
 // 설정 저장 키
 const SETTINGS_STORAGE_KEY = 'timekeeper-settings';
+
+// 하루 시작 기준 (06:00)
+const DAY_START_HOUR = 6;
 
 // 테마 적용 함수
 const applyTheme = (primary_color: string, accent_color: string) => {
@@ -31,6 +37,63 @@ function App() {
   const pauseTimer = useTimerStore((state) => state.pauseTimer);
   const resumeTimer = useTimerStore((state) => state.resumeTimer);
   const timer_input_ref = useRef<HTMLInputElement>(null);
+
+  // 선택된 날짜 상태 (기본값: 오늘)
+  const [selectedDate, setSelectedDate] = useState<Date>(() => {
+    const now = new Date();
+    if (now.getHours() < DAY_START_HOUR) {
+      now.setDate(now.getDate() - 1);
+    }
+    return now;
+  });
+
+  // 오늘 날짜인지 확인
+  const isToday = (() => {
+    const now = new Date();
+    let today = new Date(now);
+    if (now.getHours() < DAY_START_HOUR) {
+      today.setDate(today.getDate() - 1);
+    }
+    return (
+      selectedDate.getFullYear() === today.getFullYear() &&
+      selectedDate.getMonth() === today.getMonth() &&
+      selectedDate.getDate() === today.getDate()
+    );
+  })();
+
+  // 날짜 이동 핸들러
+  const handlePrevDay = () => {
+    setSelectedDate(prev => {
+      const new_date = new Date(prev);
+      new_date.setDate(new_date.getDate() - 1);
+      return new_date;
+    });
+  };
+
+  const handleNextDay = () => {
+    setSelectedDate(prev => {
+      const new_date = new Date(prev);
+      new_date.setDate(new_date.getDate() + 1);
+      return new_date;
+    });
+  };
+
+  const handleToday = () => {
+    const now = new Date();
+    if (now.getHours() < DAY_START_HOUR) {
+      now.setDate(now.getDate() - 1);
+    }
+    setSelectedDate(now);
+  };
+
+  // 날짜 포맷
+  const formatSelectedDate = () => {
+    const year = selectedDate.getFullYear();
+    const month = selectedDate.getMonth() + 1;
+    const day = selectedDate.getDate();
+    const day_of_week = ['일', '월', '화', '수', '목', '금', '토'][selectedDate.getDay()];
+    return `${year}. ${month}. ${day}. (${day_of_week})`;
+  };
 
   // 저장된 테마 적용 (초기 로드)
   useEffect(() => {
@@ -106,7 +169,7 @@ function App() {
             if (current_page !== 'daily') {
               handlePageChange('daily');
             }
-            // GanttChart의 오늘 이동은 컴포넌트 내부에서 처리됨
+            handleToday();
             break;
         }
       }
@@ -117,13 +180,12 @@ function App() {
   }, [activeTimer, pauseTimer, resumeTimer, current_page, handlePageChange]);
 
   // 일간 타이머 페이지 - 3단 구성 레이아웃
-  // 순서: 타임라인 → 현재 진행중인 작업(ActiveTimer + TimerInput) → 최근 업무 목록
   const renderDailyPage = () => (
     <Box
       sx={{
         display: 'grid',
         gridTemplateColumns: is_mobile ? '1fr' : '280px 1fr',
-        gridTemplateRows: 'auto auto auto',
+        gridTemplateRows: 'auto auto auto auto',
         gap: 2,
         minHeight: 'calc(100vh - 180px)',
       }}
@@ -132,33 +194,83 @@ function App() {
       <Box
         sx={{
           gridColumn: is_mobile ? '1' : '1',
-          gridRow: is_mobile ? '1' : '1 / 4',
-          order: is_mobile ? 3 : 0,
+          gridRow: is_mobile ? '1' : '1 / 5',
+          order: is_mobile ? 4 : 0,
         }}
       >
         <PresetPanel />
+      </Box>
+
+      {/* 0. 날짜 선택기 (상단) */}
+      <Box
+        sx={{
+          gridColumn: is_mobile ? '1' : '2',
+          gridRow: is_mobile ? '1' : '1',
+          order: is_mobile ? 0 : 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 1,
+          py: 1,
+        }}
+      >
+        <Tooltip title="이전 날짜">
+          <IconButton size="small" onClick={handlePrevDay}>
+            <ChevronLeftIcon />
+          </IconButton>
+        </Tooltip>
+        
+        <Box
+          sx={{
+            px: 3,
+            py: 0.75,
+            borderRadius: 2,
+            bgcolor: isToday ? '#000' : '#f5f5f5',
+            color: isToday ? '#fff' : 'text.primary',
+            minWidth: 180,
+            textAlign: 'center',
+          }}
+        >
+          <Typography variant="body1" sx={{ fontWeight: 600 }}>
+            {formatSelectedDate()}
+          </Typography>
+        </Box>
+        
+        <Tooltip title="다음 날짜">
+          <IconButton size="small" onClick={handleNextDay}>
+            <ChevronRightIcon />
+          </IconButton>
+        </Tooltip>
+        
+        {!isToday && (
+          <Tooltip title="오늘로 이동">
+            <IconButton size="small" onClick={handleToday} sx={{ ml: 1 }}>
+              <TodayIcon />
+            </IconButton>
+          </Tooltip>
+        )}
       </Box>
 
       {/* 1. 간트 차트 (타임라인) */}
       <Box
         sx={{
           gridColumn: is_mobile ? '1' : '2',
-          gridRow: is_mobile ? '1' : '1',
-          order: is_mobile ? 0 : 0,
+          gridRow: is_mobile ? '2' : '2',
+          order: is_mobile ? 1 : 0,
         }}
       >
-        <GanttChart />
+        <GanttChart selectedDate={selectedDate} />
       </Box>
 
       {/* 2. 입력창 + 현재 진행중인 작업 */}
       <Box
         sx={{
           gridColumn: is_mobile ? '1' : '2',
-          gridRow: is_mobile ? '2' : '2',
-          order: is_mobile ? 1 : 0,
+          gridRow: is_mobile ? '3' : '3',
+          order: is_mobile ? 2 : 0,
           display: 'flex',
           flexDirection: 'column',
-          gap: activeTimer ? 2 : 0, // 활성 타이머가 없으면 gap 제거
+          gap: activeTimer ? 2 : 0,
         }}
       >
         <TimerInput />
@@ -169,11 +281,11 @@ function App() {
       <Box
         sx={{
           gridColumn: is_mobile ? '1' : '2',
-          gridRow: is_mobile ? '3' : '3',
-          order: is_mobile ? 2 : 0,
+          gridRow: is_mobile ? '4' : '4',
+          order: is_mobile ? 3 : 0,
         }}
       >
-        <TimerList />
+        <TimerList selectedDate={selectedDate} />
       </Box>
     </Box>
   );

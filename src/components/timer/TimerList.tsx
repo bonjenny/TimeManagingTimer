@@ -37,17 +37,9 @@ const CATEGORIES = ['분석', '개발', '개발자테스트', '테스트오류�
 // 하루 시작 기준 (06:00)
 const DAY_START_HOUR = 6;
 
-// 오늘 날짜 범위 계산 (06:00 ~ 익일 06:00)
-const getTodayRange = () => {
-  const now = new Date();
-  let today = new Date(now);
-  
-  // 06:00 이전이면 어제 날짜로 설정
-  if (now.getHours() < DAY_START_HOUR) {
-    today.setDate(today.getDate() - 1);
-  }
-  
-  const start = new Date(today);
+// 선택된 날짜의 범위 계산 (06:00 ~ 익일 06:00)
+const getDateRange = (date: Date) => {
+  const start = new Date(date);
   start.setHours(DAY_START_HOUR, 0, 0, 0);
   
   const end = new Date(start);
@@ -55,6 +47,10 @@ const getTodayRange = () => {
   
   return { start: start.getTime(), end: end.getTime() };
 };
+
+interface TimerListProps {
+  selectedDate: Date;
+}
 
 // 시간 포맷 (HH:mm)
 const formatTime = (timestamp: number | undefined) => {
@@ -81,7 +77,7 @@ interface TaskGroup {
   has_running: boolean;
 }
 
-const TimerList: React.FC = () => {
+const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
   const { logs, deleteLog, startTimer, updateLog, deleted_logs, restoreLog, permanentlyDeleteLog, emptyTrash } = useTimerStore();
   const [showCompleted, setShowCompleted] = useState(true);
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
@@ -95,13 +91,13 @@ const TimerList: React.FC = () => {
   // 휴지통 모달 상태
   const [trash_modal_open, setTrashModalOpen] = useState(false);
 
-  // 로그를 제목별로 그룹화 (오늘 날짜만)
+  // 로그를 제목별로 그룹화 (선택된 날짜만)
   const groupedTasks = useMemo(() => {
-    const today_range = getTodayRange();
+    const date_range = getDateRange(selectedDate);
     
     const filtered_logs = logs.filter(log => {
-      // 오늘 날짜 필터링 (06:00 ~ 익일 06:00)
-      if (log.startTime < today_range.start || log.startTime >= today_range.end) {
+      // 선택된 날짜 필터링 (06:00 ~ 익일 06:00)
+      if (log.startTime < date_range.start || log.startTime >= date_range.end) {
         return false;
       }
       if (!showCompleted && log.status === 'COMPLETED') return false;
@@ -156,7 +152,7 @@ const TimerList: React.FC = () => {
 
     // 그룹을 최신 first_start 기준으로 정렬
     return Array.from(groups.values()).sort((a, b) => b.first_start - a.first_start);
-  }, [logs, showCompleted]);
+  }, [logs, showCompleted, selectedDate]);
 
   const toggleExpand = (title: string) => {
     setExpandedTasks(prev => {
@@ -205,16 +201,29 @@ const TimerList: React.FC = () => {
     setEditCategory(null);
   };
 
-  // 오늘 로그 확인
-  const today_range = getTodayRange();
-  const today_logs = logs.filter(log => 
-    log.startTime >= today_range.start && log.startTime < today_range.end
+  // 선택된 날짜 로그 확인
+  const date_range = getDateRange(selectedDate);
+  const date_logs = logs.filter(log => 
+    log.startTime >= date_range.start && log.startTime < date_range.end
   );
 
-  if (today_logs.length === 0) {
+  // 오늘인지 확인
+  const now = new Date();
+  let today = new Date(now);
+  if (now.getHours() < DAY_START_HOUR) {
+    today.setDate(today.getDate() - 1);
+  }
+  const is_today = 
+    selectedDate.getFullYear() === today.getFullYear() &&
+    selectedDate.getMonth() === today.getMonth() &&
+    selectedDate.getDate() === today.getDate();
+
+  if (date_logs.length === 0) {
     return (
       <Box sx={{ textAlign: 'center', py: 4, color: 'text.secondary' }}>
-        <Typography variant="body2">오늘 기록된 업무가 없습니다.</Typography>
+        <Typography variant="body2">
+          {is_today ? '오늘 기록된 업무가 없습니다.' : '해당 날짜에 기록된 업무가 없습니다.'}
+        </Typography>
       </Box>
     );
   }

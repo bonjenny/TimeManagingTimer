@@ -31,12 +31,11 @@ import PaletteIcon from '@mui/icons-material/Palette';
 import {
   PaletteType,
   PaletteSettings,
-  PASTEL_PALETTE,
-  DEFAULT_PALETTE,
-  generateToneOnTonePalette,
   loadPaletteSettings,
   savePaletteSettings,
   PALETTE_STORAGE_KEY,
+  getPaletteList,
+  getPalette,
 } from '../../utils/colorPalette';
 
 // 설정 저장 키
@@ -89,8 +88,7 @@ const SettingsPage: React.FC = () => {
   const [auto_complete_enabled, setAutoCompleteEnabled] = useState(DEFAULT_SETTINGS.autoCompleteEnabled);
 
   // 컬러 팔레트 설정
-  const [palette_type, setPaletteType] = useState<PaletteType>('pastel');
-  const [tone_base_color, setToneBaseColor] = useState('#3b82f6');
+  const [palette_type, setPaletteType] = useState<PaletteType>('navy-orange');
 
   // 초기화 확인 모달
   const [reset_dialog_open, setResetDialogOpen] = useState(false);
@@ -118,38 +116,23 @@ const SettingsPage: React.FC = () => {
       // 컬러 팔레트 설정 로드
       const palette_settings = loadPaletteSettings();
       setPaletteType(palette_settings.type);
-      if (palette_settings.custom_base_color) {
-        setToneBaseColor(palette_settings.custom_base_color);
-      }
     } catch {
       // 무시
     }
   }, []);
 
+  // 팔레트 목록
+  const palette_list = getPaletteList();
+
   // 컬러 팔레트 미리보기 가져오기
   const getCurrentPalettePreview = () => {
-    switch (palette_type) {
-      case 'pastel':
-        return PASTEL_PALETTE.slice(0, 8);
-      case 'default':
-        return DEFAULT_PALETTE.slice(0, 8);
-      case 'tone-on-tone':
-        return generateToneOnTonePalette(tone_base_color).slice(0, 8);
-      default:
-        return PASTEL_PALETTE.slice(0, 8);
-    }
+    const palette = getPalette({ type: palette_type });
+    return palette.slice(0, 8);
   };
 
   // 컬러 팔레트 변경 핸들러
-  const handlePaletteTypeChange = (_: React.MouseEvent<HTMLElement>, new_type: PaletteType | null) => {
-    if (new_type !== null) {
-      setPaletteType(new_type);
-    }
-  };
-
-  // 톤온톤 베이스 색상 변경
-  const handleToneBaseColorChange = (color: string) => {
-    setToneBaseColor(color);
+  const handlePaletteTypeChange = (new_type: PaletteType) => {
+    setPaletteType(new_type);
   };
 
   // 프리셋 변경 시 테마 미리보기
@@ -193,7 +176,6 @@ const SettingsPage: React.FC = () => {
     // 컬러 팔레트 설정 저장
     const palette_settings: PaletteSettings = {
       type: palette_type,
-      custom_base_color: palette_type === 'tone-on-tone' ? tone_base_color : undefined,
     };
     savePaletteSettings(palette_settings);
 
@@ -213,8 +195,7 @@ const SettingsPage: React.FC = () => {
     applyTheme(DEFAULT_SETTINGS.primaryColor, DEFAULT_SETTINGS.accentColor);
 
     // 컬러 팔레트 기본값 복원
-    setPaletteType('pastel');
-    setToneBaseColor('#3b82f6');
+    setPaletteType('navy-orange');
 
     setSnackbarMessage('기본값으로 복원되었습니다.');
     setSnackbarSeverity('success');
@@ -409,89 +390,61 @@ const SettingsPage: React.FC = () => {
           </Typography>
         </Box>
         
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
           타임라인에서 작업별로 표시되는 색상 스타일을 선택하세요.
         </Typography>
 
-        <ToggleButtonGroup
-          value={palette_type}
-          exclusive
-          onChange={handlePaletteTypeChange}
-          sx={{ mb: 2 }}
-        >
-          <ToggleButton value="pastel" sx={{ px: 3 }}>
-            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
-              <Typography variant="body2">파스텔톤</Typography>
-              <Typography variant="caption" color="text.secondary">부드러운 색상</Typography>
-            </Box>
-          </ToggleButton>
-          <ToggleButton value="default" sx={{ px: 3 }}>
-            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
-              <Typography variant="body2">기본</Typography>
-              <Typography variant="caption" color="text.secondary">선명한 색상</Typography>
-            </Box>
-          </ToggleButton>
-          <ToggleButton value="tone-on-tone" sx={{ px: 3 }}>
-            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
-              <Typography variant="body2">톤온톤</Typography>
-              <Typography variant="caption" color="text.secondary">단일 색상 변형</Typography>
-            </Box>
-          </ToggleButton>
-        </ToggleButtonGroup>
-
-        {/* 톤온톤 베이스 색상 선택 */}
-        {palette_type === 'tone-on-tone' && (
-          <Box sx={{ mb: 2 }}>
-            <Typography variant="body2" sx={{ mb: 1 }}>
-              기준 색상
-            </Typography>
-            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1 }}>
-              {['#3b82f6', '#10b981', '#8b5cf6', '#ef4444', '#f97316', '#06b6d4', '#ec4899'].map((color) => (
-                <Box
-                  key={color}
-                  onClick={() => handleToneBaseColorChange(color)}
-                  sx={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: 1,
-                    bgcolor: color,
-                    cursor: 'pointer',
-                    border: tone_base_color === color ? '3px solid #000' : '1px solid #eaeaea',
-                    transition: 'transform 0.15s',
-                    '&:hover': { transform: 'scale(1.1)' },
-                  }}
-                />
-              ))}
-            </Box>
-            <TextField
-              size="small"
-              label="커스텀 색상 (HEX)"
-              value={tone_base_color}
-              onChange={(e) => handleToneBaseColorChange(e.target.value)}
-              placeholder="#3b82f6"
-              sx={{ width: 180 }}
-              InputProps={{
-                startAdornment: (
+        {/* 팔레트 선택 그리드 */}
+        <Box sx={{ 
+          display: 'grid', 
+          gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr' },
+          gap: 2,
+          mb: 3 
+        }}>
+          {palette_list.map((palette) => (
+            <Box
+              key={palette.type}
+              onClick={() => handlePaletteTypeChange(palette.type)}
+              sx={{
+                p: 2,
+                borderRadius: 2,
+                border: palette_type === palette.type ? '2px solid #000' : '1px solid #eaeaea',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                bgcolor: palette_type === palette.type ? '#f5f5f5' : 'transparent',
+                '&:hover': {
+                  borderColor: '#999',
+                  transform: 'translateY(-2px)',
+                },
+              }}
+            >
+              {/* 팔레트 이름 */}
+              <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
+                {palette.name}
+              </Typography>
+              
+              {/* 색상 미리보기 */}
+              <Box sx={{ display: 'flex', gap: 0.25 }}>
+                {palette.colors.slice(0, 5).map((color, idx) => (
                   <Box
+                    key={idx}
                     sx={{
-                      width: 20,
-                      height: 20,
-                      borderRadius: 0.5,
-                      bgcolor: tone_base_color,
-                      mr: 1,
-                      border: '1px solid #eaeaea',
+                      flex: 1,
+                      height: 24,
+                      bgcolor: color,
+                      borderRadius: idx === 0 ? '4px 0 0 4px' : idx === 4 ? '0 4px 4px 0' : 0,
                     }}
                   />
-                ),
-              }}
-            />
-          </Box>
-        )}
+                ))}
+              </Box>
+            </Box>
+          ))}
+        </Box>
 
-        {/* 팔레트 미리보기 */}
+        {/* 선택된 팔레트 미리보기 */}
         <Box sx={{ mt: 2 }}>
-          <Typography variant="body2" sx={{ mb: 1 }}>
-            미리보기
+          <Typography variant="body2" sx={{ mb: 1, fontWeight: 500 }}>
+            선택된 팔레트 미리보기
           </Typography>
           <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
             {getCurrentPalettePreview().map((color, index) => (
