@@ -1,0 +1,172 @@
+# Design System Rules - Vercel 디자인 철학
+
+## 핵심 원칙
+
+### 1. 미니멀리즘 (Less is More)
+- 불필요한 장식 요소 제거
+- 기능에 집중하는 UI
+- 여백을 효과적으로 활용하되 과도하지 않게
+- 시각적 노이즈 최소화
+
+### 2. 일관된 간격 시스템
+```
+xs: 4px   (gap: 0.5)
+sm: 8px   (gap: 1)
+md: 16px  (gap: 2)
+lg: 24px  (gap: 3)
+xl: 32px  (gap: 4)
+```
+
+### 3. 섹션 간 간격
+- **같은 맥락의 요소**: `gap: 2` (16px)
+- **다른 섹션**: `gap: 3` (24px)
+- **주요 섹션 구분**: `gap: 4` (32px)
+
+### 4. 컴포넌트 내부 여백
+- Paper/Card 내부: `p: 2` (16px) 기본
+- 강조 영역: `p: 3` (24px)
+- 컴팩트한 영역: `p: 1` (8px)
+
+## 색상 시스템
+
+### 기본 색상
+```typescript
+// 배경
+background: '#ffffff'
+surface: '#fafafa'
+border: '#eaeaea'
+
+// 텍스트
+primary: '#000000'
+secondary: '#666666'
+disabled: '#999999'
+
+// 강조
+accent: '#0070f3'  // Vercel Blue
+success: '#0070f3'
+error: '#ee0000'
+warning: '#f5a623'
+```
+
+### Border 스타일
+- 기본: `1px solid #eaeaea`
+- 포커스: `1px solid #000000`
+- 강조: `1px solid #0070f3`
+
+## 타이포그래피
+
+### 폰트 크기
+```
+h1: 2.5rem (40px) - 페이지 제목
+h2: 2rem (32px) - 섹션 제목  
+h3: 1.5rem (24px) - 서브섹션
+h4: 1.25rem (20px) - 카드 제목
+h5: 1rem (16px) - 본문 강조
+h6: 0.875rem (14px) - 작은 제목
+body1: 1rem (16px) - 본문
+body2: 0.875rem (14px) - 보조 텍스트
+caption: 0.75rem (12px) - 캡션
+```
+
+### 폰트 웨이트
+- 일반: 400
+- 강조: 500
+- 볼드: 700
+
+## 애니메이션
+
+### 트랜지션
+```css
+/* 기본 */
+transition: all 0.15s ease;
+
+/* 호버 효과 */
+transition: all 0.2s ease;
+
+/* 모달/드로어 */
+transition: all 0.3s ease;
+```
+
+### 호버 효과
+- 배경색 변화: `rgba(0,0,0,0.04)` → `rgba(0,0,0,0.08)`
+- 테두리 강조: `border-color: #000`
+- 그림자 추가: `box-shadow: 0 2px 8px rgba(0,0,0,0.08)`
+
+## 컴포넌트 스타일 가이드
+
+### Paper/Card
+```typescript
+{
+  elevation: 0,
+  border: '1px solid #eaeaea',
+  borderRadius: 1, // 4px
+  p: 2,
+}
+```
+
+### Button
+```typescript
+// Primary
+{
+  bgcolor: '#000',
+  color: '#fff',
+  '&:hover': { bgcolor: '#333' }
+}
+
+// Secondary
+{
+  border: '1px solid #eaeaea',
+  '&:hover': { borderColor: '#000', bgcolor: 'transparent' }
+}
+```
+
+### Input
+```typescript
+{
+  border: '1px solid #eaeaea',
+  '&:focus': {
+    borderColor: '#000',
+    boxShadow: '0 0 0 1px #000'
+  }
+}
+```
+
+### Chip
+```typescript
+{
+  height: 20,
+  fontSize: '0.7rem',
+  borderRadius: 0.5, // 2px
+}
+```
+
+## 레이아웃 원칙
+
+### 그리드 시스템
+- 기본 gap: `2` (16px)
+- 반응형 breakpoint: 900px
+
+### 섹션 구성
+1. **헤더 영역**: 제목 + 부가 액션
+2. **콘텐츠 영역**: 주요 내용
+3. **푸터 영역**: 요약 정보 또는 액션
+
+### 시각적 계층
+1. Primary: 가장 중요한 정보 (크기 크게, 색상 진하게)
+2. Secondary: 보조 정보 (중간 크기, 회색 계열)
+3. Tertiary: 부가 정보 (작은 크기, 연한 색상)
+
+## 접근성
+
+- 명도 대비 최소 4.5:1
+- 포커스 상태 명확히 표시
+- 클릭 영역 최소 44x44px
+- 키보드 탐색 지원
+
+## 적용 체크리스트
+
+- [ ] 불필요한 margin/padding 제거
+- [ ] 섹션 간 간격 일관성 확인
+- [ ] 호버/포커스 상태 정의
+- [ ] 색상 대비 확인
+- [ ] 반응형 동작 확인

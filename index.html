@@ -6,7 +6,93 @@
     <title>업무 일정 기록 타이머</title>
     <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
     <style>
-      body { font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif; }
+      /* CSS 변수 기반 테마 시스템 */
+      :root {
+        /* 기본 색상 (검정 테마) */
+        --primary-color: #000000;
+        --accent-color: #000000;
+        --text-primary: #000000;
+        --text-secondary: #666666;
+        --bg-primary: #fafafa;
+        --bg-secondary: #ffffff;
+        --header-bg: #ffffff;
+        --card-bg: #ffffff;
+        --border-color: #eaeaea;
+        --success-color: #10b981;
+        --warning-color: #f59e0b;
+        --error-color: #ef4444;
+      }
+
+      /* 다크 모드 (선택적) */
+      [data-theme="dark"] {
+        --primary-color: #ffffff;
+        --accent-color: #3b82f6;
+        --text-primary: #ffffff;
+        --text-secondary: #a0a0a0;
+        --bg-primary: #0a0a0a;
+        --bg-secondary: #171717;
+        --header-bg: #171717;
+        --card-bg: #1a1a1a;
+        --border-color: #2e2e2e;
+      }
+
+      /* 테마 프리셋 색상 */
+      [data-theme-color="green"] {
+        --primary-color: #10b981;
+        --accent-color: #059669;
+      }
+
+      [data-theme-color="purple"] {
+        --primary-color: #8b5cf6;
+        --accent-color: #7c3aed;
+      }
+
+      [data-theme-color="red"] {
+        --primary-color: #ef4444;
+        --accent-color: #dc2626;
+      }
+
+      [data-theme-color="orange"] {
+        --primary-color: #f97316;
+        --accent-color: #ea580c;
+      }
+
+      [data-theme-color="teal"] {
+        --primary-color: #06b6d4;
+        --accent-color: #0891b2;
+      }
+
+      [data-theme-color="blue"] {
+        --primary-color: #3b82f6;
+        --accent-color: #2563eb;
+      }
+
+      body { 
+        font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
+        margin: 0;
+        padding: 0;
+        background-color: var(--bg-primary);
+        color: var(--text-primary);
+      }
+
+      /* 스크롤바 스타일링 (선택적) */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+
+      ::-webkit-scrollbar-track {
+        background: var(--bg-primary);
+      }
+
+      ::-webkit-scrollbar-thumb {
+        background: var(--border-color);
+        border-radius: 4px;
+      }
+
+      ::-webkit-scrollbar-thumb:hover {
+        background: var(--text-secondary);
+      }
     </style>
   </head>
   <body>

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { Box, Typography, Button, Paper, Chip, IconButton } from '@mui/material';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import PauseIcon from '@mui/icons-material/Pause';
@@ -9,8 +9,25 @@ import { useTimerLogic } from '../../hooks/useTimerLogic';
 import { formatTimeDisplay, formatDuration } from '../../utils/timeUtils';
 
 const ActiveTimer: React.FC = () => {
-  const { activeTimer, elapsedSeconds } = useTimerLogic();
-  const { pauseTimer, resumeTimer, completeTimer, stopTimer } = useTimerStore();
+  const { activeTimer, elapsedSeconds, showSeconds } = useTimerLogic();
+  const { logs, pauseTimer, resumeTimer, completeTimer, stopTimer } = useTimerStore();
+
+  // 같은 제목의 모든 로그 누적 시간 계산 (현재 세션 포함)
+  const totalAccumulatedSeconds = useMemo(() => {
+    if (!activeTimer) return 0;
+    
+    // 같은 제목의 완료된 로그들의 시간 합산
+    const completed_duration = logs
+      .filter(log => log.title === activeTimer.title)
+      .reduce((sum, log) => {
+        const end = log.endTime || Date.now();
+        const duration = Math.floor((end - log.startTime) / 1000 - log.pausedDuration);
+        return sum + Math.max(0, duration);
+      }, 0);
+    
+    // 현재 진행 중인 세션 시간 추가
+    return completed_duration + elapsedSeconds;
+  }, [activeTimer, logs, elapsedSeconds]);
 
   if (!activeTimer) {
     return null;
@@ -23,7 +40,6 @@ const ActiveTimer: React.FC = () => {
       elevation={0}
       sx={{ 
         p: 3, 
-        mb: 3, 
         border: '1px solid',
         borderColor: 'primary.main',
         bgcolor: isRunning ? 'background.paper' : '#fafafa',
@@ -72,11 +88,52 @@ const ActiveTimer: React.FC = () => {
 
         {/* 시간 표시 */}
         <Box sx={{ textAlign: { xs: 'left', md: 'right' } }}>
-          <Typography variant="h3" sx={{ fontWeight: 300, fontFamily: 'monospace', letterSpacing: '-2px' }}>
-            {formatTimeDisplay(elapsedSeconds)}
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-            {formatDuration(elapsedSeconds)}
+          {/* 00:00:00 형태로 표시, 5초 이후 초 부분 fade out */}
+          <Box 
+            sx={{ 
+              display: 'flex',
+              alignItems: 'baseline',
+              justifyContent: { xs: 'flex-start', md: 'flex-end' }
+            }}
+          >
+            <Typography 
+              variant="h3" 
+              sx={{ 
+                fontWeight: 300, 
+                fontFamily: 'monospace', 
+                letterSpacing: '-2px',
+                lineHeight: 1
+              }}
+            >
+              {formatTimeDisplay(elapsedSeconds)}
+            </Typography>
+            {/* 초 부분: 시작/재개 후 5초 동안 표시 */}
+            <Typography 
+              variant="h3" 
+              sx={{ 
+                fontWeight: 300, 
+                fontFamily: 'monospace', 
+                letterSpacing: '-2px',
+                lineHeight: 1,
+                opacity: showSeconds ? 1 : 0,
+                maxWidth: showSeconds ? '100px' : 0,
+                overflow: 'hidden',
+                transition: 'opacity 0.5s ease-out, max-width 0.3s ease-out',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              :{String(elapsedSeconds % 60).padStart(2, '0')}
+            </Typography>
+          </Box>
+          <Typography 
+            variant="body2" 
+            sx={{ 
+              mt: 0.5,
+              color: 'text.primary',
+              fontWeight: 500
+            }}
+          >
+            {formatDuration(totalAccumulatedSeconds)}
           </Typography>
         </Box>
 

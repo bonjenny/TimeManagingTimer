@@ -1,23 +1,51 @@
 import React from 'react';
 import { AppBar, Toolbar, Typography, Tabs, Tab, Box, Container } from '@mui/material';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
-import AssessmentIcon from '@mui/icons-material/Assessment';
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
+import ForumIcon from '@mui/icons-material/Forum';
+import SettingsIcon from '@mui/icons-material/Settings';
+
+export type PageType = 'daily' | 'weekly' | 'feedback' | 'settings';
 
 interface LayoutProps {
   children: React.ReactNode;
-  currentTab: number;
-  onTabChange: (newValue: number) => void;
+  currentPage: PageType;
+  onPageChange: (page: PageType) => void;
 }
 
-const Layout: React.FC<LayoutProps> = ({ children, currentTab, onTabChange }) => {
+const PAGE_MAP: { page: PageType; label: string; icon: React.ReactNode }[] = [
+  { page: 'daily', label: '일간 타이머', icon: <AccessTimeIcon sx={{ fontSize: 20, mr: 1, mb: '0px !important' }} /> },
+  { page: 'weekly', label: '주간 일정', icon: <CalendarMonthIcon sx={{ fontSize: 20, mr: 1, mb: '0px !important' }} /> },
+  { page: 'feedback', label: '건의사항', icon: <ForumIcon sx={{ fontSize: 20, mr: 1, mb: '0px !important' }} /> },
+  { page: 'settings', label: '설정', icon: <SettingsIcon sx={{ fontSize: 20, mr: 1, mb: '0px !important' }} /> },
+];
+
+const Layout: React.FC<LayoutProps> = ({ children, currentPage, onPageChange }) => {
+  const current_tab_index = PAGE_MAP.findIndex(p => p.page === currentPage);
+
   const handleChange = (_event: React.SyntheticEvent, newValue: number) => {
-    onTabChange(newValue);
+    onPageChange(PAGE_MAP[newValue].page);
   };
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-      <AppBar position="sticky" color="default" elevation={0}>
-        <Container maxWidth="lg">
+    <Box 
+      sx={{ 
+        display: 'flex', 
+        flexDirection: 'column', 
+        minHeight: '100vh',
+        bgcolor: 'var(--bg-primary, #fafafa)'
+      }}
+    >
+      <AppBar 
+        position="sticky" 
+        color="default" 
+        elevation={0}
+        sx={{
+          bgcolor: 'var(--header-bg, #ffffff)',
+          borderBottom: '1px solid var(--border-color, #eaeaea)'
+        }}
+      >
+        <Container maxWidth="xl">
           <Toolbar disableGutters sx={{ minHeight: 64 }}>
             {/* 로고 영역 */}
             <Typography
@@ -29,14 +57,16 @@ const Layout: React.FC<LayoutProps> = ({ children, currentTab, onTabChange }) =>
                 fontWeight: 700,
                 letterSpacing: '-0.5px',
                 cursor: 'pointer',
+                color: 'var(--text-primary, #000000)',
               }}
+              onClick={() => onPageChange('daily')}
             >
               TimeKeeper
             </Typography>
 
             {/* 네비게이션 탭 영역 */}
             <Tabs
-              value={currentTab}
+              value={current_tab_index}
               onChange={handleChange}
               textColor="primary"
               indicatorColor="primary"
@@ -47,30 +77,49 @@ const Layout: React.FC<LayoutProps> = ({ children, currentTab, onTabChange }) =>
                   fontSize: '0.95rem',
                   fontWeight: 500,
                 },
+                '& .MuiTabs-indicator': {
+                  bgcolor: 'var(--accent-color, #000000)',
+                }
               }}
             >
-              <Tab 
-                icon={<AccessTimeIcon sx={{ fontSize: 20, mr: 1, mb: '0px !important' }} />} 
-                iconPosition="start" 
-                label="타이머" 
-              />
-              <Tab 
-                icon={<AssessmentIcon sx={{ fontSize: 20, mr: 1, mb: '0px !important' }} />} 
-                iconPosition="start" 
-                label="리포트" 
-              />
+              {PAGE_MAP.map((item) => (
+                <Tab
+                  key={item.page}
+                  icon={item.icon}
+                  iconPosition="start"
+                  label={item.label}
+                />
+              ))}
             </Tabs>
           </Toolbar>
         </Container>
       </AppBar>
 
       {/* 메인 컨텐츠 영역 */}
-      <Container maxWidth="lg" component="main" sx={{ flexGrow: 1, py: 4 }}>
-        {children}
-      </Container>
+      <Box 
+        component="main" 
+        sx={{ 
+          flexGrow: 1, 
+          py: 3,
+          px: { xs: 2, md: 3 }
+        }}
+      >
+        <Container maxWidth="xl" disableGutters>
+          {children}
+        </Container>
+      </Box>
       
-      {/* 심플한 푸터 (옵션) */}
-      <Box component="footer" sx={{ py: 3, textAlign: 'center', color: 'text.secondary', borderTop: '1px solid #eaeaea' }}>
+      {/* 심플한 푸터 */}
+      <Box 
+        component="footer" 
+        sx={{ 
+          py: 3, 
+          textAlign: 'center', 
+          color: 'text.secondary', 
+          borderTop: '1px solid var(--border-color, #eaeaea)',
+          bgcolor: 'var(--header-bg, #ffffff)'
+        }}
+      >
         <Typography variant="caption">
           © {new Date().getFullYear()} TimeKeeper. All rights reserved.
         </Typography>
