@@ -37,6 +37,7 @@ import {
   getPaletteList,
   getPalette,
 } from '../../utils/colorPalette';
+import { applyPaletteHighlight } from '../../styles/tokens';
 
 // 설정 저장 키
 const SETTINGS_STORAGE_KEY = 'timekeeper-settings';
@@ -173,11 +174,15 @@ const SettingsPage: React.FC = () => {
     localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
     applyTheme(primary_color, accent_color);
 
-    // 컬러 팔레트 설정 저장
+    // 컬러 팔레트 설정 저장 및 CSS 변수 적용
     const palette_settings: PaletteSettings = {
       type: palette_type,
     };
     savePaletteSettings(palette_settings);
+    
+    // CSS 변수에 팔레트 색상 적용
+    const palette = getPalette(palette_settings);
+    applyPaletteHighlight(palette);
 
     setSnackbarMessage('설정이 저장되었습니다.');
     setSnackbarSeverity('success');
@@ -634,7 +639,16 @@ const SettingsPage: React.FC = () => {
       </Box>
 
       {/* 초기화 확인 모달 */}
-      <Dialog open={reset_dialog_open} onClose={() => setResetDialogOpen(false)}>
+      <Dialog 
+        open={reset_dialog_open} 
+        onClose={() => setResetDialogOpen(false)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && !e.shiftKey && reset_confirm_text === '초기화') {
+            e.preventDefault();
+            handleResetAllData();
+          }
+        }}
+      >
         <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'error.main' }}>
           <WarningIcon />
           모든 데이터 초기화

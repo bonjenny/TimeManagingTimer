@@ -465,7 +465,18 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
       </Paper>
 
       {/* 수정 다이얼로그 */}
-      <Dialog open={!!editingLog} onClose={handleEditClose} maxWidth="sm" fullWidth>
+      <Dialog 
+        open={!!editingLog} 
+        onClose={handleEditClose} 
+        maxWidth="sm" 
+        fullWidth
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && !e.shiftKey && editTitle.trim()) {
+            e.preventDefault();
+            handleEditSave();
+          }
+        }}
+      >
         <DialogTitle>업무 기록 수정</DialogTitle>
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
