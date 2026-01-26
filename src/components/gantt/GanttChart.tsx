@@ -12,7 +12,13 @@ import {
   TextField,
   Autocomplete,
   Chip,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText,
 } from '@mui/material';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { useTimerStore, TimerLog } from '../../store/useTimerStore';
 import { formatTimeRange, formatDuration } from '../../utils/timeUtils';
 import { getPalette, getColorForTask, loadPaletteSettings } from '../../utils/colorPalette';
@@ -27,7 +33,10 @@ const RESIZE_HANDLE_WIDTH = 8;
 // 기본 시간 범위 설정
 const DEFAULT_START_HOUR = 8;  // 기본 시작: 08:00
 const DEFAULT_END_HOUR = 19;   // 기본 종료: 19:00
-const DAY_START_HOUR = 6;      // 하루 시작 기준 (06:00)
+const DAY_START_HOUR = 0;      // 하루 시작 기준 (00:00)
+
+// 설정 저장 키
+const SETTINGS_STORAGE_KEY = 'timekeeper-settings';
 
 // 행 높이
 const ROW_HEIGHT = 32;
@@ -41,28 +50,58 @@ const LABEL_WIDTH_WITH_DATA = 180;
 const CATEGORIES = ['분석', '개발', '개발자테스트', '테스트오류수정', '센터오류수정', '환경세팅', '회의', '기타'];
 
 const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
-  const { logs, activeTimer, addLog, updateLog } = useTimerStore();
+  const { logs, activeTimer, addLog, updateLog, deleteLog } = useTimerStore();
 
   // 컬러 팔레트 설정 로드
   const [paletteSettings, setPaletteSettings] = useState(() => loadPaletteSettings());
   const colorPalette = useMemo(() => getPalette(paletteSettings), [paletteSettings]);
 
-  // 팔레트 설정 변경 감지 (다른 페이지에서 변경 시)
+  // 점심시간 설정 로드
+  const [lunchConfig, setLunchConfig] = useState<{start: string, end: string, enabled: boolean}>({
+    start: '12:00',
+    end: '13:00',
+    enabled: true
+  });
+
+  // 설정 로드 함수
+  const loadSettings = useCallback(() => {
+    // 팔레트 설정 로드
+    setPaletteSettings(loadPaletteSettings());
+
+    // 점심시간 설정 로드
+    try {
+      const saved = localStorage.getItem(SETTINGS_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        setLunchConfig({
+          start: parsed.lunchStart || '12:00',
+          end: parsed.lunchEnd || '13:00',
+          enabled: parsed.lunchExcludeEnabled ?? true
+        });
+      }
+    } catch {
+      // 무시
+    }
+  }, []);
+
+  // 초기 로드 및 이벤트 리스너 등록
   useEffect(() => {
+    loadSettings(); // 초기 로드
+
     const handleStorageChange = () => {
-      setPaletteSettings(loadPaletteSettings());
+      loadSettings();
     };
     window.addEventListener('storage', handleStorageChange);
     
     // 같은 탭 내 팔레트 변경 감지
     const handlePaletteChange = () => {
-      setPaletteSettings(loadPaletteSettings());
+      loadSettings();
     };
     window.addEventListener('palette-changed', handlePaletteChange);
     
     // 포커스 시에도 체크
     const handleFocus = () => {
-      setPaletteSettings(loadPaletteSettings());
+      loadSettings();
     };
     window.addEventListener('focus', handleFocus);
     
@@ -71,14 +110,17 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
       window.removeEventListener('palette-changed', handlePaletteChange);
       window.removeEventListener('focus', handleFocus);
     };
-  }, []);
+  }, [loadSettings]);
 
   // 실시간 업데이트를 위한 현재 시간 상태 (1초마다 갱신)
   const [currentTime, setCurrentTime] = useState(Date.now());
+  const currentTimeRef = useRef(Date.now());
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentTime(Date.now());
+      const now = Date.now();
+      setCurrentTime(now);
+      currentTimeRef.current = now;
     }, 1000); // 1초마다 업데이트
 
     return () => clearInterval(interval);
@@ -123,7 +165,18 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
   const [newCategory, setNewCategory] = useState<string | null>(null);
   const [isAddingSession, setIsAddingSession] = useState(false); // 기존 작업에 세션 추가 여부
   const [isHoveringBar, setIsHoveringBar] = useState(false); // 작업 막대 hover 상태
-  const [hoverRowIndex, setHoverRowIndex] = useState<number | null>(null); // 현재 hover 중인 행 인덱스
+  
+  // 컨텍스트 메뉴 및 수정 모달 상태
+  const [contextMenu, setContextMenu] = useState<{
+    mouseX: number;
+    mouseY: number;
+    log: TimerLog | null;
+  } | null>(null);
+
+  const [editingLog, setEditingLog] = useState<TimerLog | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editBoardNo, setEditBoardNo] = useState('');
+  const [editCategory, setEditCategory] = useState<string | null>(null);
 
   // 선택된 날짜의 06:00 기준 시작 시간
   const getBaseTime = useCallback((date?: Date) => {
@@ -132,11 +185,6 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
     base.setHours(DAY_START_HOUR, 0, 0, 0);
     return base.getTime();
   }, [selectedDate]);
-
-  // 오늘 날짜의 06:00 기준 시작 시간 (이전 호환성 유지)
-  const getTodayBaseTime = useCallback(() => {
-    return getBaseTime(selectedDate);
-  }, [getBaseTime, selectedDate]);
 
   // 선택된 날짜의 로그만 필터링 (06:00 ~ 익일 06:00)
   const todayLogs = useMemo(() => {
@@ -155,6 +203,46 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
     // 시작 시간순 정렬
     return filtered_logs.sort((a, b) => a.startTime - b.startTime);
   }, [logs, activeTimer, getBaseTime, isToday]);
+
+  // --- 스냅 및 중복 검사 로직 ---
+  const SNAP_THRESHOLD_MS = 15 * 60 * 1000; // 15분
+
+  const getSnappedTime = useCallback((targetTime: number, excludeId?: string | null) => {
+    let closestTime = targetTime;
+    let minDiff = SNAP_THRESHOLD_MS;
+
+    todayLogs.forEach(log => {
+      if (log.id === excludeId) return;
+      
+      // 시작 시간과 비교
+      const startDiff = Math.abs(log.startTime - targetTime);
+      if (startDiff < minDiff) {
+        minDiff = startDiff;
+        closestTime = log.startTime;
+      }
+      
+      // 종료 시간과 비교
+      if (log.endTime) {
+        const endDiff = Math.abs(log.endTime - targetTime);
+        if (endDiff < minDiff) {
+          minDiff = endDiff;
+          closestTime = log.endTime;
+        }
+      }
+    });
+
+    return closestTime;
+  }, [todayLogs]);
+
+  const checkOverlap = useCallback((start: number, end: number, excludeId?: string | null) => {
+    return todayLogs.some(log => {
+      if (log.id === excludeId) return false;
+      const logEnd = log.endTime || currentTimeRef.current;
+      // 교차 검사 (맞닿음 허용)
+      return start < logEnd && end > log.startTime;
+    });
+  }, [todayLogs]);
+  // ---------------------------
 
   // 동적 타임라인 범위 계산 (기본 08:00~19:00, 작업에 따라 확장)
   const { timelineStartHour, timelineEndHour, totalMinutes } = useMemo(() => {
@@ -189,9 +277,9 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
       max_hour = Math.max(max_hour, now_hour + 1);
     }
 
-    // 최소 범위: 06:00 ~ 30:00 (익일 06:00)
+    // 최소 범위: 00:00 ~ 24:00
     min_hour = Math.max(DAY_START_HOUR, min_hour);
-    max_hour = Math.min(30, max_hour); // 익일 06:00까지
+    max_hour = Math.min(24, max_hour);
 
     return {
       timelineStartHour: min_hour,
@@ -297,13 +385,47 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
     80 // 기록이 없을 때 최소 높이
   );
 
+  // 점심시간 렌더링 정보 계산
+  const lunchTimeStyle = useMemo(() => {
+    // 사용자가 점심시간 제외 옵션을 껐더라도 차트에 표시는 해주는 것이 좋음 (또는 제외 옵션에 따라 표시 여부 결정)
+    // 여기서는 enabled 여부와 상관없이 설정된 시간이 있으면 표시하되, enabled가 꺼져있으면 투명도를 조절하거나 스타일을 다르게 할 수 있음.
+    // 하지만 요구사항은 "점심시간을 간트차트 내에 표시"이므로 enabled가 true일 때만 표시하거나, 항상 표시.
+    // 보통 설정에서 "점심시간 소요 시간에서 제외"가 켜져 있으면 "업무 불가 시간"으로 인지되므로 이때 표시하는 것이 적절함.
+    if (!lunchConfig.enabled) return null;
+
+    const parseTimeMinutes = (timeStr: string) => {
+      const [h, m] = timeStr.split(':').map(Number);
+      return h * 60 + m;
+    };
+
+    const startMinutes = parseTimeMinutes(lunchConfig.start);
+    const endMinutes = parseTimeMinutes(lunchConfig.end);
+    
+    // 유효성 검사
+    if (startMinutes >= endMinutes) return null;
+
+    const chartStartMinutes = timelineStartHour * 60;
+    const chartEndMinutes = timelineEndHour * 60;
+
+    // 겹치지 않으면 표시 안 함
+    if (endMinutes <= chartStartMinutes || startMinutes >= chartEndMinutes) return null;
+
+    const visibleStart = Math.max(startMinutes, chartStartMinutes);
+    const visibleEnd = Math.min(endMinutes, chartEndMinutes);
+
+    const leftPercent = ((visibleStart - chartStartMinutes) / totalMinutes) * 100;
+    const widthPercent = ((visibleEnd - visibleStart) / totalMinutes) * 100;
+
+    return { leftPercent, widthPercent };
+  }, [lunchConfig, timelineStartHour, timelineEndHour, totalMinutes]);
+
   // --- 드래그 핸들러 ---
 
   const getPercentFromEvent = (e: React.MouseEvent) => {
     if (!containerRef.current) return 0;
     const rect = containerRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left - LABEL_WIDTH;
-    const width = rect.width - LABEL_WIDTH;
+    const x = e.clientX - rect.left - LABEL_WIDTH - 16; // 패딩 16px 고려
+    const width = rect.width - LABEL_WIDTH - 32; // 양쪽 패딩 32px 고려
     return Math.min(Math.max((x / width) * 100, 0), 100);
   };
 
@@ -320,11 +442,21 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
+    // 컨텍스트 메뉴가 열려있으면 닫기
+    if (contextMenu) {
+      setContextMenu(null);
+      return;
+    }
+
     const percent = getPercentFromEvent(e);
     const row = getRowFromEvent(e);
 
-    // 왼쪽 라벨 영역이면 무시
-    if (percent < 0) return;
+    // 왼쪽 라벨 영역이면 무시 (패딩 영역은 허용하되 getPercentFromEvent에서 0으로 클램핑됨)
+    // 정확히는 클릭한 x좌표가 LABEL_WIDTH + 16 보다 작으면 무시해야 함
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    if (x < LABEL_WIDTH + 16) return;
 
     setIsDragging(true);
     setDragStartPercent(percent);
@@ -333,16 +465,11 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
-    // 드래그 중일 때 - 툴팁 표시 안함
+    // 드래그 중일 때
     if (isDragging) {
       setDragCurrentPercent(getPercentFromEvent(e));
-      setHoverRowIndex(null);
       return;
     }
-    
-    // 드래그 중 아닐 때 - 현재 행 인덱스 추적 (툴팁 메시지용)
-    const row = getRowFromEvent(e);
-    setHoverRowIndex(row);
   };
 
   const handleMouseUp = () => {
@@ -374,8 +501,82 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
     const start_time = base_time + start_minutes * 60 * 1000;
     const end_time = base_time + end_minutes * 60 * 1000;
 
-    setNewLogStart(start_time);
-    setNewLogEnd(end_time);
+    // 하루 범위 제한 (06:00 ~ 익일 06:00)
+    const dayStart = getBaseTime();
+    const dayEnd = dayStart + 24 * 60 * 60 * 1000;
+
+    // 범위 내로 클램핑 (최소 06:00, 최대 익일 06:00)
+    let clamped_start = Math.max(dayStart, Math.min(dayEnd, start_time));
+    let clamped_end = Math.max(dayStart, Math.min(dayEnd, end_time));
+
+    // 스냅 적용
+    clamped_start = getSnappedTime(clamped_start, null);
+    clamped_end = getSnappedTime(clamped_end, null);
+
+    // --- 스마트 중복 처리 로직 ---
+    const MINOR_OVERLAP_MS = 5 * 60 * 1000; // 5분
+
+    // 겹치는 작업 찾기
+    const overlappingLogs = todayLogs.filter(log => {
+      const logEnd = log.endTime || currentTimeRef.current;
+      // 교차 검사 (맞닿음은 겹침 아님)
+      return clamped_start < logEnd && clamped_end > log.startTime;
+    });
+
+    if (overlappingLogs.length > 0) {
+      let shouldConfirm = true;
+      let autoAdjusted = false;
+
+      // 겹치는 작업이 1개이고, 경미한 겹침인 경우 자동 조정 시도
+      if (overlappingLogs.length === 1) {
+        const target = overlappingLogs[0];
+        const targetEnd = target.endTime || currentTimeRef.current;
+
+        // 겹침 시간 계산
+        const overlapStart = Math.max(clamped_start, target.startTime);
+        const overlapEnd = Math.min(clamped_end, targetEnd);
+        const overlapDuration = overlapEnd - overlapStart;
+
+        // 포함 관계 확인 (새 작업이 기존 작업을 완전히 감싸거나, 그 반대인 경우)
+        const isContaining = (clamped_start <= target.startTime && clamped_end >= targetEnd);
+        const isContained = (clamped_start >= target.startTime && clamped_end <= targetEnd);
+
+        // 조건: 5분 이내 겹침 && 포함 관계 아님
+        if (overlapDuration > 0 && overlapDuration <= MINOR_OVERLAP_MS && !isContaining && !isContained) {
+          // 조정 방향 결정
+          // Case 1: 앞쪽이 겹침 (기존 작업의 뒷부분과 새 작업의 앞부분)
+          if (clamped_start < targetEnd && clamped_end > targetEnd) {
+            clamped_start = targetEnd; // 시작 시간을 기존 작업 끝으로 미룸
+            autoAdjusted = true;
+          }
+          // Case 2: 뒤쪽이 겹침 (새 작업의 뒷부분과 기존 작업의 앞부분)
+          else if (clamped_start < target.startTime && clamped_end > target.startTime) {
+            clamped_end = target.startTime; // 종료 시간을 기존 작업 시작으로 당김
+            autoAdjusted = true;
+          }
+        }
+      }
+
+      if (autoAdjusted) {
+        // 자동 조정 성공 시
+        alert("기존 작업과 시간이 겹쳐 자동으로 조정되었습니다.");
+        shouldConfirm = false;
+      } else {
+        // 자동 조정 불가하거나 심각한 겹침 시 사용자 확인
+        if (!window.confirm("입력하신 시간이 기존 작업과 겹칩니다.\n\n확인: 겹침을 허용하고 등록\n취소: 등록 취소")) {
+          setIsDragging(false);
+          setDragStartPercent(null);
+          setDragCurrentPercent(null);
+          setDragRowIndex(null);
+          return;
+        }
+        // 확인 시 shouldConfirm 통과 -> 겹침 허용 등록
+      }
+    }
+    // ---------------------------
+
+    setNewLogStart(clamped_start);
+    setNewLogEnd(clamped_end);
 
     // 기존 작업 행에 드래그한 경우: 해당 작업의 정보를 자동으로 채움
     if (dragRowIndex !== null && dragRowIndex < uniqueRows.length) {
@@ -468,8 +669,8 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!containerRef.current) return;
       const rect = containerRef.current.getBoundingClientRect();
-      const x = e.clientX - rect.left - LABEL_WIDTH;
-      const width = rect.width - LABEL_WIDTH;
+      const x = e.clientX - rect.left - LABEL_WIDTH - 16; // 패딩 16px 고려
+      const width = rect.width - LABEL_WIDTH - 32; // 양쪽 패딩 32px 고려
       const percent = Math.min(Math.max((x / width) * 100, 0), 100);
       setResizeCurrentPercent(percent);
     };
@@ -482,15 +683,35 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
         let new_start = resizeOriginalStart;
         let new_end = resizeOriginalEnd;
 
+        // 하루 범위 계산 (06:00 ~ 익일 06:00)
+        // 주의: useEffect 내부이므로 getBaseTime을 직접 호출하기보다 selectedDate 의존성을 활용
+        // 여기서는 클로저 내의 getBaseTime을 사용 (의존성 배열에 추가 필요)
+        const dayStart = getBaseTime();
+        const dayEnd = dayStart + 24 * 60 * 60 * 1000;
+
         if (resizeType === 'start') {
           new_start = resizeOriginalStart + delta_ms;
-          // 시작 시간이 종료 시간보다 늦어지지 않도록 (최소 5분 간격)
+          
+          // 1. 하루 범위 벗어나지 않도록 제한
+          new_start = Math.max(dayStart, new_start);
+          
+          // 스냅 적용
+          new_start = getSnappedTime(new_start, resizeLogId);
+
+          // 2. 시작 시간이 종료 시간보다 늦어지지 않도록 (최소 5분 간격)
           if (new_start >= new_end - 5 * 60 * 1000) {
             new_start = new_end - 5 * 60 * 1000;
           }
         } else {
           new_end = resizeOriginalEnd + delta_ms;
-          // 종료 시간이 시작 시간보다 빨라지지 않도록 (최소 5분 간격)
+          
+          // 1. 하루 범위 벗어나지 않도록 제한
+          new_end = Math.min(dayEnd, new_end);
+
+          // 스냅 적용
+          new_end = getSnappedTime(new_end, resizeLogId);
+
+          // 2. 종료 시간이 시작 시간보다 빨라지지 않도록 (최소 5분 간격)
           if (new_end <= new_start + 5 * 60 * 1000) {
             new_end = new_start + 5 * 60 * 1000;
           }
@@ -498,6 +719,64 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
 
         // 시간이 변경되었을 때만 업데이트
         if (new_start !== resizeOriginalStart || new_end !== resizeOriginalEnd) {
+          // --- 스마트 중복 처리 로직 (리사이즈) ---
+          const MINOR_OVERLAP_MS = 5 * 60 * 1000; // 5분
+          
+          // 겹치는 작업 찾기
+          const overlappingLogs = todayLogs.filter(log => {
+            if (log.id === resizeLogId) return false;
+            const logEnd = log.endTime || currentTimeRef.current;
+            return new_start < logEnd && new_end > log.startTime;
+          });
+
+          if (overlappingLogs.length > 0) {
+            let autoAdjusted = false;
+
+            // 겹치는 작업이 1개이고, 경미한 겹침인 경우 자동 조정 시도
+            if (overlappingLogs.length === 1) {
+              const target = overlappingLogs[0];
+              const targetEnd = target.endTime || currentTimeRef.current;
+              
+              const overlapStart = Math.max(new_start, target.startTime);
+              const overlapEnd = Math.min(new_end, targetEnd);
+              const overlapDuration = overlapEnd - overlapStart;
+              
+              const isContaining = (new_start <= target.startTime && new_end >= targetEnd);
+              const isContained = (new_start >= target.startTime && new_end <= targetEnd);
+
+              if (overlapDuration > 0 && overlapDuration <= MINOR_OVERLAP_MS && !isContaining && !isContained) {
+                // 리사이즈 방향에 따라 조정
+                if (resizeType === 'start') {
+                  // 시작 시간을 당기다가 앞 작업의 끝과 겹친 경우 -> 앞 작업 끝으로 조정
+                  if (new_start < targetEnd) {
+                    new_start = targetEnd;
+                    autoAdjusted = true;
+                  }
+                } else {
+                  // 종료 시간을 늘리다가 뒷 작업의 시작과 겹친 경우 -> 뒷 작업 시작으로 조정
+                  if (new_end > target.startTime) {
+                    new_end = target.startTime;
+                    autoAdjusted = true;
+                  }
+                }
+              }
+            }
+
+            if (autoAdjusted) {
+              alert("기존 작업과 시간이 겹쳐 자동으로 조정되었습니다.");
+            } else {
+              if (!window.confirm("입력하신 시간이 기존 작업과 겹칩니다.\n\n확인: 겹침을 허용하고 변경\n취소: 변경 취소")) {
+                setIsResizing(false);
+                setResizeLogId(null);
+                setResizeType(null);
+                setResizeStartPercent(null);
+                setResizeCurrentPercent(null);
+                return;
+              }
+            }
+          }
+          // ---------------------------
+
           updateLog(resizeLogId, {
             startTime: new_start,
             endTime: new_end
@@ -520,7 +799,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isResizing, resizeLogId, resizeType, resizeStartPercent, resizeCurrentPercent, resizeOriginalStart, resizeOriginalEnd, updateLog, totalMinutes]);
+  }, [isResizing, resizeLogId, resizeType, resizeStartPercent, resizeCurrentPercent, resizeOriginalStart, resizeOriginalEnd, updateLog, totalMinutes, getBaseTime, getSnappedTime, checkOverlap]);
 
   // 리사이즈 중인 아이템의 미리보기 계산
   const getResizePreview = useCallback((item: typeof chartItems[0]) => {
@@ -561,50 +840,104 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
     }
   }, [isResizing, resizeLogId, resizeStartPercent, resizeCurrentPercent, resizeType, chartItems]);
 
-  // 동적 툴팁 메시지 계산
-  const getTooltipMessage = () => {
-    if (hoverRowIndex !== null && hoverRowIndex < uniqueRows.length) {
-      const row = uniqueRows[hoverRowIndex];
-      return `빈 영역을 드래그하여 "${row.title}" 작업 세션을 추가하세요`;
+  // 컨텍스트 메뉴 핸들러
+  const handleContextMenu = (event: React.MouseEvent, log: TimerLog) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setContextMenu(
+      contextMenu === null
+        ? {
+            mouseX: event.clientX + 2,
+            mouseY: event.clientY - 6,
+            log: log,
+          }
+        : null,
+    );
+  };
+
+  const handleCloseContextMenu = () => {
+    setContextMenu(null);
+  };
+
+  // 작업 수정/삭제 핸들러
+  const handleEditTask = () => {
+    if (contextMenu?.log) {
+      openEditModal(contextMenu.log);
     }
-    return '빈 영역을 드래그하여 작업을 추가하세요';
+    handleCloseContextMenu();
+  };
+
+  const handleDeleteTask = () => {
+    if (contextMenu?.log) {
+      if (window.confirm('이 작업을 휴지통으로 이동하시겠습니까?')) {
+        deleteLog(contextMenu.log.id);
+      }
+    }
+    handleCloseContextMenu();
+  };
+
+  const openEditModal = (log: TimerLog) => {
+    setEditingLog(log);
+    setEditTitle(log.title);
+    setEditBoardNo(log.boardNo || '');
+    setEditCategory(log.category || null);
+  };
+
+  const handleEditSave = () => {
+    if (editingLog && editTitle.trim()) {
+      updateLog(editingLog.id, {
+        title: editTitle,
+        boardNo: editBoardNo,
+        category: editCategory || undefined
+      });
+      handleEditClose();
+    }
+  };
+
+  const handleEditClose = () => {
+    setEditingLog(null);
+    setEditTitle('');
+    setEditBoardNo('');
+    setEditCategory(null);
   };
 
   return (
-    <Paper variant="outlined" sx={{ p: 2, overflowX: 'auto', userSelect: 'none' }}>
-      <Tooltip
-        title={getTooltipMessage()}
-        placement="top"
-        followCursor
-        enterDelay={800}
-        disableHoverListener={isHoveringBar || isDragging}
+    <Paper variant="outlined" sx={{ p: 2, overflowX: 'auto', userSelect: 'none', bgcolor: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
+      {/* 툴팁 제거: Box로 대체 */}
+      <Box
+        ref={containerRef}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={() => {
+          handleMouseUp();
+          setIsHoveringBar(false);
+        }}
+        sx={{
+          position: 'relative',
+          height: chart_height,
+          minWidth: 800,
+          cursor: 'crosshair',
+          bgcolor: 'var(--bg-secondary)', // 드래그 영역 배경
+          px: 2 // 좌우 패딩 추가 (라벨 잘림 방지)
+        }}
       >
-        <Box
-          ref={containerRef}
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={() => {
-            handleMouseUp();
-            setHoverRowIndex(null);
-          }}
-          sx={{
-            position: 'relative',
-            height: chart_height,
-            minWidth: 800,
-            cursor: 'crosshair',
-          }}
-        >
-          {/* 시간축 헤더 */}
-          <Box sx={{
-            position: 'absolute',
-            top: 0,
-            left: LABEL_WIDTH,
-            right: 0,
-            height: HEADER_HEIGHT,
-            borderBottom: '1px solid #eaeaea'
-          }}>
-            {timeLabels.map((item, index) => (
+        {/* 시간축 헤더 */}
+        <Box sx={{
+          position: 'absolute',
+          top: 0,
+          left: LABEL_WIDTH + 16, // 패딩(16px) 고려
+          right: 16, // 패딩(16px) 고려
+          height: HEADER_HEIGHT,
+          borderBottom: '1px solid var(--border-color)'
+        }}>
+          {timeLabels.map((item, index) => {
+            // 라벨 위치에 따라 정렬 조정 (양끝 잘림 방지)
+            let transform = 'translateX(-50%)';
+            if (item.left_percent < 2) transform = 'translateX(0)'; // 왼쪽 끝
+            else if (item.left_percent > 98) transform = 'translateX(-100%)'; // 오른쪽 끝
+
+            return (
               <Typography
                 key={index}
                 variant="caption"
@@ -612,271 +945,346 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
                   position: 'absolute',
                   left: `${item.left_percent}%`,
                   top: 4,
-                  transform: 'translateX(-50%)',
-                  color: 'text.secondary',
+                  transform: transform,
+                  color: 'var(--text-secondary)',
                   fontSize: '0.7rem',
                   whiteSpace: 'nowrap'
                 }}
               >
                 {item.label}
               </Typography>
-            ))}
-          </Box>
-
-          {/* 세로 그리드 라인 */}
-          {timeLabels.map((item, index) => (
-            <Box
-              key={index}
-              sx={{
-                position: 'absolute',
-                left: `calc(${LABEL_WIDTH}px + ${item.left_percent}% * (100% - ${LABEL_WIDTH}px) / 100%)`,
-                top: HEADER_HEIGHT,
-                bottom: 0,
-                borderLeft: '1px dashed #f0f0f0',
-                zIndex: 0,
-                pointerEvents: 'none'
-              }}
-            />
-          ))}
-
-          {/* 작업 행들 - 제목별로 그룹화 */}
-          {uniqueRows.map((row, row_index) => {
-            // 해당 행에 속하는 모든 막대들
-            const row_items = chartItems.filter(item => item.row_index === row_index);
-            const has_running = row_items.some(item => item.status === 'RUNNING');
-
-            return (
-              <Box
-                key={row.title}
-                sx={{
-                  position: 'absolute',
-                  top: HEADER_HEIGHT + row_index * (ROW_HEIGHT + ROW_GAP),
-                  left: 0,
-                  right: 0,
-                  height: ROW_HEIGHT,
-                  display: 'flex',
-                  alignItems: 'center'
-                }}
-              >
-                {/* 왼쪽 작업명 라벨 */}
-                <Box sx={{
-                  width: LABEL_WIDTH,
-                  px: 1,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 0.5,
-                  overflow: 'hidden'
-                }}>
-                  {row.boardNo && (
-                    <Chip
-                      label={`#${row.boardNo}`}
-                      size="small"
-                      sx={{
-                        height: 18,
-                        fontSize: '0.6rem',
-                        bgcolor: row.color,
-                        color: '#fff',
-                        '& .MuiChip-label': { px: 0.5 }
-                      }}
-                    />
-                  )}
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                      fontWeight: has_running ? 600 : 400,
-                      color: has_running ? 'primary.main' : 'text.primary'
-                    }}
-                    title={row.title}
-                  >
-                    {row.title}
-                  </Typography>
-                </Box>
-
-                {/* 오른쪽 타임라인 영역 */}
-                <Box sx={{
-                  flex: 1,
-                  position: 'relative',
-                  height: '100%'
-                }}>
-                  {/* 해당 행의 모든 작업 막대들 */}
-                  {row_items.map((item) => {
-                    const preview = getResizePreview(item);
-                    const is_resizing_this = isResizing && resizeLogId === item.id;
-                    const is_completed = item.status === 'COMPLETED';
-                    
-                    return (
-                      <Tooltip
-                        key={item.id}
-                        title={
-                          <Box sx={{ textAlign: 'center' }}>
-                            <Typography variant="subtitle2">{item.title}</Typography>
-                            {item.category && (
-                              <Typography variant="caption" display="block" sx={{ color: 'rgba(255,255,255,0.8)' }}>
-                                {item.category}
-                              </Typography>
-                            )}
-                            <Typography variant="caption" display="block">
-                              {formatTimeRange(item.startTime, item.endTime)}
-                            </Typography>
-                            <Typography variant="caption">
-                              {formatDuration((item.endTime ? item.endTime - item.startTime : currentTime - item.startTime) / 1000)}
-                            </Typography>
-                            {is_completed && (
-                              <Typography variant="caption" display="block" sx={{ mt: 0.5, color: 'rgba(255,255,255,0.6)' }}>
-                                양 끝을 드래그하여 시간 수정
-                              </Typography>
-                            )}
-                          </Box>
-                        }
-                        arrow
-                        disableHoverListener={is_resizing_this}
-                      >
-                        <Box
-                          onMouseDown={(e) => e.stopPropagation()}
-                          onMouseEnter={() => setIsHoveringBar(true)}
-                          onMouseLeave={() => !isResizing && setIsHoveringBar(false)}
-                          sx={{
-                            position: 'absolute',
-                            left: `${preview.left_percent}%`,
-                            width: `${preview.width_percent}%`,
-                            top: 4,
-                            bottom: 4,
-                            bgcolor: item.color,
-                            opacity: item.status === 'RUNNING' ? 1 : (is_resizing_this ? 0.9 : 0.85),
-                            borderRadius: 0.5,
-                            cursor: is_completed ? 'default' : 'pointer',
-                            zIndex: is_resizing_this ? 10 : 1,
-                            boxShadow: item.status === 'RUNNING' ? '0 0 8px rgba(0,0,0,0.3)' : (is_resizing_this ? '0 0 12px rgba(0,0,0,0.4)' : 'none'),
-                            transition: is_resizing_this ? 'none' : 'all 0.15s',
-                            '&:hover': {
-                              opacity: 1,
-                              transform: is_resizing_this ? 'none' : 'scaleY(1.15)',
-                              zIndex: 2,
-                            }
-                          }}
-                        >
-                          {/* 완료된 작업에만 리사이즈 핸들 표시 */}
-                          {is_completed && (
-                            <>
-                              {/* 왼쪽 리사이즈 핸들 (시작 시간) */}
-                              <Box
-                                onMouseDown={(e) => handleResizeStart(e, item.id, 'start', item.startTime, item.endTime)}
-                                sx={{
-                                  position: 'absolute',
-                                  left: 0,
-                                  top: 0,
-                                  bottom: 0,
-                                  width: RESIZE_HANDLE_WIDTH,
-                                  cursor: 'ew-resize',
-                                  borderRadius: '4px 0 0 4px',
-                                  bgcolor: 'transparent',
-                                  transition: 'background-color 0.15s',
-                                  '&:hover': {
-                                    bgcolor: 'rgba(255,255,255,0.3)',
-                                  },
-                                  '&::after': {
-                                    content: '""',
-                                    position: 'absolute',
-                                    left: 2,
-                                    top: '50%',
-                                    transform: 'translateY(-50%)',
-                                    width: 2,
-                                    height: 12,
-                                    bgcolor: 'rgba(255,255,255,0.5)',
-                                    borderRadius: 1,
-                                  }
-                                }}
-                              />
-                              {/* 오른쪽 리사이즈 핸들 (종료 시간) */}
-                              <Box
-                                onMouseDown={(e) => handleResizeStart(e, item.id, 'end', item.startTime, item.endTime)}
-                                sx={{
-                                  position: 'absolute',
-                                  right: 0,
-                                  top: 0,
-                                  bottom: 0,
-                                  width: RESIZE_HANDLE_WIDTH,
-                                  cursor: 'ew-resize',
-                                  borderRadius: '0 4px 4px 0',
-                                  bgcolor: 'transparent',
-                                  transition: 'background-color 0.15s',
-                                  '&:hover': {
-                                    bgcolor: 'rgba(255,255,255,0.3)',
-                                  },
-                                  '&::after': {
-                                    content: '""',
-                                    position: 'absolute',
-                                    right: 2,
-                                    top: '50%',
-                                    transform: 'translateY(-50%)',
-                                    width: 2,
-                                    height: 12,
-                                    bgcolor: 'rgba(255,255,255,0.5)',
-                                    borderRadius: 1,
-                                  }
-                                }}
-                              />
-                            </>
-                          )}
-                        </Box>
-                      </Tooltip>
-                    );
-                  })}
-                </Box>
-              </Box>
             );
           })}
+        </Box>
 
+        {/* 세로 그리드 라인 */}
+        {timeLabels.map((item, index) => (
+          <Box
+            key={index}
+            sx={{
+              position: 'absolute',
+              left: `calc(${LABEL_WIDTH + 16}px + ${item.left_percent}% * (100% - ${LABEL_WIDTH + 32}px) / 100%)`, // 패딩 고려한 위치 계산
+              top: HEADER_HEIGHT,
+              bottom: 0,
+              borderLeft: '1px dashed var(--border-color)',
+              zIndex: 0,
+              pointerEvents: 'none'
+            }}
+          />
+        ))}
 
-          {/* 드래그 중인 영역 표시 */}
-          {isDragging && dragStartPercent !== null && dragCurrentPercent !== null && dragRowIndex !== null && (
-            <Box
-              sx={{
-                position: 'absolute',
-                left: `calc(${LABEL_WIDTH}px + ${Math.min(dragStartPercent, dragCurrentPercent)}% * (100% - ${LABEL_WIDTH}px) / 100%)`,
-                width: `calc(${Math.abs(dragCurrentPercent - dragStartPercent)}% * (100% - ${LABEL_WIDTH}px) / 100%)`,
-                top: HEADER_HEIGHT + Math.min(dragRowIndex, uniqueRows.length) * (ROW_HEIGHT + ROW_GAP) + 4,
-                height: ROW_HEIGHT - 8,
-                bgcolor: 'rgba(0, 0, 0, 0.15)',
-                border: '2px dashed #000',
+        {/* 점심시간 표시 영역 */}
+        {lunchTimeStyle && (
+          <Box
+            sx={{
+              position: 'absolute',
+              left: `calc(${LABEL_WIDTH + 16}px + ${lunchTimeStyle.leftPercent}% * (100% - ${LABEL_WIDTH + 32}px) / 100%)`,
+              width: `calc(${lunchTimeStyle.widthPercent}% * (100% - ${LABEL_WIDTH + 32}px) / 100%)`,
+              top: HEADER_HEIGHT,
+              bottom: 0,
+              backgroundImage: 'repeating-linear-gradient(45deg, var(--bg-tertiary), var(--bg-tertiary) 10px, var(--bg-secondary) 10px, var(--bg-secondary) 20px)',
+              borderLeft: '1px solid var(--border-color)',
+              borderRight: '1px solid var(--border-color)',
+              zIndex: 0,
+              pointerEvents: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              opacity: 0.7
+            }}
+          >
+            <Typography 
+              variant="caption" 
+              sx={{ 
+                color: 'var(--text-secondary)', 
+                fontWeight: 600,
+                bgcolor: 'var(--bg-secondary)',
+                px: 0.5,
                 borderRadius: 0.5,
-                zIndex: 10,
-                pointerEvents: 'none'
-              }}
-            />
-          )}
-
-          {/* 현재 시간 표시 라인 (오늘만 표시) */}
-          {isToday && (
-            <Box
-              sx={{
-                position: 'absolute',
-                left: `calc(${LABEL_WIDTH}px + ${current_time_percent}% * (100% - ${LABEL_WIDTH}px) / 100%)`,
-                top: 0,
-                bottom: 0,
-                borderLeft: '2px solid #ef4444',
-                zIndex: 5,
-                pointerEvents: 'none'
+                fontSize: '0.7rem',
+                opacity: 0.8
               }}
             >
-              <Box
-                sx={{
-                  position: 'absolute',
-                  top: HEADER_HEIGHT - 6,
-                  left: -5,
-                  width: 10,
-                  height: 10,
-                  borderRadius: '50%',
-                  bgcolor: '#ef4444'
-                }}
-              />
+              점심시간
+            </Typography>
+          </Box>
+        )}
+
+        {/* 작업 행들 - 제목별로 그룹화 */}
+        {uniqueRows.map((row, row_index) => {
+          // 해당 행에 속하는 모든 막대들
+          const row_items = chartItems.filter(item => item.row_index === row_index);
+          const has_running = row_items.some(item => item.status === 'RUNNING');
+
+          return (
+            <Box
+              key={row.title}
+              sx={{
+                position: 'absolute',
+                top: HEADER_HEIGHT + row_index * (ROW_HEIGHT + ROW_GAP),
+                left: 16, // 패딩
+                right: 16, // 패딩
+                height: ROW_HEIGHT,
+                display: 'flex',
+                alignItems: 'center'
+              }}
+            >
+              {/* 왼쪽 작업명 라벨 */}
+              <Box sx={{
+                width: LABEL_WIDTH,
+                px: 1,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 0.5,
+                overflow: 'hidden'
+              }}>
+                {row.boardNo && (
+                  <Chip
+                    label={`#${row.boardNo}`}
+                    size="small"
+                    sx={{
+                      height: 18,
+                      fontSize: '0.6rem',
+                      bgcolor: row.color,
+                      color: '#fff', // 칩 텍스트는 항상 흰색 유지 (배경색이 진한 편이므로)
+                      '& .MuiChip-label': { px: 0.5 }
+                    }}
+                  />
+                )}
+                <Typography
+                  variant="caption"
+                  sx={{
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    fontWeight: has_running ? 600 : 400,
+                    color: has_running ? 'var(--primary-color)' : 'var(--text-primary)'
+                  }}
+                  title={row.title}
+                >
+                  {row.title}
+                </Typography>
+              </Box>
+
+              {/* 오른쪽 타임라인 영역 */}
+              <Box sx={{
+                flex: 1,
+                position: 'relative',
+                height: '100%'
+              }}>
+                {/* 해당 행의 모든 작업 막대들 */}
+                {row_items.map((item) => {
+                  const preview = getResizePreview(item);
+                  const is_resizing_this = isResizing && resizeLogId === item.id;
+                  const is_completed = item.status === 'COMPLETED';
+                  
+                  const is_context_menu_open = contextMenu !== null;
+                  
+                  return (
+                    <Tooltip
+                      key={item.id}
+                      title={
+                        is_context_menu_open ? "" : (
+                        <Box sx={{ textAlign: 'center' }}>
+                          <Typography variant="subtitle2" sx={{ color: '#fff' }}>{item.title}</Typography>
+                          {item.category && (
+                            <Typography variant="caption" display="block" sx={{ color: 'rgba(255,255,255,0.8)' }}>
+                              {item.category}
+                            </Typography>
+                          )}
+                          <Typography variant="caption" display="block" sx={{ color: '#fff' }}>
+                            {formatTimeRange(item.startTime, item.endTime)}
+                          </Typography>
+                          <Typography variant="caption" sx={{ color: '#fff' }}>
+                            {formatDuration((item.endTime ? item.endTime - item.startTime : currentTime - item.startTime) / 1000)}
+                          </Typography>
+                          <Typography variant="caption" display="block" sx={{ mt: 0.5, color: 'rgba(255,255,255,0.6)' }}>
+                            우클릭: 메뉴 / 더블클릭: 수정
+                            {is_completed && ' / 양끝: 크기 조절'}
+                          </Typography>
+                        </Box>
+                        )
+                      }
+                      arrow
+                      // 컨텍스트 메뉴가 열려있으면 강제로 닫음 (false), 그 외엔 호버 동작 (undefined)
+                      open={is_context_menu_open ? false : undefined}
+                      disableHoverListener={is_resizing_this || is_context_menu_open}
+                    >
+                      <Box
+                        onMouseDown={(e) => {
+                          e.stopPropagation();
+                          // 우클릭은 onContextMenu에서 처리
+                        }}
+                        onContextMenu={(e) => handleContextMenu(e, item)}
+                        onDoubleClick={(e) => {
+                          e.stopPropagation();
+                          openEditModal(item);
+                        }}
+                        onMouseEnter={() => setIsHoveringBar(true)}
+                        onMouseLeave={() => !isResizing && setIsHoveringBar(false)}
+                        sx={{
+                          position: 'absolute',
+                          left: `${preview.left_percent}%`,
+                          width: `${preview.width_percent}%`,
+                          top: 4,
+                          bottom: 4,
+                          bgcolor: item.color,
+                          opacity: item.status === 'RUNNING' ? 1 : (is_resizing_this ? 0.9 : 0.85),
+                          borderRadius: 0.5,
+                          cursor: 'pointer',
+                          zIndex: is_resizing_this ? 10 : 1,
+                          boxShadow: item.status === 'RUNNING' ? '0 0 8px rgba(0,0,0,0.3)' : (is_resizing_this ? '0 0 12px rgba(0,0,0,0.4)' : 'none'),
+                          transition: is_resizing_this ? 'none' : 'all 0.15s',
+                          '&:hover': {
+                            opacity: 1,
+                            transform: is_resizing_this ? 'none' : 'scaleY(1.15)',
+                            zIndex: 2,
+                          }
+                        }}
+                      >
+                        {/* 완료된 작업에만 리사이즈 핸들 표시 */}
+                        {is_completed && (
+                          <>
+                            {/* 왼쪽 리사이즈 핸들 (시작 시간) */}
+                            <Box
+                              onMouseDown={(e) => handleResizeStart(e, item.id, 'start', item.startTime, item.endTime)}
+                              sx={{
+                                position: 'absolute',
+                                left: 0,
+                                top: 0,
+                                bottom: 0,
+                                width: RESIZE_HANDLE_WIDTH,
+                                cursor: 'ew-resize',
+                                borderRadius: '4px 0 0 4px',
+                                bgcolor: 'transparent',
+                                transition: 'background-color 0.15s',
+                                '&:hover': {
+                                  bgcolor: 'rgba(255,255,255,0.3)',
+                                },
+                                '&::after': {
+                                  content: '""',
+                                  position: 'absolute',
+                                  left: 2,
+                                  top: '50%',
+                                  transform: 'translateY(-50%)',
+                                  width: 2,
+                                  height: 12,
+                                  bgcolor: 'rgba(255,255,255,0.5)',
+                                  borderRadius: 1,
+                                }
+                              }}
+                            />
+                            {/* 오른쪽 리사이즈 핸들 (종료 시간) */}
+                            <Box
+                              onMouseDown={(e) => handleResizeStart(e, item.id, 'end', item.startTime, item.endTime)}
+                              sx={{
+                                position: 'absolute',
+                                right: 0,
+                                top: 0,
+                                bottom: 0,
+                                width: RESIZE_HANDLE_WIDTH,
+                                cursor: 'ew-resize',
+                                borderRadius: '0 4px 4px 0',
+                                bgcolor: 'transparent',
+                                transition: 'background-color 0.15s',
+                                '&:hover': {
+                                  bgcolor: 'rgba(255,255,255,0.3)',
+                                },
+                                '&::after': {
+                                  content: '""',
+                                  position: 'absolute',
+                                  right: 2,
+                                  top: '50%',
+                                  transform: 'translateY(-50%)',
+                                  width: 2,
+                                  height: 12,
+                                  bgcolor: 'rgba(255,255,255,0.5)',
+                                  borderRadius: 1,
+                                }
+                              }}
+                            />
+                          </>
+                        )}
+                      </Box>
+                    </Tooltip>
+                  );
+                })}
+              </Box>
             </Box>
-          )}
-        </Box>
-      </Tooltip>
+          );
+        })}
+
+
+        {/* 드래그 중인 영역 표시 */}
+        {isDragging && dragStartPercent !== null && dragCurrentPercent !== null && dragRowIndex !== null && (
+          <Box
+            sx={{
+              position: 'absolute',
+              left: `calc(${LABEL_WIDTH + 16}px + ${Math.min(dragStartPercent, dragCurrentPercent)}% * (100% - ${LABEL_WIDTH + 32}px) / 100%)`,
+              width: `calc(${Math.abs(dragCurrentPercent - dragStartPercent)}% * (100% - ${LABEL_WIDTH + 32}px) / 100%)`,
+              top: HEADER_HEIGHT + Math.min(dragRowIndex, uniqueRows.length) * (ROW_HEIGHT + ROW_GAP) + 4,
+              height: ROW_HEIGHT - 8,
+              bgcolor: 'var(--highlight-light)', // 하이라이트 배경
+              border: '2px dashed var(--text-primary)', // 점선 테두리
+              borderRadius: 0.5,
+              zIndex: 10,
+              pointerEvents: 'none'
+            }}
+          />
+        )}
+
+        {/* 현재 시간 표시 라인 (오늘만 표시) */}
+        {isToday && (
+          <Box
+            sx={{
+              position: 'absolute',
+              left: `calc(${LABEL_WIDTH + 16}px + ${current_time_percent}% * (100% - ${LABEL_WIDTH + 32}px) / 100%)`,
+              top: 0,
+              bottom: 0,
+              borderLeft: '2px solid var(--error-color)',
+              zIndex: 5,
+              pointerEvents: 'none'
+            }}
+          >
+            <Box
+              sx={{
+                position: 'absolute',
+                top: HEADER_HEIGHT - 6,
+                left: -5,
+                width: 10,
+                height: 10,
+                borderRadius: '50%',
+                bgcolor: 'var(--error-color)'
+              }}
+            />
+          </Box>
+        )}
+      </Box>
+
+      {/* 우클릭 메뉴 */}
+      <Menu
+        open={contextMenu !== null}
+        onClose={handleCloseContextMenu}
+        anchorReference="anchorPosition"
+        anchorPosition={
+          contextMenu !== null
+            ? { top: contextMenu.mouseY, left: contextMenu.mouseX }
+            : undefined
+        }
+      >
+        <MenuItem onClick={handleEditTask}>
+          <ListItemIcon>
+            <EditIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>수정</ListItemText>
+        </MenuItem>
+        <MenuItem onClick={handleDeleteTask}>
+          <ListItemIcon>
+            <DeleteIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>삭제</ListItemText>
+        </MenuItem>
+      </Menu>
 
       {/* 수동 입력 모달 */}
       <Dialog 
@@ -901,7 +1309,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
             </Typography>
             {isAddingSession ? (
               // 기존 작업에 세션 추가: 제목 표시 + 다른 작업으로 변경 옵션
-              <Box sx={{ p: 2, bgcolor: '#f5f5f5', borderRadius: 1 }}>
+              <Box sx={{ p: 2, bgcolor: 'var(--bg-hover)', borderRadius: 1 }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <Box>
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
@@ -930,7 +1338,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
                       <Chip label={`#${newBoardNo}`} size="small" variant="outlined" />
                     )}
                     {newCategory && (
-                      <Chip label={newCategory} size="small" sx={{ bgcolor: '#f0f0f0' }} />
+                      <Chip label={newCategory} size="small" sx={{ bgcolor: 'var(--bg-secondary)' }} />
                     )}
                   </Box>
                 )}
@@ -969,6 +1377,52 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
           <Button onClick={handleCreateSave} variant="contained" color="primary">
             {isAddingSession ? '세션 추가(Enter)' : '저장(Enter)'}
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 수정 다이얼로그 */}
+      <Dialog 
+        open={!!editingLog} 
+        onClose={handleEditClose} 
+        maxWidth="sm" 
+        fullWidth
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && !e.shiftKey && editTitle.trim()) {
+            e.preventDefault();
+            handleEditSave();
+          }
+        }}
+      >
+        <DialogTitle>업무 기록 수정</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+            <TextField
+              label="업무 제목"
+              fullWidth
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              autoFocus
+            />
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <TextField
+                label="게시판 번호"
+                value={editBoardNo}
+                onChange={(e) => setEditBoardNo(e.target.value)}
+                sx={{ flex: 1 }}
+              />
+              <Autocomplete
+                options={CATEGORIES}
+                value={editCategory}
+                onChange={(_e, newValue) => setEditCategory(newValue)}
+                renderInput={(params) => <TextField {...params} label="카테고리" />}
+                sx={{ flex: 1 }}
+              />
+            </Box>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleEditClose}>취소</Button>
+          <Button onClick={handleEditSave} variant="contained" color="primary">저장(Enter)</Button>
         </DialogActions>
       </Dialog>
     </Paper>

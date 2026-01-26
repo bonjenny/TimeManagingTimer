@@ -41,10 +41,11 @@ const ActiveTimer: React.FC = () => {
       sx={{ 
         p: 3, 
         border: '1px solid',
-        borderColor: 'primary.main',
-        bgcolor: isRunning ? 'background.paper' : '#fafafa',
+        borderColor: isRunning ? 'primary.main' : 'var(--border-color)',
+        bgcolor: 'var(--card-bg)',
         position: 'relative',
-        overflow: 'hidden'
+        overflow: 'hidden',
+        transition: 'background-color 0.3s ease, border-color 0.3s ease'
       }}
     >
       {/* 상태 표시줄 (좌측 라인) */}
@@ -70,7 +71,11 @@ const ActiveTimer: React.FC = () => {
               variant="outlined"
             />
             {activeTimer.category && (
-              <Chip label={activeTimer.category} size="small" sx={{ bgcolor: '#f0f0f0' }} />
+              <Chip 
+                label={activeTimer.category} 
+                size="small" 
+                sx={{ bgcolor: 'var(--bg-hover)', color: 'var(--text-secondary)' }} 
+              />
             )}
             {activeTimer.boardNo && (
               <Typography variant="caption" color="text.secondary">
@@ -119,7 +124,8 @@ const ActiveTimer: React.FC = () => {
                 maxWidth: showSeconds ? '100px' : 0,
                 overflow: 'hidden',
                 transition: 'opacity 0.5s ease-out, max-width 0.3s ease-out',
-                whiteSpace: 'nowrap'
+                whiteSpace: 'nowrap',
+                color: 'text.secondary'
               }}
             >
               :{String(elapsedSeconds % 60).padStart(2, '0')}
@@ -138,44 +144,35 @@ const ActiveTimer: React.FC = () => {
         </Box>
 
         {/* 컨트롤 버튼 */}
-        <Box sx={{ display: 'flex', gap: 1, mt: { xs: 2, md: 0 } }}>
-          {isRunning ? (
-            <Button 
-              variant="outlined" 
-              color="inherit" 
-              startIcon={<PauseIcon />} 
-              onClick={pauseTimer}
-              sx={{ minWidth: 100 }}
-            >
-              일시정지
-            </Button>
-          ) : (
-            <Button 
-              variant="contained" 
-              color="primary" 
-              startIcon={<PlayArrowIcon />} 
-              onClick={resumeTimer}
-              sx={{ minWidth: 100 }}
-            >
-              재개
-            </Button>
-          )}
+        <Box sx={{ display: 'flex', gap: 1, mt: { xs: 2, md: 0 }, alignItems: 'center' }}>
+          <IconButton 
+            onClick={isRunning ? pauseTimer : resumeTimer}
+            color="primary"
+            sx={{ 
+              width: 40, 
+              height: 40, 
+              border: '1px solid',
+              borderColor: isRunning ? 'primary.main' : 'divider',
+              bgcolor: isRunning ? 'var(--bg-hover)' : 'transparent'
+            }}
+          >
+            {isRunning ? <PauseIcon /> : <PlayArrowIcon />}
+          </IconButton>
           
           <Button 
             variant="contained" 
-            color="success" // 테마에 success가 없으면 main theme color 따라감. success 추가 필요할수도.
             startIcon={<CheckIcon />} 
             onClick={completeTimer}
             sx={{ 
-                bgcolor: '#000', 
-                color: '#fff', 
-                '&:hover': { bgcolor: '#333' } 
+                bgcolor: 'var(--primary-color)', 
+                color: 'var(--bg-primary)', // 텍스트 색상 반전 (검정 배경엔 흰 글씨, 흰 배경엔 검정 글씨)
+                '&:hover': { bgcolor: 'var(--accent-color)' } 
             }}
           >
             완료
           </Button>
 
-          <IconButton onClick={stopTimer} color="default" title="삭제(중단)">
+          <IconButton onClick={stopTimer} sx={{ color: 'text.secondary' }} title="삭제(중단)">
             <StopIcon />
           </IconButton>
         </Box>

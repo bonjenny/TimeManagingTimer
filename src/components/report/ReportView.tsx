@@ -326,8 +326,8 @@ const ReportView: React.FC = () => {
                 px: 2,
                 py: 0.5,
                 borderRadius: 1,
-                bgcolor: week_offset === 0 ? '#000' : '#f5f5f5',
-                color: week_offset === 0 ? '#fff' : 'text.primary',
+                bgcolor: week_offset === 0 ? 'var(--primary-color)' : 'var(--bg-tertiary)',
+                color: week_offset === 0 ? 'var(--bg-primary)' : 'text.primary',
                 minWidth: 200,
                 textAlign: 'center',
               }}
@@ -402,7 +402,7 @@ const ReportView: React.FC = () => {
       </Menu>
 
       {/* 요약 카드 */}
-      <Paper elevation={0} sx={{ p: 3, mb: 4, bgcolor: '#f8f9fa', border: '1px solid #eaeaea', textAlign: 'center' }}>
+      <Paper elevation={0} sx={{ p: 3, mb: 4, bgcolor: 'var(--bg-secondary)', border: '1px solid var(--border-color)', textAlign: 'center' }}>
         <Typography variant="body2" color="text.secondary" gutterBottom>
           총 업무 시간
         </Typography>
@@ -419,7 +419,7 @@ const ReportView: React.FC = () => {
       <TableContainer component={Paper} variant="outlined">
         <Table sx={{ minWidth: 650 }}>
           <TableHead>
-            <TableRow sx={{ bgcolor: '#fafafa' }}>
+            <TableRow sx={{ bgcolor: 'var(--bg-tertiary)' }}>
               <TableCell sx={{ fontWeight: 600 }}>게시판 번호</TableCell>
               <TableCell align="center" sx={{ fontWeight: 600 }}>업무 개수</TableCell>
               <TableCell align="right" sx={{ fontWeight: 600 }}>총 소요 시간</TableCell>

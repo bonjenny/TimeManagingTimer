@@ -50,17 +50,25 @@
         --info-color: #3b82f6;
       }
 
-      /* 다크 모드 (선택적) */
+      /* 다크 모드 (개선된 명암비) */
       [data-theme="dark"] {
-        --primary-color: #ffffff;
-        --accent-color: #3b82f6;
-        --text-primary: #ffffff;
-        --text-secondary: #a0a0a0;
-        --bg-primary: #0a0a0a;
-        --bg-secondary: #171717;
-        --header-bg: #171717;
-        --card-bg: #1a1a1a;
-        --border-color: #2e2e2e;
+        --primary-color: #e0e0e0; /* 완전 흰색 대신 밝은 회색 (눈부심 방지) */
+        --accent-color: #60a5fa; /* 더 밝은 파랑으로 가독성 확보 */
+        --text-primary: #f3f4f6; /* 완전 흰색보다 눈이 편한 밝은 회색 (Gray 100) */
+        --text-secondary: #9ca3af; /* 중간 회색 (Gray 400) */
+        --bg-primary: #121212;   /* 깊은 검정 (Material Dark Background) */
+        --bg-secondary: #1E1E1E; /* 카드 배경 (Surface) */
+        --header-bg: #1E1E1E;    /* 헤더 배경 */
+        --card-bg: #1E1E1E;      /* 카드/패널 배경 */
+        --border-color: #333333; /* 어두운 보더 색상 */
+        
+        --bg-hover: #2C2C2C; /* 조금 더 밝은 회색 */
+        --bg-tertiary: #252525; /* 섹션 헤더용 중간 톤 배경 */
+        --bg-selected: #333333; /* 선택된 항목 */
+        --border-focus: #e0e0e0; /* 포커스 테두리 (밝은 회색) */
+        --highlight-color: #2563eb;
+        --highlight-light: rgba(37, 99, 235, 0.2);
+        --highlight-hover: #1d4ed8;
       }
 
       /* 테마 프리셋 색상 */

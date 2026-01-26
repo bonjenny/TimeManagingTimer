@@ -93,9 +93,9 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ open, onClose }) => {
               ml: 'auto',
               px: 1,
               py: 0.5,
-              bgcolor: '#f5f5f5',
+              bgcolor: 'var(--bg-tertiary)',
               borderRadius: 1,
-              color: 'text.secondary',
+              color: 'var(--text-secondary)',
             }}
           >
             F8

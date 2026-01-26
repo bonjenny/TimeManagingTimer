@@ -324,8 +324,8 @@ const FeedbackBoard: React.FC = () => {
         sx={{
           p: 3,
           mb: 3,
-          bgcolor: '#f8f9fa',
-          borderColor: 'var(--border-color, #eaeaea)',
+          bgcolor: 'var(--bg-tertiary)', // 헤더 영역 구분감을 위해 tertiary 사용
+          borderColor: 'var(--border-color)',
         }}
       >
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -341,14 +341,14 @@ const FeedbackBoard: React.FC = () => {
             variant="contained"
             startIcon={<AddIcon />}
             onClick={handleWriteClick}
-            sx={{ bgcolor: '#000', '&:hover': { bgcolor: '#333' } }}
+            sx={{ bgcolor: 'var(--primary-color)', color: 'var(--bg-primary)', '&:hover': { bgcolor: 'var(--accent-color)' } }}
           >
             글쓰기
           </Button>
         </Box>
       </Paper>
 
-      <Paper variant="outlined" sx={{ borderColor: 'var(--border-color, #eaeaea)' }}>
+      <Paper variant="outlined" sx={{ borderColor: 'var(--border-color)' }}>
         {sorted_posts.length === 0 ? (
           <Box sx={{ p: 6, textAlign: 'center', color: 'text.secondary' }}>
             <Typography variant="body1" sx={{ mb: 1 }}>
@@ -411,7 +411,7 @@ const FeedbackBoard: React.FC = () => {
           </Button>
         </Box>
 
-        <Paper variant="outlined" sx={{ p: 3, borderColor: 'var(--border-color, #eaeaea)', mb: 3 }}>
+        <Paper variant="outlined" sx={{ p: 3, borderColor: 'var(--border-color)', mb: 3 }}>
           {/* 헤더 */}
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
             <Box>
@@ -508,7 +508,7 @@ const FeedbackBoard: React.FC = () => {
           </Paper>
 
           {/* 댓글 작성 폼 */}
-          <Paper variant="outlined" sx={{ p: 2, borderColor: 'var(--border-color, #eaeaea)', bgcolor: '#f9fafb' }}>
+          <Paper variant="outlined" sx={{ p: 2, borderColor: 'var(--border-color)', bgcolor: 'var(--bg-tertiary)' }}>
             <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
               <TextField
                 size="small"
@@ -535,14 +535,14 @@ const FeedbackBoard: React.FC = () => {
               placeholder="댓글을 입력하세요..."
               value={comment_content}
               onChange={(e) => setCommentContent(e.target.value)}
-              sx={{ mb: 2, bgcolor: '#fff' }}
+              sx={{ mb: 2, bgcolor: 'background.paper' }}
             />
             <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
               <Button
                 variant="contained"
                 onClick={handleCommentSubmit}
                 disabled={!comment_content.trim() || !comment_password.trim()}
-                sx={{ bgcolor: '#000', '&:hover': { bgcolor: '#333' } }}
+                sx={{ bgcolor: 'var(--primary-color)', color: 'var(--bg-primary)', '&:hover': { bgcolor: 'var(--accent-color)' } }}
               >
                 댓글 등록
               </Button>
@@ -562,7 +562,7 @@ const FeedbackBoard: React.FC = () => {
         </Button>
       </Box>
 
-      <Paper variant="outlined" sx={{ p: 3, borderColor: 'var(--border-color, #eaeaea)' }}>
+      <Paper variant="outlined" sx={{ p: 3, borderColor: 'var(--border-color)' }}>
         <Typography variant="h5" sx={{ fontWeight: 600, mb: 3 }}>
           {is_editing ? '게시글 수정' : '새 게시글 작성'}
         </Typography>
@@ -576,7 +576,7 @@ const FeedbackBoard: React.FC = () => {
                 label={label}
                 onClick={() => setFormCategory(key as 'idea' | 'bug' | 'etc')}
                 sx={{
-                  bgcolor: form_category === key ? color : '#f0f0f0',
+                  bgcolor: form_category === key ? color : 'var(--bg-hover)',
                   color: form_category === key ? '#fff' : 'text.primary',
                   cursor: 'pointer',
                   '&:hover': { opacity: 0.8 },
@@ -643,7 +643,7 @@ const FeedbackBoard: React.FC = () => {
             <Button
               variant="contained"
               onClick={handleSave}
-              sx={{ bgcolor: '#000', '&:hover': { bgcolor: '#333' } }}
+              sx={{ bgcolor: 'var(--primary-color)', color: 'var(--bg-primary)', '&:hover': { bgcolor: 'var(--accent-color)' } }}
             >
               {is_editing ? '수정하기' : '등록하기'}
             </Button>

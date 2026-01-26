@@ -260,8 +260,8 @@ const WeeklySchedule: React.FC = () => {
         sx={{
           p: 3,
           mb: 3,
-          bgcolor: '#f8f9fa',
-          borderColor: 'var(--border-color, #eaeaea)',
+          bgcolor: 'var(--bg-secondary)',
+          borderColor: 'var(--border-color)',
         }}
       >
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
@@ -287,9 +287,9 @@ const WeeklySchedule: React.FC = () => {
                 px: 2,
                 py: 0.5,
                 borderRadius: 1,
-                bgcolor: isCurrentWeek ? '#000' : '#fff',
-                color: isCurrentWeek ? '#fff' : '#000',
-                border: '1px solid #ddd',
+                bgcolor: isCurrentWeek ? 'var(--primary-color)' : 'var(--bg-primary)',
+                color: isCurrentWeek ? 'var(--bg-primary)' : 'var(--text-primary)',
+                border: '1px solid var(--border-color)',
                 minWidth: 180,
                 textAlign: 'center',
               }}
@@ -319,7 +319,7 @@ const WeeklySchedule: React.FC = () => {
       {/* 총 시간 요약 */}
       <Paper
         elevation={0}
-        sx={{ p: 3, mb: 3, bgcolor: '#f8f9fa', border: '1px solid #eaeaea', textAlign: 'center' }}
+        sx={{ p: 3, mb: 3, bgcolor: 'var(--bg-secondary)', border: '1px solid var(--border-color)', textAlign: 'center' }}
       >
         <Typography variant="body2" color="text.secondary" gutterBottom>
           주간 총 업무 시간
@@ -348,7 +348,7 @@ const WeeklySchedule: React.FC = () => {
                 >
                   {category}
                 </Typography>
-                <Box sx={{ flex: 1, position: 'relative', height: 24, bgcolor: '#f0f0f0', borderRadius: 1 }}>
+                <Box sx={{ flex: 1, position: 'relative', height: 24, bgcolor: 'var(--bg-hover)', borderRadius: 1 }}>
                   <Box
                     sx={{
                       position: 'absolute',
@@ -418,7 +418,7 @@ const WeeklySchedule: React.FC = () => {
       <TableContainer component={Paper} variant="outlined">
         <Table sx={{ minWidth: 650 }}>
           <TableHead>
-            <TableRow sx={{ bgcolor: '#fafafa' }}>
+            <TableRow sx={{ bgcolor: 'var(--bg-tertiary)' }}>
               <TableCell sx={{ fontWeight: 600 }}>게시판 번호</TableCell>
               <TableCell align="center" sx={{ fontWeight: 600 }}>업무 개수</TableCell>
               <TableCell align="right" sx={{ fontWeight: 600 }}>총 소요 시간</TableCell>

@@ -236,26 +236,27 @@ const PresetPanel: React.FC = () => {
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        bgcolor: 'var(--card-bg, #ffffff)',
-        borderColor: 'var(--border-color, #eaeaea)',
+        bgcolor: 'transparent', // 배경색 제거 (투명)
+        borderColor: 'var(--border-color)',
       }}
     >
       {/* 헤더 */}
       <Box
         sx={{
           p: 2,
-          borderBottom: '1px solid var(--border-color, #eaeaea)',
+          borderBottom: '1px solid var(--border-color)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
+          bgcolor: 'var(--bg-tertiary)', // 헤더 배경색 추가
         }}
       >
-        <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+        <Typography variant="subtitle1" sx={{ fontWeight: 600, color: 'var(--text-primary)' }}>
           작업 프리셋
         </Typography>
         <Tooltip title="프리셋 추가">
           <IconButton size="small" onClick={handleOpenAddMenu}>
-            <AddIcon fontSize="small" />
+            <AddIcon fontSize="small" sx={{ color: 'var(--text-secondary)' }} />
           </IconButton>
         </Tooltip>
       </Box>
@@ -373,6 +374,7 @@ const PresetPanel: React.FC = () => {
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
                             whiteSpace: 'nowrap',
+                            color: 'var(--text-primary)',
                           }}
                         >
                           {preset.title}
@@ -395,7 +397,8 @@ const PresetPanel: React.FC = () => {
                               sx={{
                                 height: 18,
                                 fontSize: '0.65rem',
-                                bgcolor: '#f5f5f5',
+                                bgcolor: 'var(--bg-hover)',
+                                color: 'var(--text-secondary)',
                               }}
                             />
                           )}
@@ -415,7 +418,7 @@ const PresetPanel: React.FC = () => {
         sx={{
           p: 2,
           borderTop: '1px solid var(--border-color)',
-          bgcolor: 'var(--bg-primary)',
+          bgcolor: 'var(--bg-secondary)',
         }}
       >
         <Typography variant="caption" color="text.secondary">
@@ -483,8 +486,8 @@ const PresetPanel: React.FC = () => {
                       width: 28,
                       height: 28,
                       borderRadius: 1,
-                      bgcolor: '#f5f5f5',
-                      border: modal_color === undefined ? '2px solid #000' : '1px solid #ddd',
+                      bgcolor: 'var(--bg-hover)',
+                      border: modal_color === undefined ? '2px solid var(--text-primary)' : '1px solid var(--border-color)',
                       cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
@@ -493,7 +496,7 @@ const PresetPanel: React.FC = () => {
                       transition: 'transform 0.15s',
                     }}
                   >
-                    <Typography variant="caption" sx={{ color: '#999', fontSize: '0.65rem' }}>
+                    <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontSize: '0.65rem' }}>
                       자동
                     </Typography>
                   </Box>
@@ -509,7 +512,7 @@ const PresetPanel: React.FC = () => {
                         height: 28,
                         borderRadius: 1,
                         bgcolor: color,
-                        border: modal_color === color ? '2px solid #000' : '1px solid #ddd',
+                        border: modal_color === color ? '2px solid var(--text-primary)' : '1px solid var(--border-color)',
                         cursor: 'pointer',
                         '&:hover': { transform: 'scale(1.1)' },
                         transition: 'transform 0.15s',

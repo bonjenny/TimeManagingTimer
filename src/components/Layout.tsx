@@ -1,9 +1,12 @@
 import React from 'react';
-import { AppBar, Toolbar, Typography, Tabs, Tab, Box, Container } from '@mui/material';
+import { AppBar, Toolbar, Typography, Tabs, Tab, Box, Container, IconButton, Tooltip } from '@mui/material';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import ForumIcon from '@mui/icons-material/Forum';
 import SettingsIcon from '@mui/icons-material/Settings';
+import LightModeIcon from '@mui/icons-material/LightMode';
+import DarkModeIcon from '@mui/icons-material/DarkMode';
+import { useTimerStore } from '../store/useTimerStore';
 
 export type PageType = 'daily' | 'weekly' | 'feedback' | 'settings';
 
@@ -21,6 +24,7 @@ const PAGE_MAP: { page: PageType; label: string; icon: React.ReactNode }[] = [
 ];
 
 const Layout: React.FC<LayoutProps> = ({ children, currentPage, onPageChange }) => {
+  const { themeConfig, toggleDarkMode } = useTimerStore();
   const current_tab_index = PAGE_MAP.findIndex(p => p.page === currentPage);
 
   const handleChange = (_event: React.SyntheticEvent, newValue: number) => {
@@ -33,7 +37,9 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, onPageChange }) 
         display: 'flex', 
         flexDirection: 'column', 
         minHeight: '100vh',
-        bgcolor: 'var(--bg-primary, #fafafa)'
+        bgcolor: 'background.default',
+        color: 'text.primary',
+        transition: 'background-color 0.3s, color 0.3s'
       }}
     >
       <AppBar 
@@ -41,8 +47,9 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, onPageChange }) 
         color="default" 
         elevation={0}
         sx={{
-          bgcolor: 'var(--header-bg, #ffffff)',
-          borderBottom: '1px solid var(--border-color, #eaeaea)'
+          bgcolor: 'background.paper',
+          borderBottom: 1,
+          borderColor: 'divider'
         }}
       >
         <Container maxWidth="xl">
@@ -57,7 +64,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, onPageChange }) 
                 fontWeight: 700,
                 letterSpacing: '-0.5px',
                 cursor: 'pointer',
-                color: 'var(--text-primary, #000000)',
+                color: 'text.primary',
               }}
               onClick={() => onPageChange('daily')}
             >
@@ -72,14 +79,12 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, onPageChange }) 
               indicatorColor="primary"
               sx={{
                 minHeight: 64,
+                flexGrow: 1,
                 '& .MuiTab-root': {
                   minHeight: 64,
                   fontSize: '0.95rem',
                   fontWeight: 500,
                 },
-                '& .MuiTabs-indicator': {
-                  bgcolor: 'var(--accent-color, #000000)',
-                }
               }}
             >
               {PAGE_MAP.map((item) => (
@@ -91,6 +96,13 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, onPageChange }) 
                 />
               ))}
             </Tabs>
+
+            {/* 다크모드 토글 버튼 */}
+            <Tooltip title={themeConfig.isDark ? "라이트 모드로 전환" : "다크 모드로 전환"}>
+              <IconButton onClick={toggleDarkMode} color="inherit">
+                {themeConfig.isDark ? <LightModeIcon /> : <DarkModeIcon />}
+              </IconButton>
+            </Tooltip>
           </Toolbar>
         </Container>
       </AppBar>
@@ -116,8 +128,9 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, onPageChange }) 
           py: 3, 
           textAlign: 'center', 
           color: 'text.secondary', 
-          borderTop: '1px solid var(--border-color, #eaeaea)',
-          bgcolor: 'var(--header-bg, #ffffff)'
+          borderTop: 1,
+          borderColor: 'divider',
+          bgcolor: 'background.paper'
         }}
       >
         <Typography variant="caption">

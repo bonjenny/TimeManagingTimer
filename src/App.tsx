@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { ThemeProvider } from '@mui/material/styles';
-import { theme } from './theme';
+import { createAppTheme } from './theme';
 import Layout, { PageType } from './components/Layout';
 import ActiveTimer from './components/timer/ActiveTimer';
 import TimerInput from './components/timer/TimerInput';
@@ -22,12 +22,12 @@ import { loadPaletteSettings, getPalette } from './utils/colorPalette';
 // 설정 저장 키
 const SETTINGS_STORAGE_KEY = 'timekeeper-settings';
 
-// 하루 시작 기준 (06:00)
-const DAY_START_HOUR = 6;
+// 하루 시작 기준 (00:00)
+const DAY_START_HOUR = 0;
 
 // 테마 적용 함수 (tokens.ts의 applyThemeColors 래퍼)
-const applyTheme = (primary_color: string, accent_color: string) => {
-  applyThemeColors({ primary: primary_color, accent: accent_color });
+const applyTheme = (primary_color: string, accent_color: string, is_dark?: boolean) => {
+  applyThemeColors({ primary: primary_color, accent: accent_color, isDark: is_dark });
 };
 
 function App() {
@@ -37,6 +37,7 @@ function App() {
   const activeTimer = useTimerStore((state) => state.activeTimer);
   const pauseTimer = useTimerStore((state) => state.pauseTimer);
   const resumeTimer = useTimerStore((state) => state.resumeTimer);
+  const { themeConfig, setThemeConfig } = useTimerStore();
   const timer_input_ref = useRef<HTMLInputElement>(null);
 
   // 선택된 날짜 상태 (기본값: 오늘)
@@ -96,15 +97,37 @@ function App() {
     return `${year}. ${month}. ${day}. (${day_of_week})`;
   };
 
+  // 날짜 선택 핸들러 (input type="date" 변경 시)
+  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.value) {
+      const [y, m, d] = e.target.value.split('-').map(Number);
+      const new_date = new Date();
+      new_date.setFullYear(y, m - 1, d);
+      setSelectedDate(new_date);
+    }
+  };
+
+  // input value용 날짜 포맷 (YYYY-MM-DD)
+  const getFormattedDateValue = () => {
+    const year = selectedDate.getFullYear();
+    const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+    const day = String(selectedDate.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   // 저장된 테마 및 팔레트 적용 (초기 로드)
   useEffect(() => {
     try {
-      // 테마 설정 적용
+      // 테마 설정 적용 (구 버전 호환성)
       const saved_settings = localStorage.getItem(SETTINGS_STORAGE_KEY);
       if (saved_settings) {
         const settings = JSON.parse(saved_settings);
         if (settings.primaryColor && settings.accentColor) {
-          applyTheme(settings.primaryColor, settings.accentColor);
+          setThemeConfig({
+            primaryColor: settings.primaryColor,
+            accentColor: settings.accentColor,
+            isDark: settings.isDark || false,
+          });
         }
       }
       
@@ -115,7 +138,21 @@ function App() {
     } catch {
       // 무시
     }
-  }, []);
+  }, [setThemeConfig]);
+
+  // 동적 테마 생성
+  const currentTheme = useMemo(() => {
+    return createAppTheme(themeConfig.primaryColor, themeConfig.accentColor, themeConfig.isDark);
+  }, [themeConfig.primaryColor, themeConfig.accentColor, themeConfig.isDark]);
+
+  // CSS 변수 업데이트
+  useEffect(() => {
+    applyThemeColors({ 
+      primary: themeConfig.primaryColor, 
+      accent: themeConfig.accentColor, 
+      isDark: themeConfig.isDark 
+    });
+  }, [themeConfig.primaryColor, themeConfig.accentColor, themeConfig.isDark]);
 
   // 페이지 변경 핸들러
   const handlePageChange = useCallback((page: PageType) => {
@@ -229,15 +266,36 @@ function App() {
         
         <Box
           sx={{
+            position: 'relative', // input 배치를 위해 relative 설정
             px: 3,
             py: 0.75,
             borderRadius: 2,
-            bgcolor: isToday ? 'var(--highlight-color)' : 'var(--bg-tertiary)',
-            color: isToday ? 'var(--text-inverse)' : 'var(--text-primary)',
+            bgcolor: 'var(--bg-tertiary)',
+            color: 'var(--text-primary)',
             minWidth: 180,
             textAlign: 'center',
+            cursor: 'pointer', // 클릭 가능함을 표시
+            '&:hover': {
+              bgcolor: 'var(--bg-hover)', // 호버 효과
+            }
           }}
         >
+          {/* 숨겨진 날짜 선택 input */}
+          <input
+            type="date"
+            value={getFormattedDateValue()}
+            onChange={handleDateChange}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              opacity: 0,
+              zIndex: 1,
+              cursor: 'pointer',
+            }}
+          />
           <Typography variant="body1" sx={{ fontWeight: 600 }}>
             {formatSelectedDate()}
           </Typography>
@@ -314,7 +372,7 @@ function App() {
   };
 
   return (
-    <ThemeProvider theme={theme}>
+    <ThemeProvider theme={currentTheme}>
       <Layout currentPage={current_page} onPageChange={handlePageChange}>
         {renderPage()}
       </Layout>

@@ -18,7 +18,7 @@ alwaysApply: true
 1. **버전 업데이트**: `package.json`의 version 필드 수정
 2. **릴리즈 노트 작성**: `docs/releases/v{버전}.mdc`
 3. **사용설명서 업데이트**: `docs/guides/v{버전}-guide.md`
-4. **테스트케이스 작성**: `docs/tests/v{버전}-tests.md`
+4. **테스트케이스 작성**: `src/__tests__/` 폴더에 기능별 Jest 테스트 파일(`.test.tsx`) 작성 (Markdown 파일 금지)
 
 ---
 
@@ -73,24 +73,26 @@ step: Step 1
 
 ---
 
-## 테스트케이스 형식 (docs/tests/v{버전}-tests.md)
+## 테스트케이스 작성 규칙
 
-```markdown
-# v0.1.0 테스트케이스
+테스트 케이스는 Markdown 문서가 아닌, 실제 실행 가능한 Jest 테스트 코드로 작성해야 합니다.
 
-## 테스트 환경
-- 브라우저: Chrome, Firefox, Safari
-- 해상도: Desktop (1920x1080), Mobile (375x812)
+- 위치: `src/__tests__/components/` 또는 `src/__tests__/hooks/`
+- 파일명: `*.test.tsx` 또는 `*.test.ts`
+- 도구: Jest, @testing-library/react
+- 커버리지: 주요 기능 및 시나리오 검증
 
-## 기능별 테스트
+```typescript
+// 예시: src/__tests__/components/Example.test.tsx
+import { render, screen } from '@testing-library/react';
+import Example from '../../components/Example';
 
-### TC-001: [기능명]
-- **전제조건**: 
-- **테스트 단계**:
-  1. 단계 1
-  2. 단계 2
-- **예상 결과**: 
-- **실제 결과**: [ ] Pass / [ ] Fail
+describe('Example Component', () => {
+  it('renders correctly', () => {
+    render(<Example />);
+    expect(screen.getByText('Hello')).toBeInTheDocument();
+  });
+});
 ```
 
 ---
@@ -106,7 +108,7 @@ package.json 버전 업데이트
     ↓
 사용설명서 업데이트 (docs/guides/)
     ↓
-테스트케이스 작성 (docs/tests/)
+테스트 코드 작성 (src/__tests__/)
     ↓
 코드 커밋
 ```
