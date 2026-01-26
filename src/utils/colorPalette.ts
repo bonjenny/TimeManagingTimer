@@ -59,7 +59,7 @@ export const COOLORS_PALETTES = {
 };
 
 // 팔레트 타입 (새로운 방식)
-export type PaletteType = keyof typeof COOLORS_PALETTES | 'pastel' | 'default' | 'tone-on-tone';
+export type PaletteType = keyof typeof COOLORS_PALETTES | 'pastel' | 'default' | 'tone-on-tone' | 'custom';
 
 // 기존 호환성을 위한 파스텔 팔레트
 export const PASTEL_PALETTE = [
@@ -153,10 +153,16 @@ export const generateToneOnTonePalette = (base_color: string): string[] => {
 export interface PaletteSettings {
   type: PaletteType;
   custom_base_color?: string;
+  custom_colors?: string[]; // 사용자 커스텀 팔레트 색상 배열
 }
 
 // 팔레트 가져오기
 export const getPalette = (settings: PaletteSettings): string[] => {
+  // 사용자 커스텀 팔레트
+  if (settings.type === 'custom' && settings.custom_colors && settings.custom_colors.length > 0) {
+    return settings.custom_colors;
+  }
+  
   // Coolors 팔레트 확인
   if (settings.type in COOLORS_PALETTES) {
     return COOLORS_PALETTES[settings.type as keyof typeof COOLORS_PALETTES].colors;
@@ -229,4 +235,7 @@ export const loadPaletteSettings = (): PaletteSettings => {
 // 팔레트 설정 저장
 export const savePaletteSettings = (settings: PaletteSettings): void => {
   localStorage.setItem(PALETTE_STORAGE_KEY, JSON.stringify(settings));
+  
+  // 같은 탭 내 다른 컴포넌트에 팔레트 변경 알림
+  window.dispatchEvent(new CustomEvent('palette-changed', { detail: settings }));
 };

@@ -53,13 +53,22 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
       setPaletteSettings(loadPaletteSettings());
     };
     window.addEventListener('storage', handleStorageChange);
+    
+    // 같은 탭 내 팔레트 변경 감지
+    const handlePaletteChange = () => {
+      setPaletteSettings(loadPaletteSettings());
+    };
+    window.addEventListener('palette-changed', handlePaletteChange);
+    
     // 포커스 시에도 체크
     const handleFocus = () => {
       setPaletteSettings(loadPaletteSettings());
     };
     window.addEventListener('focus', handleFocus);
+    
     return () => {
       window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('palette-changed', handlePaletteChange);
       window.removeEventListener('focus', handleFocus);
     };
   }, []);
@@ -114,6 +123,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
   const [newCategory, setNewCategory] = useState<string | null>(null);
   const [isAddingSession, setIsAddingSession] = useState(false); // 기존 작업에 세션 추가 여부
   const [isHoveringBar, setIsHoveringBar] = useState(false); // 작업 막대 hover 상태
+  const [hoverRowIndex, setHoverRowIndex] = useState<number | null>(null); // 현재 hover 중인 행 인덱스
 
   // 선택된 날짜의 06:00 기준 시작 시간
   const getBaseTime = useCallback((date?: Date) => {
@@ -323,8 +333,16 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging) return;
-    setDragCurrentPercent(getPercentFromEvent(e));
+    // 드래그 중일 때 - 툴팁 표시 안함
+    if (isDragging) {
+      setDragCurrentPercent(getPercentFromEvent(e));
+      setHoverRowIndex(null);
+      return;
+    }
+    
+    // 드래그 중 아닐 때 - 현재 행 인덱스 추적 (툴팁 메시지용)
+    const row = getRowFromEvent(e);
+    setHoverRowIndex(row);
   };
 
   const handleMouseUp = () => {
@@ -543,21 +561,33 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
     }
   }, [isResizing, resizeLogId, resizeStartPercent, resizeCurrentPercent, resizeType, chartItems]);
 
+  // 동적 툴팁 메시지 계산
+  const getTooltipMessage = () => {
+    if (hoverRowIndex !== null && hoverRowIndex < uniqueRows.length) {
+      const row = uniqueRows[hoverRowIndex];
+      return `빈 영역을 드래그하여 "${row.title}" 작업 세션을 추가하세요`;
+    }
+    return '빈 영역을 드래그하여 작업을 추가하세요';
+  };
+
   return (
     <Paper variant="outlined" sx={{ p: 2, overflowX: 'auto', userSelect: 'none' }}>
       <Tooltip
-        title="빈 영역을 드래그하여 작업을 추가하세요"
+        title={getTooltipMessage()}
         placement="top"
         followCursor
-        enterDelay={500}
-        disableHoverListener={isHoveringBar}
+        enterDelay={800}
+        disableHoverListener={isHoveringBar || isDragging}
       >
         <Box
           ref={containerRef}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseUp}
+          onMouseLeave={() => {
+            handleMouseUp();
+            setHoverRowIndex(null);
+          }}
           sx={{
             position: 'relative',
             height: chart_height,
@@ -937,7 +967,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
         <DialogActions>
           <Button onClick={handleCreateClose}>취소</Button>
           <Button onClick={handleCreateSave} variant="contained" color="primary">
-            {isAddingSession ? '세션 추가' : '저장'}
+            {isAddingSession ? '세션 추가(Enter)' : '저장(Enter)'}
           </Button>
         </DialogActions>
       </Dialog>

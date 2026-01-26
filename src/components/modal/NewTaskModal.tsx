@@ -180,7 +180,7 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ open, onClose }) => {
             '&.Mui-disabled': { bgcolor: 'var(--bg-tertiary)' },
           }}
         >
-          타이머 시작
+          시작(Enter)
         </Button>
       </DialogActions>
     </Dialog>

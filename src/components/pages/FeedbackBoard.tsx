@@ -526,7 +526,7 @@ const FeedbackBoard: React.FC = () => {
             variant="contained"
             color={password_modal_type === 'delete' ? 'error' : 'primary'}
           >
-            {password_modal_type === 'edit' ? '수정' : '삭제'}
+            {password_modal_type === 'edit' ? '확인(Enter)' : '삭제(Enter)'}
           </Button>
         </DialogActions>
       </Dialog>

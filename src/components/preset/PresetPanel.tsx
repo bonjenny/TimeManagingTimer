@@ -58,15 +58,20 @@ const PresetPanel: React.FC = () => {
 
   // 팔레트 설정 변경 감지
   useEffect(() => {
-    const handleStorageChange = () => {
+    const handlePaletteUpdate = () => {
       const settings = loadPaletteSettings();
       setColorPalette(getPalette(settings));
     };
-    window.addEventListener('storage', handleStorageChange);
-    window.addEventListener('focus', handleStorageChange);
+    
+    window.addEventListener('storage', handlePaletteUpdate);
+    window.addEventListener('focus', handlePaletteUpdate);
+    // 같은 탭 내 팔레트 변경 감지
+    window.addEventListener('palette-changed', handlePaletteUpdate);
+    
     return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('focus', handleStorageChange);
+      window.removeEventListener('storage', handlePaletteUpdate);
+      window.removeEventListener('focus', handlePaletteUpdate);
+      window.removeEventListener('palette-changed', handlePaletteUpdate);
     };
   }, []);
 
@@ -538,7 +543,7 @@ const PresetPanel: React.FC = () => {
             disabled={!modal_title.trim()}
             sx={{ bgcolor: 'var(--highlight-color)', '&:hover': { bgcolor: 'var(--highlight-hover)' } }}
           >
-            {edit_preset ? '수정' : '추가'}
+            {edit_preset ? '수정(Enter)' : '추가(Enter)'}
           </Button>
         </DialogActions>
       </Dialog>
