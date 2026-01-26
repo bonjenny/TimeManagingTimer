@@ -24,13 +24,37 @@ import {
   Tooltip
 } from '@mui/material';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import DeleteForeverIcon from '@mui/icons-material/DeleteForever';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import EditIcon from '@mui/icons-material/Edit';
 import RestoreIcon from '@mui/icons-material/Restore';
-import { useTimerStore, TimerLog } from '../../store/useTimerStore';
-import { formatDuration } from '../../utils/timeUtils';
+import RestoreFromTrashIcon from '@mui/icons-material/RestoreFromTrash';
+import { useTimerStore, TimerLog, DeletedLog } from '../../store/useTimerStore';
+import { formatDuration, getDurationSecondsExcludingLunch } from '../../utils/timeUtils';
 
 const CATEGORIES = ['분석', '개발', '개발자테스트', '테스트오류수정', '센터오류수정', '환경세팅', '회의', '기타'];
+
+// 하루 시작 기준 (06:00)
+const DAY_START_HOUR = 6;
+
+// 오늘 날짜 범위 계산 (06:00 ~ 익일 06:00)
+const getTodayRange = () => {
+  const now = new Date();
+  let today = new Date(now);
+  
+  // 06:00 이전이면 어제 날짜로 설정
+  if (now.getHours() < DAY_START_HOUR) {
+    today.setDate(today.getDate() - 1);
+  }
+  
+  const start = new Date(today);
+  start.setHours(DAY_START_HOUR, 0, 0, 0);
+  
+  const end = new Date(start);
+  end.setDate(end.getDate() + 1);
+  
+  return { start: start.getTime(), end: end.getTime() };
+};
 
 // 시간 포맷 (HH:mm)
 const formatTime = (timestamp: number | undefined) => {
@@ -58,7 +82,7 @@ interface TaskGroup {
 }
 
 const TimerList: React.FC = () => {
-  const { logs, deleteLog, startTimer, updateLog } = useTimerStore();
+  const { logs, deleteLog, startTimer, updateLog, deleted_logs, restoreLog, permanentlyDeleteLog, emptyTrash } = useTimerStore();
   const [showCompleted, setShowCompleted] = useState(true);
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
   
@@ -68,9 +92,18 @@ const TimerList: React.FC = () => {
   const [editBoardNo, setEditBoardNo] = useState('');
   const [editCategory, setEditCategory] = useState<string | null>(null);
 
-  // 로그를 제목별로 그룹화
+  // 휴지통 모달 상태
+  const [trash_modal_open, setTrashModalOpen] = useState(false);
+
+  // 로그를 제목별로 그룹화 (오늘 날짜만)
   const groupedTasks = useMemo(() => {
+    const today_range = getTodayRange();
+    
     const filtered_logs = logs.filter(log => {
+      // 오늘 날짜 필터링 (06:00 ~ 익일 06:00)
+      if (log.startTime < today_range.start || log.startTime >= today_range.end) {
+        return false;
+      }
       if (!showCompleted && log.status === 'COMPLETED') return false;
       return true;
     });
@@ -82,8 +115,8 @@ const TimerList: React.FC = () => {
       const existing = groups.get(log.title);
       
       const get_duration = (l: TimerLog) => {
-        const end = l.endTime || Date.now();
-        return Math.max(0, Math.floor((end - l.startTime) / 1000 - l.pausedDuration));
+        // 점심시간 제외 적용
+        return getDurationSecondsExcludingLunch(l.startTime, l.endTime, l.pausedDuration);
       };
       
       if (existing) {
@@ -142,9 +175,8 @@ const TimerList: React.FC = () => {
   };
 
   const getDuration = (log: TimerLog) => {
-    const end = log.endTime || Date.now();
-    let duration = (end - log.startTime) / 1000 - log.pausedDuration;
-    return Math.max(0, Math.floor(duration));
+    // 점심시간 제외 적용
+    return getDurationSecondsExcludingLunch(log.startTime, log.endTime, log.pausedDuration);
   };
 
   // 수정 핸들러
@@ -173,10 +205,16 @@ const TimerList: React.FC = () => {
     setEditCategory(null);
   };
 
-  if (logs.length === 0) {
+  // 오늘 로그 확인
+  const today_range = getTodayRange();
+  const today_logs = logs.filter(log => 
+    log.startTime >= today_range.start && log.startTime < today_range.end
+  );
+
+  if (today_logs.length === 0) {
     return (
       <Box sx={{ textAlign: 'center', py: 4, color: 'text.secondary' }}>
-        <Typography variant="body2">기록된 업무가 없습니다.</Typography>
+        <Typography variant="body2">오늘 기록된 업무가 없습니다.</Typography>
       </Box>
     );
   }
@@ -185,16 +223,29 @@ const TimerList: React.FC = () => {
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="h6">최근 업무 기록</Typography>
-        <FormControlLabel
-          control={
-            <Switch 
-              checked={showCompleted} 
-              onChange={(e) => setShowCompleted(e.target.checked)} 
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <FormControlLabel
+            control={
+              <Switch 
+                checked={showCompleted} 
+                onChange={(e) => setShowCompleted(e.target.checked)} 
+                size="small" 
+              />
+            }
+            label={<Typography variant="body2" color="text.secondary">완료된 항목 보기</Typography>}
+          />
+          <Tooltip title={`휴지통 (${deleted_logs.length})`}>
+            <IconButton 
               size="small" 
-            />
-          }
-          label={<Typography variant="body2" color="text.secondary">완료된 항목 보기</Typography>}
-        />
+              onClick={() => setTrashModalOpen(true)}
+              sx={{ 
+                color: deleted_logs.length > 0 ? 'warning.main' : 'text.secondary',
+              }}
+            >
+              <RestoreFromTrashIcon />
+            </IconButton>
+          </Tooltip>
+        </Box>
       </Box>
 
       <Paper variant="outlined" sx={{ borderRadius: 2, overflow: 'hidden' }}>
@@ -436,6 +487,108 @@ const TimerList: React.FC = () => {
         <DialogActions>
           <Button onClick={handleEditClose}>취소</Button>
           <Button onClick={handleEditSave} variant="contained" color="primary">저장</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 휴지통 모달 */}
+      <Dialog open={trash_modal_open} onClose={() => setTrashModalOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <RestoreFromTrashIcon />
+            휴지통
+          </Box>
+          {deleted_logs.length > 0 && (
+            <Button 
+              color="error" 
+              size="small" 
+              startIcon={<DeleteForeverIcon />}
+              onClick={() => {
+                if (window.confirm('휴지통을 비우시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
+                  emptyTrash();
+                }
+              }}
+            >
+              휴지통 비우기
+            </Button>
+          )}
+        </DialogTitle>
+        <DialogContent>
+          {deleted_logs.length === 0 ? (
+            <Box sx={{ textAlign: 'center', py: 4, color: 'text.secondary' }}>
+              <Typography variant="body2">휴지통이 비어 있습니다.</Typography>
+            </Box>
+          ) : (
+            <TableContainer>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>업무명</TableCell>
+                    <TableCell>카테고리</TableCell>
+                    <TableCell>삭제 시각</TableCell>
+                    <TableCell sx={{ width: 120 }}>작업</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {deleted_logs
+                    .sort((a, b) => b.deleted_at - a.deleted_at)
+                    .map((log) => (
+                    <TableRow key={log.id} hover>
+                      <TableCell>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          {log.boardNo && (
+                            <Chip label={`#${log.boardNo}`} size="small" variant="outlined" sx={{ height: 18, fontSize: '0.65rem' }} />
+                          )}
+                          <Typography variant="body2">{log.title}</Typography>
+                        </Box>
+                      </TableCell>
+                      <TableCell>
+                        {log.category && (
+                          <Chip label={log.category} size="small" sx={{ height: 18, fontSize: '0.65rem', bgcolor: '#f0f0f0' }} />
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" color="text.secondary">
+                          {new Date(log.deleted_at).toLocaleString('ko-KR')}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Box sx={{ display: 'flex', gap: 0.5 }}>
+                          <Tooltip title="복원">
+                            <IconButton 
+                              size="small" 
+                              onClick={() => restoreLog(log.id)}
+                              sx={{ color: 'success.main' }}
+                            >
+                              <RestoreIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="영구 삭제">
+                            <IconButton 
+                              size="small" 
+                              onClick={() => {
+                                if (window.confirm('영구 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
+                                  permanentlyDeleteLog(log.id);
+                                }
+                              }}
+                              sx={{ color: 'error.main' }}
+                            >
+                              <DeleteForeverIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </Box>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2 }}>
+            💡 삭제된 작업은 복원하거나 영구 삭제할 수 있습니다.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setTrashModalOpen(false)}>닫기</Button>
         </DialogActions>
       </Dialog>
     </Box>

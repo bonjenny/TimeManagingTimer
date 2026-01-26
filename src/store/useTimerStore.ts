@@ -25,9 +25,15 @@ export interface TimerLog {
   lastPausedAt?: number; 
 }
 
+// 삭제된 로그 타입 (삭제 시간 포함)
+export interface DeletedLog extends TimerLog {
+  deleted_at: number; // 삭제된 시각 (timestamp ms)
+}
+
 interface TimerState {
   activeTimer: TimerLog | null;
   logs: TimerLog[];
+  deleted_logs: DeletedLog[]; // 휴지통
   
   // Q1. recentTitles 제거 -> getRecentTitles 함수로 대체
   
@@ -41,6 +47,11 @@ interface TimerState {
   addLog: (log: TimerLog) => void;
   updateLog: (id: string, updates: Partial<TimerLog>) => void;
   deleteLog: (id: string) => void;
+  
+  // 휴지통 관련 액션
+  restoreLog: (id: string) => void;
+  permanentlyDeleteLog: (id: string) => void;
+  emptyTrash: () => void;
 
   // --- Selectors (or Helper Actions) ---
   getRecentTitles: () => string[];
@@ -55,6 +66,7 @@ export const useTimerStore = create<TimerState>()(
     (set, get) => ({
       activeTimer: null,
       logs: [],
+      deleted_logs: [],
 
       // Q1. 자동완성 데이터 관리: logs 기반으로 최근 30일 내 고유 Title 추출
       getRecentTitles: () => {
@@ -172,10 +184,44 @@ export const useTimerStore = create<TimerState>()(
         activeTimer: state.activeTimer?.id === id ? { ...state.activeTimer, ...updates } : state.activeTimer
       })),
 
-      deleteLog: (id) => set((state) => ({
-        logs: state.logs.filter((log) => log.id !== id),
-        activeTimer: state.activeTimer?.id === id ? null : state.activeTimer
+      deleteLog: (id) => set((state) => {
+        const log_to_delete = state.logs.find((log) => log.id === id);
+        if (!log_to_delete) return state;
+        
+        // 휴지통으로 이동
+        const deleted_log: DeletedLog = {
+          ...log_to_delete,
+          deleted_at: Date.now(),
+        };
+        
+        return {
+          logs: state.logs.filter((log) => log.id !== id),
+          deleted_logs: [...state.deleted_logs, deleted_log],
+          activeTimer: state.activeTimer?.id === id ? null : state.activeTimer
+        };
+      }),
+
+      // 휴지통에서 복원
+      restoreLog: (id) => set((state) => {
+        const deleted_log = state.deleted_logs.find((log) => log.id === id);
+        if (!deleted_log) return state;
+        
+        // deleted_at 제거하고 원래 로그로 복원
+        const { deleted_at: _, ...restored_log } = deleted_log;
+        
+        return {
+          deleted_logs: state.deleted_logs.filter((log) => log.id !== id),
+          logs: [...state.logs, restored_log as TimerLog],
+        };
+      }),
+
+      // 영구 삭제
+      permanentlyDeleteLog: (id) => set((state) => ({
+        deleted_logs: state.deleted_logs.filter((log) => log.id !== id),
       })),
+
+      // 휴지통 비우기
+      emptyTrash: () => set({ deleted_logs: [] }),
     }),
     {
       name: 'timekeeper-storage',

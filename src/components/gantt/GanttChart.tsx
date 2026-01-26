@@ -35,8 +35,8 @@ const ROW_HEIGHT = 32;
 const ROW_GAP = 4;
 // 헤더 높이 (시간축 라벨)
 const HEADER_HEIGHT = 24;
-// 왼쪽 라벨 너비
-const LABEL_WIDTH = 180;
+// 왼쪽 라벨 너비 (기록이 있을 때만 사용)
+const LABEL_WIDTH_WITH_DATA = 180;
 
 const CATEGORIES = ['분석', '개발', '개발자테스트', '테스트오류수정', '센터오류수정', '환경세팅', '회의', '기타'];
 
@@ -322,10 +322,13 @@ const GanttChart: React.FC = () => {
     return labels;
   }, [timelineStartHour, timelineEndHour, totalMinutes]);
 
+  // 기록이 있을 때만 좌측 라벨 영역 표시
+  const LABEL_WIDTH = uniqueRows.length > 0 ? LABEL_WIDTH_WITH_DATA : 0;
+
   // 전체 차트 높이 계산 (고유 행 수 기준 + 드래그 여유 공간)
   const chart_height = Math.max(
     uniqueRows.length * (ROW_HEIGHT + ROW_GAP) + HEADER_HEIGHT + ROW_HEIGHT,
-    100 // 최소 높이
+    80 // 기록이 없을 때 최소 높이
   );
 
   // --- 드래그 핸들러 ---

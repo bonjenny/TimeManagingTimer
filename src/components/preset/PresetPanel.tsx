@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Paper,
@@ -18,13 +18,16 @@ import {
   Button,
   TextField,
   Autocomplete,
+  Menu,
+  MenuItem,
+  ListItemIcon,
 } from '@mui/material';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import StarIcon from '@mui/icons-material/Star';
 import StarBorderIcon from '@mui/icons-material/StarBorder';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
-import EditIcon from '@mui/icons-material/Edit';
+import HistoryIcon from '@mui/icons-material/History';
 import { useTimerStore } from '../../store/useTimerStore';
 
 // 프리셋 데이터 타입
@@ -35,7 +38,6 @@ interface PresetItem {
   category?: string;
   color?: string;
   is_favorite: boolean;
-  is_manual: boolean; // 수동 추가 여부
 }
 
 // 카테고리 목록
@@ -54,26 +56,15 @@ const PRESET_COLORS = [
 ];
 
 // LocalStorage 키
-const FAVORITES_STORAGE_KEY = 'timekeeper-preset-favorites';
-const MANUAL_PRESETS_STORAGE_KEY = 'timekeeper-manual-presets';
+const PRESETS_STORAGE_KEY = 'timekeeper-manual-presets';
 
 const PresetPanel: React.FC = () => {
-  const { startTimer, getRecentTitles, logs } = useTimerStore();
+  const { startTimer, logs } = useTimerStore();
 
-  // 즐겨찾기 목록 (LocalStorage에서 로드)
-  const [favorites, setFavorites] = useState<Set<string>>(() => {
+  // 프리셋 목록 (LocalStorage에서 로드)
+  const [presets, setPresets] = useState<PresetItem[]>(() => {
     try {
-      const saved = localStorage.getItem(FAVORITES_STORAGE_KEY);
-      return saved ? new Set(JSON.parse(saved)) : new Set();
-    } catch {
-      return new Set();
-    }
-  });
-
-  // 수동 프리셋 목록 (LocalStorage에서 로드)
-  const [manual_presets, setManualPresets] = useState<PresetItem[]>(() => {
-    try {
-      const saved = localStorage.getItem(MANUAL_PRESETS_STORAGE_KEY);
+      const saved = localStorage.getItem(PRESETS_STORAGE_KEY);
       return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
@@ -88,91 +79,71 @@ const PresetPanel: React.FC = () => {
   const [modal_category, setModalCategory] = useState<string | null>(null);
   const [modal_color, setModalColor] = useState<string | undefined>(undefined);
 
-  // 즐겨찾기 변경 시 LocalStorage 저장
+  // 추가 메뉴 상태 (최근 작업 선택)
+  const [add_menu_anchor, setAddMenuAnchor] = useState<null | HTMLElement>(null);
+
+  // 프리셋 변경 시 LocalStorage 저장
   useEffect(() => {
-    localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify([...favorites]));
-  }, [favorites]);
+    localStorage.setItem(PRESETS_STORAGE_KEY, JSON.stringify(presets));
+  }, [presets]);
 
-  // 수동 프리셋 변경 시 LocalStorage 저장
-  useEffect(() => {
-    localStorage.setItem(MANUAL_PRESETS_STORAGE_KEY, JSON.stringify(manual_presets));
-  }, [manual_presets]);
+  // 최근 5개 작업 추출 (중복 제목 제거, 프리셋에 없는 것만)
+  const getRecentTasks = () => {
+    const seen_titles = new Set<string>();
+    const preset_titles = new Set(presets.map(p => p.title));
+    const recent: { title: string; boardNo?: string; category?: string }[] = [];
 
-  // 최근 사용한 작업들에서 프리셋 생성 (최근 30일, 고유 제목)
-  const recent_titles = getRecentTitles();
-
-  // 로그에서 프리셋 데이터 추출 + 수동 프리셋 + 즐겨찾기 정렬
-  const presets = useMemo((): PresetItem[] => {
-    const preset_map = new Map<string, PresetItem>();
-
-    // 1. 수동 프리셋 먼저 추가
-    manual_presets.forEach((preset) => {
-      preset_map.set(preset.title, {
-        ...preset,
-        is_favorite: favorites.has(preset.title),
-      });
-    });
-
-    // 2. 최근 로그에서 고유 작업 추출 (수동 프리셋과 중복 제외)
-    logs.forEach((log) => {
-      if (!preset_map.has(log.title)) {
-        preset_map.set(log.title, {
-          id: log.id,
+    // 최신 로그부터 순회
+    const sorted_logs = [...logs].sort((a, b) => b.startTime - a.startTime);
+    
+    for (const log of sorted_logs) {
+      if (!seen_titles.has(log.title) && !preset_titles.has(log.title)) {
+        seen_titles.add(log.title);
+        recent.push({
           title: log.title,
           boardNo: log.boardNo,
           category: log.category,
-          is_favorite: favorites.has(log.title),
-          is_manual: false,
         });
+        if (recent.length >= 5) break;
       }
-    });
+    }
 
-    // 3. 정렬: 즐겨찾기 먼저, 그 다음 최신순
-    const all_presets = Array.from(preset_map.values());
-    
-    // 즐겨찾기 프리셋
-    const favorite_presets = all_presets.filter(p => p.is_favorite);
-    
-    // 비즐겨찾기 프리셋 (최신순)
-    const non_favorite_presets: PresetItem[] = [];
-    recent_titles.forEach((title) => {
-      const preset = preset_map.get(title);
-      if (preset && !preset.is_favorite) {
-        non_favorite_presets.push(preset);
-      }
-    });
+    return recent;
+  };
 
-    // 수동 프리셋 중 최근 사용하지 않은 것들도 포함
-    manual_presets.forEach((preset) => {
-      if (!favorites.has(preset.title) && !non_favorite_presets.find(p => p.title === preset.title)) {
-        non_favorite_presets.push({
-          ...preset,
-          is_favorite: false,
-        });
-      }
-    });
+  // 정렬된 프리셋 (즐겨찾기 먼저)
+  const sorted_presets = [...presets].sort((a, b) => {
+    if (a.is_favorite && !b.is_favorite) return -1;
+    if (!a.is_favorite && b.is_favorite) return 1;
+    return 0;
+  });
 
-    return [...favorite_presets, ...non_favorite_presets].slice(0, 15); // 최대 15개
-  }, [logs, recent_titles, favorites, manual_presets]);
-
-  const handleStartPreset = (preset: PresetItem) => {
+  const handleStartPreset = (preset: PresetItem, e: React.MouseEvent) => {
+    e.stopPropagation();
     startTimer(preset.title, preset.boardNo, preset.category);
   };
 
-  const handleToggleFavorite = (preset_title: string) => {
-    setFavorites(prev => {
-      const new_favorites = new Set(prev);
-      if (new_favorites.has(preset_title)) {
-        new_favorites.delete(preset_title);
-      } else {
-        new_favorites.add(preset_title);
-      }
-      return new_favorites;
-    });
+  const handleToggleFavorite = (preset_id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setPresets(prev =>
+      prev.map(p =>
+        p.id === preset_id ? { ...p, is_favorite: !p.is_favorite } : p
+      )
+    );
   };
 
-  // 프리셋 추가 모달 열기
+  // 프리셋 추가 메뉴 열기
+  const handleOpenAddMenu = (event: React.MouseEvent<HTMLElement>) => {
+    setAddMenuAnchor(event.currentTarget);
+  };
+
+  const handleCloseAddMenu = () => {
+    setAddMenuAnchor(null);
+  };
+
+  // 새 프리셋 추가 모달 열기
   const handleOpenAddModal = () => {
+    handleCloseAddMenu();
     setEditPreset(null);
     setModalTitle('');
     setModalBoardNo('');
@@ -181,7 +152,18 @@ const PresetPanel: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  // 프리셋 수정 모달 열기
+  // 최근 작업에서 프리셋 추가
+  const handleAddFromRecent = (task: { title: string; boardNo?: string; category?: string }) => {
+    handleCloseAddMenu();
+    setEditPreset(null);
+    setModalTitle(task.title);
+    setModalBoardNo(task.boardNo || '');
+    setModalCategory(task.category || null);
+    setModalColor(undefined);
+    setIsModalOpen(true);
+  };
+
+  // 프리셋 클릭 시 수정 모달 열기
   const handleOpenEditModal = (preset: PresetItem) => {
     setEditPreset(preset);
     setModalTitle(preset.title);
@@ -208,26 +190,30 @@ const PresetPanel: React.FC = () => {
       category: modal_category || undefined,
       color: modal_color,
       is_favorite: edit_preset?.is_favorite || false,
-      is_manual: true,
     };
 
     if (edit_preset) {
       // 수정
-      setManualPresets(prev => 
-        prev.map(p => p.id === edit_preset.id ? new_preset : p)
+      setPresets(prev =>
+        prev.map(p => (p.id === edit_preset.id ? new_preset : p))
       );
     } else {
       // 추가
-      setManualPresets(prev => [new_preset, ...prev]);
+      setPresets(prev => [new_preset, ...prev]);
     }
 
     handleCloseModal();
   };
 
-  // 수동 프리셋 삭제
-  const handleDeletePreset = (preset_id: string) => {
-    setManualPresets(prev => prev.filter(p => p.id !== preset_id));
+  // 프리셋 삭제
+  const handleDeletePreset = (preset_id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (window.confirm('이 프리셋을 삭제하시겠습니까?')) {
+      setPresets(prev => prev.filter(p => p.id !== preset_id));
+    }
   };
+
+  const recent_tasks = getRecentTasks();
 
   return (
     <Paper
@@ -253,76 +239,103 @@ const PresetPanel: React.FC = () => {
         <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
           작업 프리셋
         </Typography>
-        <Tooltip title="새 프리셋 추가">
-          <IconButton size="small" onClick={handleOpenAddModal}>
+        <Tooltip title="프리셋 추가">
+          <IconButton size="small" onClick={handleOpenAddMenu}>
             <AddIcon fontSize="small" />
           </IconButton>
         </Tooltip>
       </Box>
 
+      {/* 추가 메뉴 */}
+      <Menu
+        anchorEl={add_menu_anchor}
+        open={Boolean(add_menu_anchor)}
+        onClose={handleCloseAddMenu}
+      >
+        <MenuItem onClick={handleOpenAddModal}>
+          <ListItemIcon>
+            <AddIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText primary="새 프리셋 추가" />
+        </MenuItem>
+        {recent_tasks.length > 0 && <Divider sx={{ my: 1 }} />}
+        {recent_tasks.length > 0 && (
+          <Typography variant="caption" color="text.secondary" sx={{ px: 2, py: 0.5, display: 'block' }}>
+            최근 작업에서 추가
+          </Typography>
+        )}
+        {recent_tasks.map((task, index) => (
+          <MenuItem key={index} onClick={() => handleAddFromRecent(task)}>
+            <ListItemIcon>
+              <HistoryIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText
+              primary={task.title}
+              secondary={task.boardNo ? `#${task.boardNo}` : undefined}
+              primaryTypographyProps={{ variant: 'body2', noWrap: true, sx: { maxWidth: 180 } }}
+              secondaryTypographyProps={{ variant: 'caption' }}
+            />
+          </MenuItem>
+        ))}
+      </Menu>
+
       {/* 프리셋 목록 */}
       <Box sx={{ flexGrow: 1, overflow: 'auto' }}>
-        {presets.length === 0 ? (
+        {sorted_presets.length === 0 ? (
           <Box sx={{ p: 3, textAlign: 'center', color: 'text.secondary' }}>
-            <Typography variant="body2">
-              아직 프리셋이 없습니다.
-            </Typography>
+            <Typography variant="body2">프리셋이 없습니다.</Typography>
             <Typography variant="caption" sx={{ display: 'block', mt: 1 }}>
-              작업을 기록하거나 + 버튼으로 추가하세요.
+              + 버튼을 눌러 프리셋을 추가하세요.
             </Typography>
           </Box>
         ) : (
           <List disablePadding dense>
-            {presets.map((preset, index) => (
-              <React.Fragment key={`${preset.title}-${index}`}>
+            {sorted_presets.map((preset, index) => (
+              <React.Fragment key={preset.id}>
                 {index > 0 && <Divider />}
                 <ListItem
                   disablePadding
                   secondaryAction={
                     <Box sx={{ display: 'flex', gap: 0.5 }}>
-                      <IconButton
-                        edge="end"
-                        size="small"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleToggleFavorite(preset.title);
-                        }}
-                      >
-                        {preset.is_favorite ? (
-                          <StarIcon fontSize="small" sx={{ color: '#ffc107' }} />
-                        ) : (
-                          <StarBorderIcon fontSize="small" />
-                        )}
-                      </IconButton>
-                      {preset.is_manual && (
+                      <Tooltip title={preset.is_favorite ? '즐겨찾기 해제' : '즐겨찾기'}>
                         <IconButton
                           edge="end"
                           size="small"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleOpenEditModal(preset);
-                          }}
+                          onClick={(e) => handleToggleFavorite(preset.id, e)}
                         >
-                          <EditIcon fontSize="small" />
+                          {preset.is_favorite ? (
+                            <StarIcon fontSize="small" sx={{ color: '#ffc107' }} />
+                          ) : (
+                            <StarBorderIcon fontSize="small" />
+                          )}
                         </IconButton>
-                      )}
-                      <IconButton
-                        edge="end"
-                        size="small"
-                        color="primary"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleStartPreset(preset);
-                        }}
-                      >
-                        <PlayArrowIcon fontSize="small" />
-                      </IconButton>
+                      </Tooltip>
+                      <Tooltip title="삭제">
+                        <IconButton
+                          edge="end"
+                          size="small"
+                          onClick={(e) => handleDeletePreset(preset.id, e)}
+                          sx={{ color: 'text.secondary', '&:hover': { color: 'error.main' } }}
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="타이머 시작">
+                        <IconButton
+                          edge="end"
+                          size="small"
+                          color="primary"
+                          onClick={(e) => handleStartPreset(preset, e)}
+                        >
+                          <PlayArrowIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
                     </Box>
                   }
                 >
                   <ListItemButton
-                    onClick={() => handleStartPreset(preset)}
-                    sx={{ py: 1.5, pr: 12 }}
+                    onClick={() => handleOpenEditModal(preset)}
+                    sx={{ py: 1.5, pr: 14 }}
                   >
                     {/* 색상 인디케이터 */}
                     {preset.color && (
@@ -339,31 +352,17 @@ const PresetPanel: React.FC = () => {
                     )}
                     <ListItemText
                       primary={
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                          <Typography
-                            variant="body2"
-                            sx={{
-                              fontWeight: preset.is_favorite ? 600 : 500,
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap',
-                            }}
-                          >
-                            {preset.title}
-                          </Typography>
-                          {preset.is_manual && (
-                            <Chip
-                              label="수동"
-                              size="small"
-                              sx={{
-                                height: 16,
-                                fontSize: '0.6rem',
-                                bgcolor: '#e3f2fd',
-                                color: '#1976d2',
-                              }}
-                            />
-                          )}
-                        </Box>
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            fontWeight: preset.is_favorite ? 600 : 500,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {preset.title}
+                        </Typography>
                       }
                       secondary={
                         <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5 }}>
@@ -397,7 +396,7 @@ const PresetPanel: React.FC = () => {
         )}
       </Box>
 
-      {/* 푸터 - 빠른 액션 */}
+      {/* 푸터 */}
       <Box
         sx={{
           p: 2,
@@ -406,15 +405,13 @@ const PresetPanel: React.FC = () => {
         }}
       >
         <Typography variant="caption" color="text.secondary">
-          ⭐ 즐겨찾기는 상단에 고정됩니다.
+          클릭하여 수정 • ⭐ 즐겨찾기는 상단 고정
         </Typography>
       </Box>
 
       {/* 프리셋 추가/수정 모달 */}
       <Dialog open={is_modal_open} onClose={handleCloseModal} maxWidth="sm" fullWidth>
-        <DialogTitle>
-          {edit_preset ? '프리셋 수정' : '새 프리셋 추가'}
-        </DialogTitle>
+        <DialogTitle>{edit_preset ? '프리셋 수정' : '새 프리셋 추가'}</DialogTitle>
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, mt: 1 }}>
             {/* 작업 제목 */}
@@ -462,7 +459,10 @@ const PresetPanel: React.FC = () => {
                         height: 32,
                         borderRadius: 1,
                         bgcolor: color.value || '#f5f5f5',
-                        border: modal_color === color.value ? '2px solid #000' : '1px solid #ddd',
+                        border:
+                          modal_color === color.value
+                            ? '2px solid #000'
+                            : '1px solid #ddd',
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
@@ -488,7 +488,7 @@ const PresetPanel: React.FC = () => {
             <Button
               color="error"
               onClick={() => {
-                handleDeletePreset(edit_preset.id);
+                setPresets((prev) => prev.filter((p) => p.id !== edit_preset.id));
                 handleCloseModal();
               }}
               sx={{ mr: 'auto' }}

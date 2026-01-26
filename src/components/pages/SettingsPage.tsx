@@ -85,6 +85,7 @@ const SettingsPage: React.FC = () => {
   const [custom_color, setCustomColor] = useState(DEFAULT_SETTINGS.customColor);
   const [lunch_start, setLunchStart] = useState(DEFAULT_SETTINGS.lunchStart);
   const [lunch_end, setLunchEnd] = useState(DEFAULT_SETTINGS.lunchEnd);
+  const [lunch_exclude_enabled, setLunchExcludeEnabled] = useState(DEFAULT_SETTINGS.lunchExcludeEnabled);
   const [auto_complete_enabled, setAutoCompleteEnabled] = useState(DEFAULT_SETTINGS.autoCompleteEnabled);
 
   // 컬러 팔레트 설정
@@ -110,6 +111,7 @@ const SettingsPage: React.FC = () => {
         setCustomColor(settings.customColor || DEFAULT_SETTINGS.customColor);
         setLunchStart(settings.lunchStart || DEFAULT_SETTINGS.lunchStart);
         setLunchEnd(settings.lunchEnd || DEFAULT_SETTINGS.lunchEnd);
+        setLunchExcludeEnabled(settings.lunchExcludeEnabled ?? DEFAULT_SETTINGS.lunchExcludeEnabled);
         setAutoCompleteEnabled(settings.autoCompleteEnabled ?? DEFAULT_SETTINGS.autoCompleteEnabled);
       }
       
@@ -181,6 +183,7 @@ const SettingsPage: React.FC = () => {
       customColor: custom_color,
       lunchStart: lunch_start,
       lunchEnd: lunch_end,
+      lunchExcludeEnabled: lunch_exclude_enabled,
       autoCompleteEnabled: auto_complete_enabled,
     };
 
@@ -205,6 +208,7 @@ const SettingsPage: React.FC = () => {
     setCustomColor(DEFAULT_SETTINGS.customColor);
     setLunchStart(DEFAULT_SETTINGS.lunchStart);
     setLunchEnd(DEFAULT_SETTINGS.lunchEnd);
+    setLunchExcludeEnabled(DEFAULT_SETTINGS.lunchExcludeEnabled);
     setAutoCompleteEnabled(DEFAULT_SETTINGS.autoCompleteEnabled);
     applyTheme(DEFAULT_SETTINGS.primaryColor, DEFAULT_SETTINGS.accentColor);
 
@@ -540,6 +544,20 @@ const SettingsPage: React.FC = () => {
             <FormControlLabel
               control={
                 <Switch
+                  checked={lunch_exclude_enabled}
+                  onChange={(e) => setLunchExcludeEnabled(e.target.checked)}
+                />
+              }
+              label="점심시간 소요 시간에서 제외"
+            />
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', ml: 4 }}>
+              활성화 시 작업 소요 시간 계산에서 점심시간이 자동으로 제외됩니다.
+            </Typography>
+          </Grid>
+          <Grid item xs={12}>
+            <FormControlLabel
+              control={
+                <Switch
                   checked={auto_complete_enabled}
                   onChange={(e) => setAutoCompleteEnabled(e.target.checked)}
                 />
@@ -551,18 +569,55 @@ const SettingsPage: React.FC = () => {
 
         <Divider sx={{ my: 2 }} />
 
-        <Typography variant="subtitle2" sx={{ mb: 1 }}>
-          단축키
+        <Typography variant="subtitle2" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+          ⌨️ 단축키
         </Typography>
-        <Box sx={{ color: 'text.secondary' }}>
-          <Typography variant="body2">• <strong>F8</strong>: 새 작업 추가 팝업</Typography>
-          <Typography variant="body2">• <strong>Enter</strong>: 타이머 시작 (입력창 포커스 시)</Typography>
-          <Typography variant="body2">• <strong>Alt + N</strong>: 입력창 포커스</Typography>
-          <Typography variant="body2">• <strong>Alt + S</strong>: 타이머 일시정지/재개</Typography>
-          <Typography variant="body2">• <strong>Alt + 1</strong>: 일간 타이머 페이지</Typography>
-          <Typography variant="body2">• <strong>Alt + 2</strong>: 주간 일정 페이지</Typography>
-          <Typography variant="body2">• <strong>Alt + T</strong>: 오늘로 이동</Typography>
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 1 }}>
+          {[
+            { key: 'F8', desc: '새 작업 추가 팝업', category: '작업' },
+            { key: 'Enter', desc: '타이머 시작 (입력창 포커스 시)', category: '작업' },
+            { key: 'Alt + N', desc: '입력창 포커스', category: '네비게이션' },
+            { key: 'Alt + S', desc: '타이머 일시정지/재개', category: '작업' },
+            { key: 'Alt + 1', desc: '일간 타이머 페이지', category: '네비게이션' },
+            { key: 'Alt + 2', desc: '주간 일정 페이지', category: '네비게이션' },
+            { key: 'Alt + T', desc: '오늘로 이동', category: '네비게이션' },
+          ].map((shortcut) => (
+            <Box
+              key={shortcut.key}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1.5,
+                p: 1,
+                borderRadius: 1,
+                bgcolor: '#f5f5f5',
+                '&:hover': { bgcolor: '#efefef' },
+              }}
+            >
+              <Box
+                sx={{
+                  px: 1,
+                  py: 0.5,
+                  bgcolor: '#e0e0e0',
+                  borderRadius: 0.5,
+                  fontFamily: 'monospace',
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  minWidth: 70,
+                  textAlign: 'center',
+                }}
+              >
+                {shortcut.key}
+              </Box>
+              <Typography variant="body2" color="text.secondary">
+                {shortcut.desc}
+              </Typography>
+            </Box>
+          ))}
         </Box>
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2 }}>
+          💡 커스텀 단축키 설정 기능은 향후 업데이트에서 제공될 예정입니다.
+        </Typography>
       </Paper>
 
       {/* 데이터 관리 */}
