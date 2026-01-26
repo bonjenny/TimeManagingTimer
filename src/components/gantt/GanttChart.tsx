@@ -11,8 +11,12 @@ import {
   Button,
   TextField,
   Autocomplete,
-  Chip
+  Chip,
+  IconButton,
 } from '@mui/material';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import TodayIcon from '@mui/icons-material/Today';
 import { useTimerStore, TimerLog } from '../../store/useTimerStore';
 import { formatTimeRange, formatDuration } from '../../utils/timeUtils';
 
@@ -50,6 +54,16 @@ const CATEGORY_COLORS: Record<string, string> = {
 const GanttChart: React.FC = () => {
   const { logs, activeTimer, addLog, updateLog } = useTimerStore();
 
+  // 선택된 날짜 상태 (기본값: 오늘)
+  const [selectedDate, setSelectedDate] = useState<Date>(() => {
+    const now = new Date();
+    // 06:00 이전이면 어제 날짜로 설정
+    if (now.getHours() < START_HOUR) {
+      now.setDate(now.getDate() - 1);
+    }
+    return now;
+  });
+
   // 실시간 업데이트를 위한 현재 시간 상태 (1초마다 갱신)
   const [currentTime, setCurrentTime] = useState(Date.now());
 
@@ -60,6 +74,20 @@ const GanttChart: React.FC = () => {
 
     return () => clearInterval(interval);
   }, []);
+
+  // 오늘 날짜인지 확인
+  const isToday = useMemo(() => {
+    const now = new Date();
+    let today = new Date(now);
+    if (now.getHours() < START_HOUR) {
+      today.setDate(today.getDate() - 1);
+    }
+    return (
+      selectedDate.getFullYear() === today.getFullYear() &&
+      selectedDate.getMonth() === today.getMonth() &&
+      selectedDate.getDate() === today.getDate()
+    );
+  }, [selectedDate]);
 
   // 드래그 상태 관리 (새 작업 생성용)
   const [isDragging, setIsDragging] = useState(false);
@@ -87,35 +115,70 @@ const GanttChart: React.FC = () => {
   const [isAddingSession, setIsAddingSession] = useState(false); // 기존 작업에 세션 추가 여부
   const [isHoveringBar, setIsHoveringBar] = useState(false); // 작업 막대 hover 상태
 
-  // 오늘 날짜의 06:00 기준 시작 시간
-  const getTodayBaseTime = () => {
-    const now = new Date();
-    const base = new Date(now);
+  // 선택된 날짜의 06:00 기준 시작 시간
+  const getBaseTime = useCallback((date?: Date) => {
+    const target_date = date || selectedDate;
+    const base = new Date(target_date);
     base.setHours(START_HOUR, 0, 0, 0);
-
-    // 현재 시간이 06:00 이전이면 어제 06:00을 기준으로
-    if (now.getHours() < START_HOUR) {
-      base.setDate(base.getDate() - 1);
-    }
     return base.getTime();
+  }, [selectedDate]);
+
+  // 오늘 날짜의 06:00 기준 시작 시간 (이전 호환성 유지)
+  const getTodayBaseTime = useCallback(() => {
+    return getBaseTime(selectedDate);
+  }, [getBaseTime, selectedDate]);
+
+  // 날짜 이동 핸들러
+  const handlePrevDay = () => {
+    setSelectedDate(prev => {
+      const new_date = new Date(prev);
+      new_date.setDate(new_date.getDate() - 1);
+      return new_date;
+    });
   };
 
-  // 오늘의 로그만 필터링 (06:00 ~ 익일 06:00)
+  const handleNextDay = () => {
+    setSelectedDate(prev => {
+      const new_date = new Date(prev);
+      new_date.setDate(new_date.getDate() + 1);
+      return new_date;
+    });
+  };
+
+  const handleToday = () => {
+    const now = new Date();
+    if (now.getHours() < START_HOUR) {
+      now.setDate(now.getDate() - 1);
+    }
+    setSelectedDate(now);
+  };
+
+  // 날짜 포맷
+  const formatSelectedDate = () => {
+    const year = selectedDate.getFullYear();
+    const month = selectedDate.getMonth() + 1;
+    const day = selectedDate.getDate();
+    const day_of_week = ['일', '월', '화', '수', '목', '금', '토'][selectedDate.getDay()];
+    return `${year}. ${month}. ${day}. (${day_of_week})`;
+  };
+
+  // 선택된 날짜의 로그만 필터링 (06:00 ~ 익일 06:00)
   const todayLogs = useMemo(() => {
-    const base_time = getTodayBaseTime();
+    const base_time = getBaseTime();
     const end_time = base_time + TOTAL_MINUTES * 60 * 1000;
 
     let filtered_logs = logs.filter(log => {
       return log.startTime >= base_time && log.startTime < end_time;
     });
 
-    if (activeTimer) {
+    // 오늘인 경우에만 activeTimer 포함
+    if (isToday && activeTimer) {
       filtered_logs = [...filtered_logs, activeTimer];
     }
 
     // 시작 시간순 정렬
     return filtered_logs.sort((a, b) => a.startTime - b.startTime);
-  }, [logs, activeTimer]);
+  }, [logs, activeTimer, getBaseTime, isToday]);
 
   // 06:00 기준 오프셋 계산 (분 단위)
   const getOffsetMinutes = (timestamp: number) => {
@@ -461,9 +524,54 @@ const GanttChart: React.FC = () => {
 
   return (
     <Paper variant="outlined" sx={{ p: 2, overflowX: 'auto', userSelect: 'none' }}>
-      <Typography variant="h6" sx={{ mb: 2 }}>
-        일간 타임라인 ({new Date().toLocaleDateString('ko-KR')})
-      </Typography>
+      {/* 헤더: 날짜 선택 */}
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+        <Typography variant="h6">
+          일간 타임라인
+        </Typography>
+        
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          {/* 이전 날짜 */}
+          <Tooltip title="이전 날짜">
+            <IconButton size="small" onClick={handlePrevDay}>
+              <ChevronLeftIcon />
+            </IconButton>
+          </Tooltip>
+          
+          {/* 현재 선택된 날짜 */}
+          <Box
+            sx={{
+              px: 2,
+              py: 0.5,
+              borderRadius: 1,
+              bgcolor: isToday ? '#000' : '#f5f5f5',
+              color: isToday ? '#fff' : 'text.primary',
+              minWidth: 160,
+              textAlign: 'center',
+            }}
+          >
+            <Typography variant="body2" sx={{ fontWeight: 500 }}>
+              {formatSelectedDate()}
+            </Typography>
+          </Box>
+          
+          {/* 다음 날짜 */}
+          <Tooltip title="다음 날짜">
+            <IconButton size="small" onClick={handleNextDay}>
+              <ChevronRightIcon />
+            </IconButton>
+          </Tooltip>
+          
+          {/* 오늘로 이동 */}
+          {!isToday && (
+            <Tooltip title="오늘로 이동">
+              <IconButton size="small" onClick={handleToday} sx={{ ml: 1 }}>
+                <TodayIcon />
+              </IconButton>
+            </Tooltip>
+          )}
+        </Box>
+      </Box>
 
       <Tooltip
         title="빈 영역을 드래그하여 작업을 추가하세요"
@@ -592,53 +700,129 @@ const GanttChart: React.FC = () => {
                   height: '100%'
                 }}>
                   {/* 해당 행의 모든 작업 막대들 */}
-                  {row_items.map((item) => (
-                    <Tooltip
-                      key={item.id}
-                      title={
-                        <Box sx={{ textAlign: 'center' }}>
-                          <Typography variant="subtitle2">{item.title}</Typography>
-                          {item.category && (
-                            <Typography variant="caption" display="block" sx={{ color: 'rgba(255,255,255,0.8)' }}>
-                              {item.category}
+                  {row_items.map((item) => {
+                    const preview = getResizePreview(item);
+                    const is_resizing_this = isResizing && resizeLogId === item.id;
+                    const is_completed = item.status === 'COMPLETED';
+                    
+                    return (
+                      <Tooltip
+                        key={item.id}
+                        title={
+                          <Box sx={{ textAlign: 'center' }}>
+                            <Typography variant="subtitle2">{item.title}</Typography>
+                            {item.category && (
+                              <Typography variant="caption" display="block" sx={{ color: 'rgba(255,255,255,0.8)' }}>
+                                {item.category}
+                              </Typography>
+                            )}
+                            <Typography variant="caption" display="block">
+                              {formatTimeRange(item.startTime, item.endTime)}
                             </Typography>
+                            <Typography variant="caption">
+                              {formatDuration((item.endTime ? item.endTime - item.startTime : currentTime - item.startTime) / 1000)}
+                            </Typography>
+                            {is_completed && (
+                              <Typography variant="caption" display="block" sx={{ mt: 0.5, color: 'rgba(255,255,255,0.6)' }}>
+                                양 끝을 드래그하여 시간 수정
+                              </Typography>
+                            )}
+                          </Box>
+                        }
+                        arrow
+                        disableHoverListener={is_resizing_this}
+                      >
+                        <Box
+                          onMouseDown={(e) => e.stopPropagation()}
+                          onMouseEnter={() => setIsHoveringBar(true)}
+                          onMouseLeave={() => !isResizing && setIsHoveringBar(false)}
+                          sx={{
+                            position: 'absolute',
+                            left: `${preview.left_percent}%`,
+                            width: `${preview.width_percent}%`,
+                            top: 4,
+                            bottom: 4,
+                            bgcolor: item.color,
+                            opacity: item.status === 'RUNNING' ? 1 : (is_resizing_this ? 0.9 : 0.85),
+                            borderRadius: 0.5,
+                            cursor: is_completed ? 'default' : 'pointer',
+                            zIndex: is_resizing_this ? 10 : 1,
+                            boxShadow: item.status === 'RUNNING' ? '0 0 8px rgba(0,0,0,0.3)' : (is_resizing_this ? '0 0 12px rgba(0,0,0,0.4)' : 'none'),
+                            transition: is_resizing_this ? 'none' : 'all 0.15s',
+                            '&:hover': {
+                              opacity: 1,
+                              transform: is_resizing_this ? 'none' : 'scaleY(1.15)',
+                              zIndex: 2,
+                            }
+                          }}
+                        >
+                          {/* 완료된 작업에만 리사이즈 핸들 표시 */}
+                          {is_completed && (
+                            <>
+                              {/* 왼쪽 리사이즈 핸들 (시작 시간) */}
+                              <Box
+                                onMouseDown={(e) => handleResizeStart(e, item.id, 'start', item.startTime, item.endTime)}
+                                sx={{
+                                  position: 'absolute',
+                                  left: 0,
+                                  top: 0,
+                                  bottom: 0,
+                                  width: RESIZE_HANDLE_WIDTH,
+                                  cursor: 'ew-resize',
+                                  borderRadius: '4px 0 0 4px',
+                                  bgcolor: 'transparent',
+                                  transition: 'background-color 0.15s',
+                                  '&:hover': {
+                                    bgcolor: 'rgba(255,255,255,0.3)',
+                                  },
+                                  '&::after': {
+                                    content: '""',
+                                    position: 'absolute',
+                                    left: 2,
+                                    top: '50%',
+                                    transform: 'translateY(-50%)',
+                                    width: 2,
+                                    height: 12,
+                                    bgcolor: 'rgba(255,255,255,0.5)',
+                                    borderRadius: 1,
+                                  }
+                                }}
+                              />
+                              {/* 오른쪽 리사이즈 핸들 (종료 시간) */}
+                              <Box
+                                onMouseDown={(e) => handleResizeStart(e, item.id, 'end', item.startTime, item.endTime)}
+                                sx={{
+                                  position: 'absolute',
+                                  right: 0,
+                                  top: 0,
+                                  bottom: 0,
+                                  width: RESIZE_HANDLE_WIDTH,
+                                  cursor: 'ew-resize',
+                                  borderRadius: '0 4px 4px 0',
+                                  bgcolor: 'transparent',
+                                  transition: 'background-color 0.15s',
+                                  '&:hover': {
+                                    bgcolor: 'rgba(255,255,255,0.3)',
+                                  },
+                                  '&::after': {
+                                    content: '""',
+                                    position: 'absolute',
+                                    right: 2,
+                                    top: '50%',
+                                    transform: 'translateY(-50%)',
+                                    width: 2,
+                                    height: 12,
+                                    bgcolor: 'rgba(255,255,255,0.5)',
+                                    borderRadius: 1,
+                                  }
+                                }}
+                              />
+                            </>
                           )}
-                          <Typography variant="caption" display="block">
-                            {formatTimeRange(item.startTime, item.endTime)}
-                          </Typography>
-                          <Typography variant="caption">
-                            {formatDuration((item.endTime ? item.endTime - item.startTime : currentTime - item.startTime) / 1000)}
-                          </Typography>
                         </Box>
-                      }
-                      arrow
-                    >
-                      <Box
-                        onMouseDown={(e) => e.stopPropagation()}
-                        onMouseEnter={() => setIsHoveringBar(true)}
-                        onMouseLeave={() => setIsHoveringBar(false)}
-                        sx={{
-                          position: 'absolute',
-                          left: `${item.left_percent}%`,
-                          width: `${item.width_percent}%`,
-                          top: 4,
-                          bottom: 4,
-                          bgcolor: item.color,
-                          opacity: item.status === 'RUNNING' ? 1 : 0.85,
-                          borderRadius: 0.5,
-                          cursor: 'pointer',
-                          zIndex: 1,
-                          boxShadow: item.status === 'RUNNING' ? '0 0 8px rgba(0,0,0,0.3)' : 'none',
-                          transition: 'all 0.15s',
-                          '&:hover': {
-                            opacity: 1,
-                            transform: 'scaleY(1.15)',
-                            zIndex: 2,
-                          }
-                        }}
-                      />
-                    </Tooltip>
-                  ))}
+                      </Tooltip>
+                    );
+                  })}
                 </Box>
               </Box>
             );
@@ -663,30 +847,32 @@ const GanttChart: React.FC = () => {
             />
           )}
 
-          {/* 현재 시간 표시 라인 */}
-          <Box
-            sx={{
-              position: 'absolute',
-              left: `calc(${LABEL_WIDTH}px + ${current_time_percent}% * (100% - ${LABEL_WIDTH}px) / 100%)`,
-              top: 0,
-              bottom: 0,
-              borderLeft: '2px solid #ef4444',
-              zIndex: 5,
-              pointerEvents: 'none'
-            }}
-          >
+          {/* 현재 시간 표시 라인 (오늘만 표시) */}
+          {isToday && (
             <Box
               sx={{
                 position: 'absolute',
-                top: HEADER_HEIGHT - 6,
-                left: -5,
-                width: 10,
-                height: 10,
-                borderRadius: '50%',
-                bgcolor: '#ef4444'
+                left: `calc(${LABEL_WIDTH}px + ${current_time_percent}% * (100% - ${LABEL_WIDTH}px) / 100%)`,
+                top: 0,
+                bottom: 0,
+                borderLeft: '2px solid #ef4444',
+                zIndex: 5,
+                pointerEvents: 'none'
               }}
-            />
-          </Box>
+            >
+              <Box
+                sx={{
+                  position: 'absolute',
+                  top: HEADER_HEIGHT - 6,
+                  left: -5,
+                  width: 10,
+                  height: 10,
+                  borderRadius: '50%',
+                  bgcolor: '#ef4444'
+                }}
+              />
+            </Box>
+          )}
         </Box>
       </Tooltip>
 
