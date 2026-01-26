@@ -1,0 +1,114 @@
+---
+version: 0.1.0
+date: 2026-01-26
+step: Step 1 - 프로젝트 기초 설정 및 전체 레이아웃
+---
+
+# v0.1.0 릴리즈 노트
+
+## 개요
+TimeKeeper 업무 시간 관리 타이머 앱의 첫 번째 공식 버전입니다.
+Step 1 (프로젝트 기초 설정 및 전체 레이아웃)이 완료되었습니다.
+
+---
+
+## 주요 변경사항
+
+### 레이아웃 재구성
+- 기존 탭 기반 레이아웃에서 **3단 구성 레이아웃**으로 변경
+  - 왼쪽: 작업 프리셋 패널
+  - 중앙: 간트 차트 (타임라인)
+  - 하단: 작업 기록 리스트
+
+### 네비게이션 메뉴 변경
+- 기존: 타이머, 리포트 (2개 탭)
+- 변경: **일간 타이머, 주간 일정, 건의사항, 설정** (4개 탭)
+
+---
+
+## 새로운 기능
+
+### 1. 작업 프리셋 패널 (`PresetPanel.tsx`)
+- 최근 사용한 작업 목록 자동 생성 (최대 10개)
+- 클릭 한 번으로 타이머 바로 시작
+- 즐겨찾기 기능 (UI 준비됨)
+
+### 2. 설정 페이지 (`SettingsPage.tsx`)
+- 테마 프리셋 선택 (검정, 초록, 보라, 빨강, 주황, 청록, 파랑)
+- 커스텀 색상 HEX 입력
+- 점심시간 설정
+- 작업명 자동완성 ON/OFF
+- 데이터 내보내기/가져오기 (JSON)
+
+### 3. 주간 일정 페이지 (`WeeklySchedule.tsx`)
+- 기존 ReportView 재사용
+- Step 4에서 복사 템플릿 기능 추가 예정
+
+### 4. 건의사항 페이지 (`FeedbackBoard.tsx`)
+- 기본 UI 구성
+- Step 5에서 게시판 기능 구현 예정
+
+### 5. CSS 변수 기반 테마 시스템
+- `:root` CSS 변수로 색상 관리
+- 다크 모드 지원 준비
+- 6가지 컬러 테마 프리셋
+
+---
+
+## 개선사항
+
+### 반응형 디자인
+- 900px 이하 모바일 화면에서 세로 배치로 전환
+- `useMediaQuery` 훅을 통한 반응형 처리
+
+### 네비게이션 UX
+- 로고 클릭 시 일간 타이머 페이지로 이동
+- 탭 인디케이터 색상 CSS 변수 적용
+
+---
+
+## 기술 스택 (확정)
+
+| 항목 | 선택 |
+|------|------|
+| 프레임워크 | React 18 + Vite |
+| 언어 | TypeScript |
+| UI 라이브러리 | MUI (Material-UI) v5 |
+| 상태 관리 | Zustand v5 |
+| 아이콘 | MUI Icons |
+| 폰트 | Pretendard |
+
+---
+
+## 파일 구조 변경
+
+```
+src/
+├── components/
+│   ├── gantt/
+│   │   └── GanttChart.tsx
+│   ├── pages/           # 신규
+│   │   ├── FeedbackBoard.tsx
+│   │   ├── SettingsPage.tsx
+│   │   └── WeeklySchedule.tsx
+│   ├── preset/          # 신규
+│   │   └── PresetPanel.tsx
+│   ├── report/
+│   │   └── ReportView.tsx
+│   ├── timer/
+│   │   ├── ActiveTimer.tsx
+│   │   ├── TimerInput.tsx
+│   │   └── TimerList.tsx
+│   └── Layout.tsx       # 수정
+├── App.tsx              # 수정
+└── ...
+```
+
+---
+
+## 다음 버전 예정 (v0.2.0 - Step 2)
+
+- F8 단축키로 새 작업 추가 팝업
+- 데이터 구조 확장 (project_code, sessions 등)
+- LocalStorage vs IndexedDB 결정
+- 프로젝트 코드 자동완성 더미 데이터
