@@ -105,7 +105,8 @@ export const getDurationSecondsExcludingLunch = (
 ): number => {
   const duration_ms = calculateDurationExcludingLunch(start_time, end_time);
   const durationSec = duration_ms / 1000;
-  const safePaused = Math.min(paused_duration, durationSec);
+  // pausedDuration이 전체 duration보다 크면 비정상 데이터로 간주하여 무시
+  const safePaused = paused_duration > durationSec ? 0 : paused_duration;
   return Math.max(0, Math.floor(durationSec - safePaused));
 };
 
