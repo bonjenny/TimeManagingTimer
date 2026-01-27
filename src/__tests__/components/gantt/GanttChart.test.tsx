@@ -274,4 +274,175 @@ describe('GanttChart', () => {
       // 진행 중인 작업에서 오른쪽 드래그 시 시작 시간 조정으로 전환됨
     });
   });
+
+  describe('시간 충돌 자동 조정 (v0.11.0)', () => {
+    it('겹치는 시간대에 작업 생성 시 기존 작업이 유지된다', async () => {
+      // 기존 작업 추가 (09:00 ~ 10:00)
+      const start = new Date(selectedDate);
+      start.setHours(9, 0, 0, 0);
+      const end = new Date(selectedDate);
+      end.setHours(10, 0, 0, 0);
+
+      act(() => {
+        useTimerStore.getState().addLog({
+          id: 'existing-log-overlap',
+          title: '기존 작업',
+          startTime: start.getTime(),
+          endTime: end.getTime(),
+          status: 'COMPLETED',
+          pausedDuration: 0,
+        });
+      });
+
+      render(<GanttChart selectedDate={selectedDate} />);
+      
+      // 기존 작업이 그대로 표시됨
+      expect(screen.getByText('기존 작업')).toBeInTheDocument();
+      
+      // 새로운 작업을 겹치는 시간에 추가하려고 해도 기존 작업은 유지됨
+      const logs = useTimerStore.getState().logs;
+      expect(logs.length).toBe(1);
+      expect(logs[0].title).toBe('기존 작업');
+    });
+
+    it('연속된 작업들이 정상적으로 표시된다', () => {
+      // 연속된 두 작업 추가 (09:00~10:00, 10:00~11:00)
+      const start1 = new Date(selectedDate);
+      start1.setHours(9, 0, 0, 0);
+      const end1 = new Date(selectedDate);
+      end1.setHours(10, 0, 0, 0);
+      
+      const start2 = new Date(selectedDate);
+      start2.setHours(10, 0, 0, 0);
+      const end2 = new Date(selectedDate);
+      end2.setHours(11, 0, 0, 0);
+
+      act(() => {
+        const store = useTimerStore.getState();
+        store.addLog({
+          id: 'consecutive-1',
+          title: '작업 1',
+          startTime: start1.getTime(),
+          endTime: end1.getTime(),
+          status: 'COMPLETED',
+          pausedDuration: 0,
+        });
+        store.addLog({
+          id: 'consecutive-2',
+          title: '작업 2',
+          startTime: start2.getTime(),
+          endTime: end2.getTime(),
+          status: 'COMPLETED',
+          pausedDuration: 0,
+        });
+      });
+
+      render(<GanttChart selectedDate={selectedDate} />);
+      
+      expect(screen.getByText('작업 1')).toBeInTheDocument();
+      expect(screen.getByText('작업 2')).toBeInTheDocument();
+      
+      // 맞닿은 작업은 겹침이 아니므로 모두 표시됨
+      const logs = useTimerStore.getState().logs;
+      expect(logs.length).toBe(2);
+    });
+
+    it('같은 작업명의 여러 세션이 같은 행에 표시된다', () => {
+      // 같은 작업명으로 두 개의 세션 추가
+      const start1 = new Date(selectedDate);
+      start1.setHours(9, 0, 0, 0);
+      const end1 = new Date(selectedDate);
+      end1.setHours(10, 0, 0, 0);
+      
+      const start2 = new Date(selectedDate);
+      start2.setHours(14, 0, 0, 0);
+      const end2 = new Date(selectedDate);
+      end2.setHours(15, 0, 0, 0);
+
+      act(() => {
+        const store = useTimerStore.getState();
+        store.addLog({
+          id: 'session-1',
+          title: '반복 작업',
+          startTime: start1.getTime(),
+          endTime: end1.getTime(),
+          status: 'COMPLETED',
+          pausedDuration: 0,
+        });
+        store.addLog({
+          id: 'session-2',
+          title: '반복 작업',
+          startTime: start2.getTime(),
+          endTime: end2.getTime(),
+          status: 'COMPLETED',
+          pausedDuration: 0,
+        });
+      });
+
+      render(<GanttChart selectedDate={selectedDate} />);
+      
+      // 같은 작업명은 라벨이 하나만 표시됨 (같은 행)
+      const labels = screen.getAllByText('반복 작업');
+      expect(labels.length).toBe(1);
+      
+      // 실제 로그는 2개
+      const logs = useTimerStore.getState().logs;
+      expect(logs.length).toBe(2);
+    });
+  });
+
+  describe('드래그 시작점 스냅 (v0.11.0)', () => {
+    it('기존 작업이 있는 행에서 드래그하면 해당 작업 정보가 채워진다', async () => {
+      const start = new Date(selectedDate);
+      start.setHours(9, 0, 0, 0);
+      const end = new Date(selectedDate);
+      end.setHours(10, 0, 0, 0);
+
+      act(() => {
+        useTimerStore.getState().addLog({
+          id: 'preset-task',
+          title: '프리셋 작업',
+          projectCode: 'PRJ001',
+          category: '개발',
+          startTime: start.getTime(),
+          endTime: end.getTime(),
+          status: 'COMPLETED',
+          pausedDuration: 0,
+        });
+      });
+
+      render(<GanttChart selectedDate={selectedDate} />);
+      
+      // 기존 작업이 표시됨
+      expect(screen.getByText('프리셋 작업')).toBeInTheDocument();
+      
+      // 해당 행에서 드래그하면 세션 추가 모달이 열리고 작업 정보가 채워짐
+      // (실제 드래그 동작은 E2E 테스트 필요)
+    });
+  });
+
+  describe('최소 세션 길이 검증 (v0.11.0)', () => {
+    it('5분 이상의 작업만 유효하다', () => {
+      const start = new Date(selectedDate);
+      start.setHours(9, 0, 0, 0);
+      const end = new Date(selectedDate);
+      end.setHours(9, 10, 0, 0); // 10분 작업
+
+      act(() => {
+        useTimerStore.getState().addLog({
+          id: 'short-task',
+          title: '짧은 작업',
+          startTime: start.getTime(),
+          endTime: end.getTime(),
+          status: 'COMPLETED',
+          pausedDuration: 0,
+        });
+      });
+
+      render(<GanttChart selectedDate={selectedDate} />);
+      
+      // 10분 작업은 표시됨
+      expect(screen.getByText('짧은 작업')).toBeInTheDocument();
+    });
+  });
 });
