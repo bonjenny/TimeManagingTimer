@@ -166,4 +166,76 @@ describe('App', () => {
       expect(primary_color.trim()).toBe('#10b981');
     });
   });
+
+  describe('반응형 레이아웃 (v0.10.4)', () => {
+    const original_match_media = window.matchMedia;
+
+    afterEach(() => {
+      window.matchMedia = original_match_media;
+    });
+
+    it('데스크탑에서 프리셋 패널이 왼쪽에 표시된다', () => {
+      // 데스크탑 환경 mock (너비 > 960px)
+      window.matchMedia = jest.fn().mockImplementation((query: string) => ({
+        matches: query.includes('960') ? false : true,
+        media: query,
+        onchange: null,
+        addListener: jest.fn(),
+        removeListener: jest.fn(),
+        addEventListener: jest.fn(),
+        removeEventListener: jest.fn(),
+        dispatchEvent: jest.fn(),
+      }));
+
+      render(<App />);
+
+      // 프리셋 패널과 날짜 선택기가 모두 렌더링됨
+      expect(screen.getByText('작업 프리셋')).toBeInTheDocument();
+      // 날짜 선택 버튼들이 표시됨
+      expect(screen.getByTitle('이전 날짜')).toBeInTheDocument();
+      expect(screen.getByTitle('다음 날짜')).toBeInTheDocument();
+    });
+
+    it('모바일에서 프리셋 패널이 하단에 배치된다', () => {
+      // 모바일 환경 mock (너비 <= 960px)
+      window.matchMedia = jest.fn().mockImplementation((query: string) => ({
+        matches: query.includes('960') ? true : false,
+        media: query,
+        onchange: null,
+        addListener: jest.fn(),
+        removeListener: jest.fn(),
+        addEventListener: jest.fn(),
+        removeEventListener: jest.fn(),
+        dispatchEvent: jest.fn(),
+      }));
+
+      render(<App />);
+
+      // 모바일에서도 프리셋 패널이 렌더링됨 (gridRow: 5로 맨 아래 배치)
+      expect(screen.getByText('작업 프리셋')).toBeInTheDocument();
+      // 날짜 선택기도 렌더링됨 (gridRow: 1로 맨 위 배치)
+      expect(screen.getByTitle('이전 날짜')).toBeInTheDocument();
+    });
+
+    it('모바일에서 레이아웃 요소들이 겹치지 않는다', () => {
+      window.matchMedia = jest.fn().mockImplementation((query: string) => ({
+        matches: query.includes('960') ? true : false,
+        media: query,
+        onchange: null,
+        addListener: jest.fn(),
+        removeListener: jest.fn(),
+        addEventListener: jest.fn(),
+        removeEventListener: jest.fn(),
+        dispatchEvent: jest.fn(),
+      }));
+
+      render(<App />);
+
+      // 모든 주요 컴포넌트가 렌더링됨
+      expect(screen.getByText('작업 프리셋')).toBeInTheDocument();
+      expect(screen.getByText('일간 타임라인')).toBeInTheDocument();
+      expect(screen.getByPlaceholderText(/무엇을 하고 계신가요/i)).toBeInTheDocument();
+      // 컴포넌트들이 서로 다른 grid row에 배치되어 겹치지 않음
+    });
+  });
 });

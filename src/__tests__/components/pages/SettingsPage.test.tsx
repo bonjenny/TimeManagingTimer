@@ -207,4 +207,46 @@ describe('SettingsPage', () => {
       expect(lunch_start_input.value).toBe('11:30');
     });
   });
+
+  describe('진행상태 관리 (v0.10.4)', () => {
+    it('진행상태 관리 섹션이 표시된다', () => {
+      render(<SettingsPage />);
+      expect(screen.getByText('진행상태 관리')).toBeInTheDocument();
+    });
+
+    it('기본 진행상태가 한글로만 표시된다 (영어 값 미포함)', () => {
+      render(<SettingsPage />);
+      
+      // 한글만 표시되어야 함 (영어 값 없이)
+      expect(screen.getByText('완료')).toBeInTheDocument();
+      expect(screen.getByText('진행중')).toBeInTheDocument();
+      expect(screen.getByText('대기')).toBeInTheDocument();
+      
+      // "완료 (completed)" 같은 형식이 없어야 함
+      expect(screen.queryByText(/완료 \(completed\)/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/진행중 \(in_progress\)/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/대기 \(pending\)/)).not.toBeInTheDocument();
+    });
+
+    it('진행상태 Chip에 삭제 버튼이 있다', () => {
+      render(<SettingsPage />);
+      
+      // MuiChip-deleteIcon이 존재해야 함
+      const delete_icons = document.querySelectorAll('.MuiChip-deleteIcon');
+      expect(delete_icons.length).toBeGreaterThan(0);
+    });
+
+    it('새 진행상태 입력 필드가 렌더링된다', () => {
+      render(<SettingsPage />);
+      expect(screen.getByPlaceholderText(/표시명/)).toBeInTheDocument();
+    });
+
+    it('추가 버튼이 렌더링된다', () => {
+      render(<SettingsPage />);
+      
+      // 진행상태 관리 섹션에 추가 버튼이 있어야 함
+      const add_buttons = screen.getAllByRole('button', { name: /추가/i });
+      expect(add_buttons.length).toBeGreaterThan(0);
+    });
+  });
 });
