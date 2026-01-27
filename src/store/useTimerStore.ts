@@ -60,6 +60,7 @@ interface TimerState {
   emptyTrash: () => void; // 휴지통 비우기
   reopenTimer: (id: string) => void; // 완료된 작업을 다시 진행 상태로 전환
   removeRecentTitle: (title: string) => void; // 자동완성에서 제목 제외
+  pauseAndMoveToLogs: () => void; // 진행중인 타이머를 일시정지 후 logs로 이동
 
   // --- Selectors ---
   getRecentTitles: () => string[];
@@ -123,6 +124,15 @@ export const useTimerStore = create<TimerState>()(
 
       startTimer: (title, projectCode, category) => {
         const now = Date.now();
+        const { logs } = get();
+        
+        // 같은 제목의 완료된 작업이 있으면 자동으로 완료 취소 (COMPLETED → PAUSED)
+        const updatedLogs = logs.map(log => 
+          log.title === title && log.status === 'COMPLETED'
+            ? { ...log, status: 'PAUSED' as const, endTime: undefined }
+            : log
+        );
+        
         const newTimer: TimerLog = {
           id: crypto.randomUUID(),
           title,
@@ -150,12 +160,15 @@ export const useTimerStore = create<TimerState>()(
             timerToMove = { ...currentActive };
           }
           
-          set((state) => ({
-            logs: [...state.logs, timerToMove],
+          set({
+            logs: [...updatedLogs, timerToMove],
             activeTimer: newTimer,
-          }));
+          });
         } else {
-          set({ activeTimer: newTimer });
+          set({ 
+            logs: updatedLogs,
+            activeTimer: newTimer 
+          });
         }
       },
 
@@ -254,40 +267,34 @@ export const useTimerStore = create<TimerState>()(
       // 휴지통 비우기
       emptyTrash: () => set({ deleted_logs: [] }),
 
-      // 완료된 작업을 다시 진행 상태로 전환
+      // 완료된 작업을 완료 취소 (COMPLETED → PAUSED로만 변경, 타이머 시작 안 함)
       reopenTimer: (id) => {
-        const { logs, activeTimer } = get();
-        const targetLog = logs.find(log => log.id === id && log.status === 'COMPLETED');
-        
-        if (!targetLog) return;
+        set((state) => ({
+          logs: state.logs.map(log => 
+            log.id === id && log.status === 'COMPLETED'
+              ? { ...log, status: 'PAUSED' as const, endTime: undefined }
+              : log
+          ),
+        }));
+      },
 
-        // 기존 activeTimer가 있으면 일시정지 후 logs에 추가
-        if (activeTimer && activeTimer.status === 'RUNNING') {
-          const pausedTimer: TimerLog = {
-            ...activeTimer,
-            status: 'PAUSED',
-            lastPausedAt: Date.now(),
-          };
-          
-          set((state) => ({
-            logs: [...state.logs.filter(l => l.id !== id), pausedTimer],
-            activeTimer: {
-              ...targetLog,
-              status: 'RUNNING',
-              endTime: undefined,
-            },
-          }));
-        } else {
-          // activeTimer가 없으면 바로 전환
-          set((state) => ({
-            logs: state.logs.filter(l => l.id !== id),
-            activeTimer: {
-              ...targetLog,
-              status: 'RUNNING',
-              endTime: undefined,
-            },
-          }));
-        }
+      // 진행중인 타이머를 일시정지 후 logs로 이동 (세션 종료)
+      pauseAndMoveToLogs: () => {
+        const { activeTimer } = get();
+        if (!activeTimer) return;
+
+        const now = Date.now();
+        const timerToMove: TimerLog = {
+          ...activeTimer,
+          status: 'PAUSED',
+          endTime: now, // 일시정지 시점을 종료 시간으로 설정
+          lastPausedAt: now,
+        };
+        
+        set((state) => ({
+          logs: [...state.logs, timerToMove],
+          activeTimer: null,
+        }));
       },
 
       // 삭제된 로그 조회 (최근 30일)

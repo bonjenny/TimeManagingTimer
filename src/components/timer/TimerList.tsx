@@ -82,7 +82,7 @@ interface TaskGroup {
 }
 
 const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
-  const { logs, deleteLog, startTimer, updateLog, deleted_logs, restoreLog, permanentlyDeleteLog, emptyTrash, reopenTimer, activeTimer } = useTimerStore();
+  const { logs, deleteLog, startTimer, updateLog, deleted_logs, restoreLog, permanentlyDeleteLog, emptyTrash, reopenTimer, activeTimer, pauseAndMoveToLogs, themeConfig } = useTimerStore();
   const { getProjectName, projects } = useProjectStore();
   const [showCompleted, setShowCompleted] = useState(true);
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
@@ -100,6 +100,13 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
   const [inlineTitle, setInlineTitle] = useState('');
   const [editingInlineProject, setEditingInlineProject] = useState<string | null>(null); // 편집 중인 task.title
   const [inlineProjectCode, setInlineProjectCode] = useState('');
+  
+  // 인라인 시간 편집 상태
+  const [editingSessionTime, setEditingSessionTime] = useState<{
+    sessionId: string;
+    field: 'start' | 'end';
+  } | null>(null);
+  const [inlineTimeValue, setInlineTimeValue] = useState('');
   
   // 프로젝트 옵션 (코드 + 이름 형태로 표시)
   const projectOptions = useMemo(() => {
@@ -333,6 +340,82 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
     setEditingInlineProject(null);
     setInlineProjectCode('');
   };
+
+  // 인라인 시간 편집 시작
+  const startInlineTimeEdit = (session: TimerLog, field: 'start' | 'end') => {
+    const timestamp = field === 'start' ? session.startTime : session.endTime;
+    if (!timestamp && field === 'end') return; // 진행 중인 작업의 종료시간은 편집 불가
+    
+    setEditingSessionTime({ sessionId: session.id, field });
+    const date = new Date(timestamp!);
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    setInlineTimeValue(`${hours}:${minutes}`);
+  };
+
+  // 인라인 시간 저장 (충돌 시 자동 조정)
+  const saveInlineTime = (session: TimerLog, field: 'start' | 'end', newTimeStr: string) => {
+    if (!newTimeStr) {
+      setEditingSessionTime(null);
+      return;
+    }
+    
+    // HH:mm 형태를 timestamp로 변환 (같은 날짜 유지)
+    const [hours, minutes] = newTimeStr.split(':').map(Number);
+    const baseDate = new Date(field === 'start' ? session.startTime : (session.endTime || session.startTime));
+    baseDate.setHours(hours, minutes, 0, 0);
+    const newTimestamp = baseDate.getTime();
+    
+    if (field === 'end') {
+      // 종료 시간이 시작 시간보다 이전이면 무시
+      if (newTimestamp <= session.startTime) {
+        setEditingSessionTime(null);
+        return;
+      }
+      
+      // 다음 세션과 충돌 체크 및 자동 조정
+      const task = groupedTasks.find(t => t.sessions.some(s => s.id === session.id));
+      if (task) {
+        const sessionIndex = task.sessions.findIndex(s => s.id === session.id);
+        const nextSession = task.sessions[sessionIndex + 1];
+        
+        if (nextSession && newTimestamp > nextSession.startTime) {
+          // 다음 세션의 시작 시간을 조정
+          updateLog(nextSession.id, { startTime: newTimestamp });
+        }
+      }
+      
+      updateLog(session.id, { endTime: newTimestamp });
+    } else {
+      // 시작 시간 변경
+      if (session.endTime && newTimestamp >= session.endTime) {
+        setEditingSessionTime(null);
+        return;
+      }
+      
+      // 이전 세션과 충돌 체크 및 자동 조정
+      const task = groupedTasks.find(t => t.sessions.some(s => s.id === session.id));
+      if (task) {
+        const sessionIndex = task.sessions.findIndex(s => s.id === session.id);
+        const prevSession = task.sessions[sessionIndex - 1];
+        
+        if (prevSession && prevSession.endTime && newTimestamp < prevSession.endTime) {
+          // 이전 세션의 종료 시간을 조정
+          updateLog(prevSession.id, { endTime: newTimestamp });
+        }
+      }
+      
+      updateLog(session.id, { startTime: newTimestamp });
+    }
+    
+    setEditingSessionTime(null);
+  };
+
+  // 인라인 시간 편집 취소
+  const cancelInlineTimeEdit = () => {
+    setEditingSessionTime(null);
+    setInlineTimeValue('');
+  };
   
   // 프로젝트 코드 입력 처리 (자동완성 선택 또는 직접 입력)
   const handleProjectCodeChange = (value: string) => {
@@ -479,14 +562,14 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                 {/* 좌측: 완료상태 토글 버튼 + 시작/재시작 버튼 */}
                 <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 0.25 }}>
                   {/* 완료 상태 토글 버튼 */}
-                  <Tooltip title={all_completed ? "완료 취소 (마지막 세션 재진행)" : "모든 세션 완료됨"}>
+                  <Tooltip title={all_completed ? "완료 취소" : "모든 세션 완료됨"}>
                     <span>
                       <IconButton 
                         size="small" 
                         onClick={(e) => {
                           e.stopPropagation();
                           if (all_completed && task.sessions.length > 0) {
-                            // 마지막 세션을 재진행
+                            // 마지막 세션을 완료 취소
                             const lastSession = task.sessions[task.sessions.length - 1];
                             reopenTimer(lastSession.id);
                           }
@@ -507,26 +590,37 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                     </span>
                   </Tooltip>
                   
-                  {/* 시작/재시작 버튼 */}
+                  {/* 시작/재시작/일시정지 버튼 */}
                   {(() => {
                     const is_active_task = activeTimer?.title === task.title;
+                    const tooltip_text = is_active_task 
+                      ? "일시정지 후 기록으로 이동" 
+                      : all_completed 
+                        ? "완료 취소 후 새 타이머 시작" 
+                        : "이 업무로 새 타이머 시작";
+                    
                     return (
-                      <Tooltip title={is_active_task ? "현재 진행 중인 작업" : "이 업무로 새 타이머 시작"}>
+                      <Tooltip title={tooltip_text}>
                         <span>
                           <IconButton 
                             size="small" 
                             onClick={(e) => {
                               e.stopPropagation();
-                              if (!is_active_task) {
+                              if (is_active_task) {
+                                // 진행중인 타이머 → 일시정지 후 logs로 이동
+                                pauseAndMoveToLogs();
+                              } else if (all_completed && task.sessions.length > 0) {
+                                // 완료된 항목 → 완료 취소 후 새 타이머 시작
+                                handleRestart(task.title, task.projectCode, task.category);
+                              } else {
+                                // 미완료 항목 → 새 타이머 시작
                                 handleRestart(task.title, task.projectCode, task.category);
                               }
                             }}
-                            disabled={is_active_task}
                             sx={{ 
                               p: 0.25, 
-                              color: is_active_task ? 'primary.main' : 'text.secondary',
-                              '&:hover': { color: 'primary.main' },
-                              '&.Mui-disabled': { color: 'primary.main' }
+                              color: is_active_task ? 'warning.main' : 'text.secondary',
+                              '&:hover': { color: is_active_task ? 'warning.dark' : 'primary.main' }
                             }}
                           >
                             {is_active_task ? (
@@ -735,8 +829,8 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                         <TableRow>
                           <TableCell sx={{ width: 40, py: 0.5 }}>#</TableCell>
                           <TableCell sx={{ width: 100, py: 0.5 }}>날짜</TableCell>
-                          <TableCell sx={{ width: 80, py: 0.5 }}>시작 시간</TableCell>
-                          <TableCell sx={{ width: 80, py: 0.5 }}>종료 시간</TableCell>
+                          <TableCell sx={{ width: 120, py: 0.5 }}>시작 시간</TableCell>
+                          <TableCell sx={{ width: 120, py: 0.5 }}>종료 시간</TableCell>
                           <TableCell sx={{ width: 80, py: 0.5 }}>소요 시간</TableCell>
                           <TableCell sx={{ width: 80, py: 0.5 }}></TableCell>
                         </TableRow>
@@ -746,19 +840,119 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                           <TableRow key={session.id} hover>
                             <TableCell sx={{ py: 0.5 }}>{idx + 1}</TableCell>
                             <TableCell sx={{ py: 0.5 }}>{formatDate(session.startTime)}</TableCell>
-                            <TableCell sx={{ py: 0.5 }}>{formatTime(session.startTime)}</TableCell>
-                            <TableCell sx={{ py: 0.5 }}>
-                              {session.endTime ? formatTime(session.endTime) : (
+                            <TableCell 
+                              sx={{ py: 0.5, cursor: 'pointer' }}
+                              onClick={() => startInlineTimeEdit(session, 'start')}
+                            >
+                              {editingSessionTime?.sessionId === session.id && editingSessionTime.field === 'start' ? (
+                                <TextField
+                                  type="time"
+                                  size="small"
+                                  variant="standard"
+                                  value={inlineTimeValue}
+                                  onChange={(e) => setInlineTimeValue(e.target.value)}
+                                  onBlur={() => saveInlineTime(session, 'start', inlineTimeValue)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      saveInlineTime(session, 'start', inlineTimeValue);
+                                    } else if (e.key === 'Escape') {
+                                      cancelInlineTimeEdit();
+                                    }
+                                  }}
+                                  autoFocus
+                                  onClick={(e) => e.stopPropagation()}
+                                  InputProps={{ disableUnderline: true }}
+                                  sx={{ 
+                                    width: 110,
+                                    '& input': { 
+                                      fontSize: '0.8rem', 
+                                      p: 0,
+                                      color: themeConfig.isDark ? '#fff' : 'inherit',
+                                      '&::-webkit-calendar-picker-indicator': {
+                                        filter: themeConfig.isDark ? 'invert(1)' : 'none'
+                                      }
+                                    }
+                                  }}
+                                />
+                              ) : (
+                                <Typography 
+                                  variant="body2" 
+                                  sx={{ 
+                                    fontSize: '0.8rem',
+                                    '&:hover': { bgcolor: 'action.hover', borderRadius: 0.5, px: 0.5 }
+                                  }}
+                                >
+                                  {formatTime(session.startTime)}
+                                </Typography>
+                              )}
+                            </TableCell>
+                            <TableCell 
+                              sx={{ py: 0.5, cursor: session.endTime ? 'pointer' : 'default' }}
+                              onClick={() => session.endTime && startInlineTimeEdit(session, 'end')}
+                            >
+                              {editingSessionTime?.sessionId === session.id && editingSessionTime.field === 'end' ? (
+                                <TextField
+                                  type="time"
+                                  size="small"
+                                  variant="standard"
+                                  value={inlineTimeValue}
+                                  onChange={(e) => setInlineTimeValue(e.target.value)}
+                                  onBlur={() => saveInlineTime(session, 'end', inlineTimeValue)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      saveInlineTime(session, 'end', inlineTimeValue);
+                                    } else if (e.key === 'Escape') {
+                                      cancelInlineTimeEdit();
+                                    }
+                                  }}
+                                  autoFocus
+                                  onClick={(e) => e.stopPropagation()}
+                                  InputProps={{ disableUnderline: true }}
+                                  sx={{ 
+                                    width: 110,
+                                    '& input': { 
+                                      fontSize: '0.8rem', 
+                                      p: 0,
+                                      color: themeConfig.isDark ? '#fff' : 'inherit',
+                                      '&::-webkit-calendar-picker-indicator': {
+                                        filter: themeConfig.isDark ? 'invert(1)' : 'none'
+                                      }
+                                    }
+                                  }}
+                                />
+                              ) : session.endTime ? (
+                                <Typography 
+                                  variant="body2" 
+                                  sx={{ 
+                                    fontSize: '0.8rem',
+                                    '&:hover': { bgcolor: 'action.hover', borderRadius: 0.5, px: 0.5 }
+                                  }}
+                                >
+                                  {formatTime(session.endTime)}
+                                </Typography>
+                              ) : session.status === 'RUNNING' ? (
                                 <Chip 
-                                  label={session.status === 'RUNNING' ? '진행 중' : '일시정지'} 
+                                  label="진행 중" 
                                   size="small" 
-                                  color={session.status === 'RUNNING' ? 'primary' : 'warning'}
+                                  color="primary"
                                   sx={{ 
                                     height: 18, 
                                     fontSize: '0.65rem',
-                                    color: 'white' // 텍스트 색상 흰색 고정
+                                    color: 'white'
                                   }}
                                 />
+                              ) : (
+                                // PAUSED 상태: lastPausedAt을 종료 시간으로 표시
+                                <Typography 
+                                  variant="body2" 
+                                  sx={{ 
+                                    fontSize: '0.8rem',
+                                    color: 'warning.main',
+                                    fontWeight: 500
+                                  }}
+                                >
+                                  {session.lastPausedAt ? formatTime(session.lastPausedAt) : '일시정지'}
+                                </Typography>
                               )}
                             </TableCell>
                             <TableCell sx={{ py: 0.5 }}>

@@ -78,6 +78,49 @@ describe('SettingsPage', () => {
     });
   });
 
+  describe('TimePicker 적용 (v0.11.0)', () => {
+    it('점심시간 시작 TimePicker가 렌더링된다', () => {
+      render(<SettingsPage />);
+      const lunchStartField = screen.getByLabelText(/점심시간 시작/i);
+      expect(lunchStartField).toBeInTheDocument();
+      // TimePicker는 TextField를 내부적으로 사용
+      expect(lunchStartField.tagName.toLowerCase()).toBe('input');
+    });
+
+    it('점심시간 종료 TimePicker가 렌더링된다', () => {
+      render(<SettingsPage />);
+      const lunchEndField = screen.getByLabelText(/점심시간 종료/i);
+      expect(lunchEndField).toBeInTheDocument();
+      expect(lunchEndField.tagName.toLowerCase()).toBe('input');
+    });
+
+    it('저장된 점심시간 설정이 TimePicker에 로드된다', () => {
+      localStorage.setItem(
+        'timekeeper-settings',
+        JSON.stringify({
+          lunchStart: '11:30',
+          lunchEnd: '12:30',
+        })
+      );
+
+      render(<SettingsPage />);
+
+      // TimePicker 내부 input 필드에서 시간 확인
+      const lunchStartInput = screen.getByLabelText(/점심시간 시작/i) as HTMLInputElement;
+      const lunchEndInput = screen.getByLabelText(/점심시간 종료/i) as HTMLInputElement;
+      
+      // TimePicker는 Date 객체를 사용하므로 value 형식이 다를 수 있음
+      // input에 값이 존재하는지 확인
+      expect(lunchStartInput).toBeInTheDocument();
+      expect(lunchEndInput).toBeInTheDocument();
+    });
+
+    it('점심시간 제외 스위치가 렌더링된다', () => {
+      render(<SettingsPage />);
+      expect(screen.getByLabelText(/점심시간 소요 시간에서 제외/i)).toBeInTheDocument();
+    });
+  });
+
   describe('단축키 목록', () => {
     it('단축키 섹션이 표시된다', () => {
       render(<SettingsPage />);

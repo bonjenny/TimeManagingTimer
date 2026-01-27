@@ -63,7 +63,7 @@ const MAX_LABEL_WIDTH = 400;
 const LABEL_WIDTH_STORAGE_KEY = 'timekeeper-gantt-label-width';
 
 const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
-  const { logs, activeTimer, addLog, updateLog, deleteLog, themeConfig } = useTimerStore();
+  const { logs, activeTimer, addLog, updateLog, deleteLog, stopTimer, themeConfig } = useTimerStore();
   const { getProjectName, projects } = useProjectStore();
   
   // 프로젝트 옵션 (코드 + 이름 형태로 표시)
@@ -312,13 +312,42 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
   }, [logs, activeTimer, getBaseTime, isToday]);
 
   // --- 스냅 및 중복 검사 로직 ---
-  const SNAP_THRESHOLD_MS = 15 * 60 * 1000; // 15분
+  const SNAP_THRESHOLD_MS = 15 * 60 * 1000; // 15분 (기존 로그 스냅용)
+  const KEY_SNAP_THRESHOLD_MS = 5 * 60 * 1000; // 5분 (주요 스냅 포인트용: 09:00, 점심, 18:00)
   const MIN_SESSION_MS = 5 * 60 * 1000; // 최소 세션 길이 5분
+
+  // 시간 문자열(HH:mm)을 해당 날짜의 타임스탬프로 변환
+  const timeStringToTimestamp = useCallback((timeStr: string, baseDate?: Date) => {
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    const date = new Date(baseDate || selectedDate);
+    date.setHours(hours, minutes, 0, 0);
+    return date.getTime();
+  }, [selectedDate]);
+
+  // 주요 스냅 포인트들 (업무 시작/종료, 점심시간)
+  const getKeySnapPoints = useCallback(() => {
+    const snapPoints: number[] = [];
+    
+    // 업무 시작 시간 (09:00)
+    snapPoints.push(timeStringToTimestamp('09:00'));
+    
+    // 업무 종료 시간 (18:00)
+    snapPoints.push(timeStringToTimestamp('18:00'));
+    
+    // 점심시간 시작/종료
+    if (lunchConfig.enabled) {
+      snapPoints.push(timeStringToTimestamp(lunchConfig.start));
+      snapPoints.push(timeStringToTimestamp(lunchConfig.end));
+    }
+    
+    return snapPoints;
+  }, [timeStringToTimestamp, lunchConfig]);
 
   const getSnappedTime = useCallback((targetTime: number, excludeId?: string | null) => {
     let closestTime = targetTime;
     let minDiff = SNAP_THRESHOLD_MS;
 
+    // 기존 로그들의 시작/종료 시간에 스냅 (15분 이내)
     todayLogs.forEach(log => {
       if (log.id === excludeId) return;
       
@@ -339,15 +368,26 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
       }
     });
 
+    // 주요 스냅 포인트에도 스냅 (업무 시작/종료, 점심시간) - 5분 이내만 적용
+    const keySnapPoints = getKeySnapPoints();
+    keySnapPoints.forEach(snapPoint => {
+      const diff = Math.abs(snapPoint - targetTime);
+      // 주요 스냅 포인트는 5분 이내일 때만 스냅 (더 엄격한 조건)
+      if (diff <= KEY_SNAP_THRESHOLD_MS && diff < minDiff) {
+        minDiff = diff;
+        closestTime = snapPoint;
+      }
+    });
+
     return closestTime;
-  }, [todayLogs]);
+  }, [todayLogs, getKeySnapPoints]);
 
   // 특정 행(작업명)의 세션 경계에 스냅하는 함수
   const getSnappedTimeForRow = useCallback((targetTime: number, rowTitle: string) => {
     let closestTime = targetTime;
     let minDiff = SNAP_THRESHOLD_MS;
 
-    // 해당 행의 세션들만 필터링
+    // 해당 행의 세션들만 필터링 (15분 이내)
     const rowSessions = todayLogs.filter(log => log.title === rowTitle);
 
     rowSessions.forEach(log => {
@@ -368,14 +408,50 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
       }
     });
 
-    return closestTime;
-  }, [todayLogs]);
+    // 주요 스냅 포인트에도 스냅 (업무 시작/종료, 점심시간) - 5분 이내만 적용
+    const keySnapPoints = getKeySnapPoints();
+    keySnapPoints.forEach(snapPoint => {
+      const diff = Math.abs(snapPoint - targetTime);
+      // 주요 스냅 포인트는 5분 이내일 때만 스냅 (더 엄격한 조건)
+      if (diff <= KEY_SNAP_THRESHOLD_MS && diff < minDiff) {
+        minDiff = diff;
+        closestTime = snapPoint;
+      }
+    });
 
-  // 충돌 시 자동 조정 함수 (동시에 여러 작업 세션 불가 전제)
+    return closestTime;
+  }, [todayLogs, getKeySnapPoints]);
+
+  // 충돌 시 자동 조정 함수 (동시에 여러 작업 세션 불가 전제 + 점심시간 피하기)
   const adjustForOverlap = useCallback((start: number, end: number, excludeId?: string | null): { adjustedStart: number; adjustedEnd: number; wasAdjusted: boolean } => {
     let adjustedStart = start;
     let adjustedEnd = end;
     let wasAdjusted = false;
+
+    // 점심시간 충돌 체크 및 조정
+    if (lunchConfig.enabled) {
+      const lunchStart = timeStringToTimestamp(lunchConfig.start);
+      const lunchEnd = timeStringToTimestamp(lunchConfig.end);
+      
+      // 점심시간과 겹치는지 확인
+      if (adjustedStart < lunchEnd && adjustedEnd > lunchStart) {
+        // Case 1: 세션이 점심시간 내부에서 시작 → 점심 종료 후로 밀기
+        if (adjustedStart >= lunchStart && adjustedStart < lunchEnd) {
+          adjustedStart = lunchEnd;
+          wasAdjusted = true;
+        }
+        // Case 2: 세션이 점심시간 내부에서 종료 → 점심 시작 전으로 당기기
+        else if (adjustedEnd > lunchStart && adjustedEnd <= lunchEnd) {
+          adjustedEnd = lunchStart;
+          wasAdjusted = true;
+        }
+        // Case 3: 세션이 점심시간을 완전히 포함 → 점심 시작 전으로 축소
+        else if (adjustedStart < lunchStart && adjustedEnd > lunchEnd) {
+          adjustedEnd = lunchStart;
+          wasAdjusted = true;
+        }
+      }
+    }
 
     // 시간순으로 정렬된 로그들
     const sortedLogs = [...todayLogs]
@@ -409,7 +485,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
     });
 
     return { adjustedStart, adjustedEnd, wasAdjusted };
-  }, [todayLogs]);
+  }, [todayLogs, lunchConfig, timeStringToTimestamp]);
 
   const checkOverlap = useCallback((start: number, end: number, excludeId?: string | null) => {
     return todayLogs.some(log => {
@@ -783,7 +859,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
   const handleCreateClose = () => {
     setShowCreateModal(false);
     setNewTitle('');
-    setNewBoardNo('');
+    setNewProjectCode('');
     setNewCategory(null);
     setIsAddingSession(false);
   };
@@ -878,6 +954,21 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
           } else {
             // 진행 중인 작업은 종료 시간 조정 불가 → 시작 시간 조정으로 대체
             setResizeType(isRunningOrPaused ? 'start' : 'end');
+          }
+        }
+      }
+      
+      // 오른쪽 핸들('end')에서 시작했지만 왼쪽으로 드래그하면 시작시간 조정으로 전환
+      // (20분 이내의 짧은 작업에서 핸들이 겹쳐있을 때를 위한 처리)
+      if (resizeType === 'end' && resizeStartPercent !== null) {
+        const duration = resizeOriginalEnd - resizeOriginalStart;
+        const isShortTask = duration <= 20 * 60 * 1000; // 20분 이내
+        
+        if (isShortTask) {
+          const delta = percent - resizeStartPercent;
+          // 왼쪽으로 0.5% 이상 움직이면 시작 시간 조정으로 전환
+          if (delta < -0.5) {
+            setResizeType('start');
           }
         }
       }
@@ -1074,6 +1165,10 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
   const handleDeleteTask = () => {
     if (contextMenu?.log) {
       if (window.confirm('이 작업을 휴지통으로 이동하시겠습니까?')) {
+        // 진행중인 작업인 경우 먼저 타이머 중지
+        if (activeTimer && activeTimer.id === contextMenu.log.id) {
+          stopTimer();
+        }
         deleteLog(contextMenu.log.id);
       }
     }
@@ -1352,7 +1447,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
                           </Typography>
                           <Typography variant="caption" display="block" sx={{ mt: 0.5, color: 'rgba(255,255,255,0.6)' }}>
                             우클릭: 메뉴 / 더블클릭: 수정
-                            {is_completed ? ' / 양끝: 크기 조절' : ' / 왼쪽: 시작 시간 조절'}
+                            {(is_completed || item.status === 'PAUSED') ? ' / 양끝: 크기 조절' : ' / 왼쪽: 시작 시간 조절'}
                           </Typography>
                         </Box>
                         )
@@ -1425,8 +1520,8 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
                               }
                             }}
                           />
-                          {/* 오른쪽 리사이즈 핸들 (종료 시간) - 완료된 작업에만 표시 */}
-                          {is_completed && (
+                          {/* 오른쪽 리사이즈 핸들 (종료 시간) - 완료 또는 일시정지된 작업(endTime 있음)에 표시 */}
+                          {(is_completed || (item.status === 'PAUSED' && item.endTime)) && (
                             <Box
                               onMouseDown={(e) => handleResizeStart(e, item.id, 'end', item.startTime, item.endTime)}
                               sx={{
