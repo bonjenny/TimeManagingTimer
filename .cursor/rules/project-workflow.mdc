@@ -132,13 +132,28 @@ npm test
 ```
 기능 개발 완료
     ↓
+테스트 코드 작성/수정 (src/__tests__/)
+    ↓
+테스트 실행 및 성공 확인 (npm test)  ← 필수!
+    ↓
 package.json 버전 업데이트
     ↓
 릴리즈 노트 작성 (docs/releases/)
     ↓
 사용설명서 업데이트 (docs/guides/)
     ↓
-테스트 코드 작성 (src/__tests__/)
-    ↓
 코드 커밋
+```
+
+### 테스트 실행 예시
+```bash
+# 수정한 컴포넌트 관련 테스트 실행
+npm test -- --testPathPattern="CategoryAutocomplete"
+
+# 결과 예시 (성공)
+# PASS src/__tests__/components/common/CategoryAutocomplete.test.tsx
+#   ✓ 새 카테고리를 추가할 수 있다 (15 ms)
+#   ✓ 드롭다운이 열리고 카테고리 목록이 표시된다 (45 ms)
+#   ...
+# Tests: 12 passed, 12 total
 ```
