@@ -204,7 +204,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
-    severity: 'info' | 'warning';
+    severity: 'info' | 'warning' | 'success';
   }>({ open: false, message: '', severity: 'info' });
   
   // 라벨 너비 상태 (localStorage에서 로드)
@@ -1162,13 +1162,18 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
 
   const handleDeleteTask = () => {
     if (contextMenu?.log) {
-      if (window.confirm('이 작업을 휴지통으로 이동하시겠습니까?')) {
-        // 진행중인 작업인 경우 먼저 타이머 중지
-        if (activeTimer && activeTimer.id === contextMenu.log.id) {
-          stopTimer();
-        }
-        deleteLog(contextMenu.log.id);
+      // 진행중인 작업인 경우 먼저 타이머 중지
+      if (activeTimer && activeTimer.id === contextMenu.log.id) {
+        stopTimer();
       }
+      deleteLog(contextMenu.log.id);
+      
+      // 토스트 알림 표시
+      setSnackbar({
+        open: true,
+        message: '작업이 휴지통으로 이동되었습니다.',
+        severity: 'success'
+      });
     }
     handleCloseContextMenu();
   };
@@ -1792,15 +1797,21 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
           WebkitBackdropFilter: 'blur(12px)',
           backgroundColor: snackbar.severity === 'warning' 
             ? 'rgba(255, 152, 0, 0.25)' 
-            : 'rgba(33, 150, 243, 0.25)',
+            : snackbar.severity === 'success'
+              ? 'rgba(76, 175, 80, 0.25)'
+              : 'rgba(33, 150, 243, 0.25)',
           border: snackbar.severity === 'warning'
             ? '1px solid rgba(255, 152, 0, 0.6)'
-            : '1px solid rgba(33, 150, 243, 0.6)',
+            : snackbar.severity === 'success'
+              ? '1px solid rgba(76, 175, 80, 0.6)'
+              : '1px solid rgba(33, 150, 243, 0.6)',
           borderRadius: '8px',
           padding: '8px 16px',
           color: snackbar.severity === 'warning' 
             ? (themeConfig.isDark ? '#ffb74d' : '#e65100')
-            : (themeConfig.isDark ? '#64b5f6' : '#1565c0'),
+            : snackbar.severity === 'success'
+              ? (themeConfig.isDark ? '#81c784' : '#2e7d32')
+              : (themeConfig.isDark ? '#64b5f6' : '#1565c0'),
           fontWeight: 500,
           fontSize: '0.875rem',
           boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
