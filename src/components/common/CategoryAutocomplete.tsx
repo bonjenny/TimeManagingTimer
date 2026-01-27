@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import {
   Autocomplete,
   TextField,
@@ -31,12 +31,26 @@ const CustomPaper: React.FC<{
   newCategory: string;
   setNewCategory: (value: string) => void;
   onAddCategory: () => void;
-}> = ({ children, newCategory, setNewCategory, onAddCategory }) => {
+  inputRef: React.RefObject<HTMLInputElement | null>;
+  onInputFocus: () => void;
+  onInputBlur: () => void;
+}> = ({ children, newCategory, setNewCategory, onAddCategory, inputRef, onInputFocus, onInputBlur }) => {
   return (
     <Paper elevation={8} sx={{ overflow: 'hidden' }}>
       {children}
       <Divider />
-      <Box sx={{ p: 1, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+      <Box 
+        sx={{ p: 1, display: 'flex', alignItems: 'center', gap: 0.5 }}
+        onMouseDown={(e) => {
+          // Autocomplete가 이 영역 클릭을 옵션 선택으로 처리하지 않도록 방지
+          e.stopPropagation();
+          e.preventDefault();
+        }}
+        onClick={(e) => {
+          e.stopPropagation();
+          e.preventDefault();
+        }}
+      >
         <TextField
           size="small"
           placeholder="새 카테고리"
@@ -49,7 +63,12 @@ const CustomPaper: React.FC<{
               onAddCategory();
             }
           }}
-          onClick={(e) => e.stopPropagation()}
+          onMouseDown={(e) => {
+            e.stopPropagation();
+          }}
+          onFocus={onInputFocus}
+          onBlur={onInputBlur}
+          inputRef={inputRef}
           sx={{ 
             flex: 1,
             '& .MuiInputBase-input': { fontSize: '0.8rem', py: 0.5 }
@@ -59,14 +78,27 @@ const CustomPaper: React.FC<{
           size="small" 
           onClick={(e) => {
             e.stopPropagation();
+            e.preventDefault();
             onAddCategory();
+          }}
+          onMouseDown={(e) => {
+            e.stopPropagation();
+            e.preventDefault(); // blur 방지
           }}
           disabled={!newCategory.trim()}
           sx={{ p: 0.5 }}
         >
           <AddIcon fontSize="small" />
         </IconButton>
-        <Typography variant="caption" color="text.secondary" sx={{ ml: 0.5 }}>
+        <Typography 
+          variant="caption" 
+          color="text.secondary" 
+          sx={{ ml: 0.5 }}
+          onMouseDown={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+          }}
+        >
           추가
         </Typography>
       </Box>
@@ -88,13 +120,18 @@ const CategoryAutocomplete: React.FC<CategoryAutocompleteProps> = ({
 }) => {
   const { categories, addCategory, removeCategory } = useCategoryStore();
   const [newCategory, setNewCategory] = useState('');
+  const [open, setOpen] = useState(false);
+  const isAddInputFocused = useRef(false);
+  const addInputRef = useRef<HTMLInputElement | null>(null);
 
-  const handleAddCategory = () => {
+  const handleAddCategory = useCallback(() => {
     if (newCategory.trim()) {
       addCategory(newCategory.trim());
       setNewCategory('');
+      // 추가 후에도 드롭다운 유지
+      addInputRef.current?.focus();
     }
-  };
+  }, [newCategory, addCategory]);
 
   const handleRemoveCategory = (e: React.MouseEvent, categoryToRemove: string) => {
     e.stopPropagation();
@@ -106,19 +143,57 @@ const CategoryAutocomplete: React.FC<CategoryAutocompleteProps> = ({
     }
   };
 
+  const handleInputFocus = useCallback(() => {
+    isAddInputFocused.current = true;
+  }, []);
+
+  const handleInputBlur = useCallback(() => {
+    isAddInputFocused.current = false;
+    // 약간의 지연 후 닫기 (다른 요소로 포커스 이동 확인)
+    setTimeout(() => {
+      if (!isAddInputFocused.current) {
+        setOpen(false);
+      }
+    }, 150);
+  }, []);
+
+  const handleClose = useCallback((_event: React.SyntheticEvent, reason: string) => {
+    // 새 카테고리 입력 필드에 포커스가 있으면 닫지 않음
+    if (isAddInputFocused.current) {
+      return;
+    }
+    // blur로 닫히려 할 때도 새 카테고리 입력 필드 확인
+    if (reason === 'blur' && isAddInputFocused.current) {
+      return;
+    }
+    setOpen(false);
+  }, []);
+
   return (
     <Autocomplete
       options={categories}
       value={value}
-      onChange={(_e, newValue) => onChange(newValue)}
+      onChange={(_e, newValue) => {
+        onChange(newValue);
+        if (!isAddInputFocused.current) {
+          setOpen(false);
+        }
+      }}
+      open={open}
+      onOpen={() => setOpen(true)}
+      onClose={handleClose}
       fullWidth={fullWidth}
       size={size}
+      disablePortal
       PaperComponent={(paperProps) => (
         <CustomPaper
           {...paperProps}
           newCategory={newCategory}
           setNewCategory={setNewCategory}
           onAddCategory={handleAddCategory}
+          inputRef={addInputRef}
+          onInputFocus={handleInputFocus}
+          onInputBlur={handleInputBlur}
         />
       )}
       renderOption={(props, option) => {
@@ -144,6 +219,7 @@ const CategoryAutocomplete: React.FC<CategoryAutocompleteProps> = ({
             <IconButton
               size="small"
               onClick={(e) => handleRemoveCategory(e, option)}
+              onMouseDown={(e) => e.preventDefault()}
               sx={{ 
                 p: 0.25,
                 opacity: 0.5,
