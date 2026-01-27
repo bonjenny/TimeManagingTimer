@@ -22,11 +22,14 @@ const ActiveTimer: React.FC = () => {
   const totalAccumulatedSeconds = useMemo(() => {
     if (!activeTimer) return 0;
     
-    // 같은 제목의 완료된 로그들의 시간 합산
+    // 같은 제목의 로그들의 시간 합산
     const completed_duration = logs
       .filter(log => log.title === activeTimer.title)
       .reduce((sum, log) => {
-        const end = log.endTime || Date.now();
+        // PAUSED 상태는 endTime 또는 lastPausedAt을 종료 시간으로 사용
+        // COMPLETED 상태는 endTime을 사용
+        // endTime도 lastPausedAt도 없으면 startTime을 사용 (0초)
+        const end = log.endTime || log.lastPausedAt || log.startTime;
         const duration = Math.floor((end - log.startTime) / 1000 - log.pausedDuration);
         return sum + Math.max(0, duration);
       }, 0);
