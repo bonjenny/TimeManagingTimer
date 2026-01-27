@@ -9,6 +9,7 @@ import {
   getAdjustedColor,
   getPaletteList,
   getColorForTask,
+  getColorByIndex,
   loadPaletteSettings,
   savePaletteSettings,
   PALETTE_STORAGE_KEY,
@@ -343,6 +344,52 @@ describe('colorPalette', () => {
       expect(getAdjustedColor('invalid', true)).toBe('invalid');
       expect(getAdjustedColor('', true)).toBe('');
       expect(getAdjustedColor('rgb(0,0,0)', true)).toBe('rgb(0,0,0)');
+    });
+  });
+
+  // v0.12.2: 글로벌 색상 인덱스 기반 색상 할당
+  describe('getColorByIndex (v0.12.2)', () => {
+    const test_palette = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff'];
+
+    it('인덱스에 해당하는 색상을 반환한다', () => {
+      expect(getColorByIndex(0, test_palette)).toBe('#ff0000');
+      expect(getColorByIndex(1, test_palette)).toBe('#00ff00');
+      expect(getColorByIndex(2, test_palette)).toBe('#0000ff');
+      expect(getColorByIndex(3, test_palette)).toBe('#ffff00');
+      expect(getColorByIndex(4, test_palette)).toBe('#ff00ff');
+    });
+
+    it('팔레트 길이를 초과하는 인덱스는 순환한다', () => {
+      expect(getColorByIndex(5, test_palette)).toBe('#ff0000'); // 5 % 5 = 0
+      expect(getColorByIndex(6, test_palette)).toBe('#00ff00'); // 6 % 5 = 1
+      expect(getColorByIndex(10, test_palette)).toBe('#ff0000'); // 10 % 5 = 0
+      expect(getColorByIndex(11, test_palette)).toBe('#00ff00'); // 11 % 5 = 1
+    });
+
+    it('연속된 인덱스는 서로 다른 색상을 반환한다', () => {
+      const colors = [];
+      for (let i = 0; i < test_palette.length; i++) {
+        colors.push(getColorByIndex(i, test_palette));
+      }
+      
+      // 팔레트 길이 내에서 모든 색상이 다름
+      const unique_colors = new Set(colors);
+      expect(unique_colors.size).toBe(test_palette.length);
+    });
+
+    it('빈 팔레트는 기본색을 반환한다', () => {
+      expect(getColorByIndex(0, [])).toBe('#ccc');
+      expect(getColorByIndex(5, [])).toBe('#ccc');
+    });
+
+    it('같은 인덱스는 항상 같은 색상을 반환한다', () => {
+      const index = 3;
+      const color1 = getColorByIndex(index, test_palette);
+      const color2 = getColorByIndex(index, test_palette);
+      const color3 = getColorByIndex(index, test_palette);
+
+      expect(color1).toBe(color2);
+      expect(color2).toBe(color3);
     });
   });
 });

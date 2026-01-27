@@ -183,7 +183,7 @@ export const getPaletteList = (): PaletteData[] => {
 // 톤온톤 생성 (간이 구현 - 실제로는 colorUtils.ts 등에 있어야 함)
 export { generateToneOnTonePalette } from './colorUtils';
 
-// 작업 제목에 따른 색상 결정 (해시 기반)
+// 작업 제목에 따른 색상 결정 (해시 기반) - deprecated, getColorByIndex 사용 권장
 export const getColorForTask = (title: string, palette: string[]): string => {
   if (!palette || palette.length === 0) return '#ccc';
   
@@ -194,4 +194,17 @@ export const getColorForTask = (title: string, palette: string[]): string => {
   
   const index = Math.abs(hash) % palette.length;
   return palette[index];
+};
+
+/**
+ * 인덱스 기반 색상 반환
+ * 글로벌 색상 인덱스와 함께 사용하여 색상 충돌 방지
+ * 
+ * @param index - 글로벌 색상 인덱스 (useTimerStore.getOrAssignColorIndex로 획득)
+ * @param palette - 색상 팔레트 배열
+ * @returns 해당 인덱스의 색상 (팔레트 길이를 넘으면 순환)
+ */
+export const getColorByIndex = (index: number, palette: string[]): string => {
+  if (!palette || palette.length === 0) return '#ccc';
+  return palette[index % palette.length];
 };
