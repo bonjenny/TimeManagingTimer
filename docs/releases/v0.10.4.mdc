@@ -1,0 +1,67 @@
+---
+version: 0.10.4
+date: 2026-01-27
+step: Step 10 (Enhancement)
+---
+
+# v0.10.4 릴리즈 노트
+
+## 주요 변경사항
+
+### 1. 카테고리 인라인 관리 기능
+- `CategoryAutocomplete` 컴포넌트 신규 개발
+- 드롭다운 내에서 직접 카테고리 추가/삭제 가능
+- 설정 페이지와 모든 카테고리 선택 영역에서 동일하게 사용
+
+### 2. 진행상태 커스터마이징 기능
+- `useStatusStore` 신규 개발 (Zustand + persist)
+- `StatusSelect` 컴포넌트 신규 개발
+- 주간일정에서 진행상태 추가/삭제/편집 가능
+- 기본 상태: 완료, 진행중, 대기, 보류
+
+### 3. TimerList 인라인 편집 기능
+- 기록명 클릭 시 인라인 텍스트 편집 가능
+- 프로젝트 코드 Chip 클릭 시 Autocomplete로 변경 가능
+- 더블클릭 수정 → 수정 버튼(연필 아이콘)으로 변경
+
+### 4. 자동완성 항목 삭제 기능
+- 기록명, 프로젝트 코드, 프로젝트명 자동완성에 삭제 버튼 추가
+- `excludedTitles` 상태 추가로 기록명 자동완성에서 제외 관리
+- 프로젝트 삭제 시 프로젝트 목록에서 영구 삭제
+
+## 새로운 기능
+
+### UI/UX 개선
+- 간트 차트 프로젝트명 말줄임표 처리 (maxWidth: 80px)
+- 완료 버튼이 시작 버튼 왼쪽으로 위치 변경
+- Footer에 데이터 저장 안내 문구 추가
+  - "모든 기록은 내 컴퓨터(브라우저)에 저장되며, 서버로 전송되지 않습니다."
+
+### 컴포넌트 추가
+- `src/components/common/CategoryAutocomplete.tsx`
+- `src/components/common/StatusSelect.tsx`
+- `src/store/useStatusStore.ts`
+
+## 버그 수정
+- 없음
+
+## Breaking Changes
+- 없음
+
+## 기술적 변경사항
+
+### Store 변경
+- `useTimerStore`: `excludedTitles`, `removeRecentTitle()` 추가
+- `useStatusStore`: 신규 추가
+
+### 컴포넌트 변경
+- `TimerInput`: CategoryAutocomplete 적용, 자동완성 삭제 기능
+- `TimerList`: 인라인 편집, 수정 버튼 추가
+- `GanttChart`: CategoryAutocomplete 적용, 프로젝트명 말줄임표
+- `WeeklySchedule`: StatusSelect 적용
+- `SettingsPage`: 진행상태 관리 섹션 추가
+- `Layout`: Footer 문구 추가
+
+## 다음 버전 예정
+- 데이터 자동 정리(cleanup) 로직 추가 (90일 이상 기록 자동 삭제)
+- 데이터 용량 표시 기능

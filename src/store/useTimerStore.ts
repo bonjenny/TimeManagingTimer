@@ -10,7 +10,7 @@ export type TimerStatus = 'IDLE' | 'RUNNING' | 'PAUSED' | 'COMPLETED';
 export interface TimerLog {
   id: string;          // UUID
   title: string;       // 업무 제목
-  boardNo?: string;    // 게시판 번호
+  projectCode?: string; // 프로젝트 코드 (기존 boardNo 대체)
   category?: string;   // 카테고리
   
   startTime: number;   // 시작 시각 (timestamp ms)
@@ -26,6 +26,11 @@ export interface TimerLog {
   lastPausedAt?: number; 
 }
 
+// 삭제된 로그 타입 (휴지통용)
+export interface DeletedLog extends TimerLog {
+  deletedAt: number; // 삭제된 로그는 deletedAt이 필수
+}
+
 export interface ThemeConfig {
   primaryColor: string;
   accentColor: string;
@@ -36,11 +41,12 @@ interface TimerState {
   activeTimer: TimerLog | null;
   logs: TimerLog[];
   deleted_logs: TimerLog[]; // 휴지통
+  excludedTitles: string[]; // 자동완성에서 제외된 제목들
   
   themeConfig: ThemeConfig;
 
   // --- Actions ---
-  startTimer: (title: string, boardNo?: string, category?: string) => void;
+  startTimer: (title: string, projectCode?: string, category?: string) => void;
   pauseTimer: () => void;
   resumeTimer: () => void;
   stopTimer: () => void;
@@ -52,6 +58,8 @@ interface TimerState {
   restoreLog: (id: string) => void; // 휴지통에서 복원
   permanentlyDeleteLog: (id: string) => void; // 영구 삭제
   emptyTrash: () => void; // 휴지통 비우기
+  reopenTimer: (id: string) => void; // 완료된 작업을 다시 진행 상태로 전환
+  removeRecentTitle: (title: string) => void; // 자동완성에서 제목 제외
 
   // --- Selectors ---
   getRecentTitles: () => string[];
@@ -72,6 +80,7 @@ export const useTimerStore = create<TimerState>()(
       activeTimer: null,
       logs: [],
       deleted_logs: [],
+      excludedTitles: [],
       
       // 테마 초기값
       themeConfig: {
@@ -80,9 +89,16 @@ export const useTimerStore = create<TimerState>()(
         isDark: false,
       },
 
+      // 자동완성에서 제목 제외
+      removeRecentTitle: (title) => set((state) => ({
+        excludedTitles: state.excludedTitles.includes(title) 
+          ? state.excludedTitles 
+          : [...state.excludedTitles, title]
+      })),
+
       // Q1. 자동완성 데이터 관리: logs 기반으로 최근 30일 내 고유 Title 추출
       getRecentTitles: () => {
-        const { logs } = get();
+        const { logs, excludedTitles } = get();
         const now = Date.now();
         const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
         
@@ -96,7 +112,7 @@ export const useTimerStore = create<TimerState>()(
         const sortedLogs = [...recentLogs].sort((a, b) => b.startTime - a.startTime);
 
         for (const log of sortedLogs) {
-          if (log.title && !uniqueTitles.has(log.title)) {
+          if (log.title && !uniqueTitles.has(log.title) && !excludedTitles.includes(log.title)) {
             uniqueTitles.add(log.title);
             result.push(log.title);
           }
@@ -105,33 +121,42 @@ export const useTimerStore = create<TimerState>()(
         return result.slice(0, 30); // 최대 30개
       },
 
-      startTimer: (title, boardNo, category) => {
+      startTimer: (title, projectCode, category) => {
         const now = Date.now();
         const newTimer: TimerLog = {
           id: crypto.randomUUID(),
           title,
-          boardNo,
+          projectCode,
           category,
           startTime: now,
           status: 'RUNNING',
           pausedDuration: 0,
         };
 
-        // 기존 activeTimer가 있다면 자동 일시정지 처리
+        // 기존 activeTimer가 있다면 미완료 상태로 logs에 이동
         const currentActive = get().activeTimer;
-        if (currentActive && currentActive.status === 'RUNNING') {
-           const pausedTimer: TimerLog = {
-             ...currentActive,
-             status: 'PAUSED',
-             lastPausedAt: now,
-           };
-           
-           set((state) => ({
-             logs: [...state.logs, pausedTimer],
-           }));
+        if (currentActive) {
+          let timerToMove: TimerLog;
+          
+          if (currentActive.status === 'RUNNING') {
+            // RUNNING 상태면 PAUSED로 변경
+            timerToMove = {
+              ...currentActive,
+              status: 'PAUSED',
+              lastPausedAt: now,
+            };
+          } else {
+            // PAUSED 상태면 그대로 유지
+            timerToMove = { ...currentActive };
+          }
+          
+          set((state) => ({
+            logs: [...state.logs, timerToMove],
+            activeTimer: newTimer,
+          }));
+        } else {
+          set({ activeTimer: newTimer });
         }
-
-        set({ activeTimer: newTimer });
       },
 
       pauseTimer: () => {
@@ -228,6 +253,42 @@ export const useTimerStore = create<TimerState>()(
 
       // 휴지통 비우기
       emptyTrash: () => set({ deleted_logs: [] }),
+
+      // 완료된 작업을 다시 진행 상태로 전환
+      reopenTimer: (id) => {
+        const { logs, activeTimer } = get();
+        const targetLog = logs.find(log => log.id === id && log.status === 'COMPLETED');
+        
+        if (!targetLog) return;
+
+        // 기존 activeTimer가 있으면 일시정지 후 logs에 추가
+        if (activeTimer && activeTimer.status === 'RUNNING') {
+          const pausedTimer: TimerLog = {
+            ...activeTimer,
+            status: 'PAUSED',
+            lastPausedAt: Date.now(),
+          };
+          
+          set((state) => ({
+            logs: [...state.logs.filter(l => l.id !== id), pausedTimer],
+            activeTimer: {
+              ...targetLog,
+              status: 'RUNNING',
+              endTime: undefined,
+            },
+          }));
+        } else {
+          // activeTimer가 없으면 바로 전환
+          set((state) => ({
+            logs: state.logs.filter(l => l.id !== id),
+            activeTimer: {
+              ...targetLog,
+              status: 'RUNNING',
+              endTime: undefined,
+            },
+          }));
+        }
+      },
 
       // 삭제된 로그 조회 (최근 30일)
       getDeletedLogs: () => {

@@ -31,6 +31,7 @@ import TodayIcon from '@mui/icons-material/Today';
 import ArticleIcon from '@mui/icons-material/Article';
 import SummarizeIcon from '@mui/icons-material/Summarize';
 import { useTimerStore, TimerLog } from '../../store/useTimerStore';
+import { useProjectStore } from '../../store/useProjectStore';
 import { getDateRange } from '../../utils/dateUtils';
 import { formatDuration, getDurationSecondsExcludingLunch } from '../../utils/timeUtils';
 
@@ -38,6 +39,7 @@ type DateFilterType = 'today' | 'week' | 'month' | 'custom';
 
 const ReportView: React.FC = () => {
   const { logs } = useTimerStore();
+  const { getProjectName } = useProjectStore();
   const [filterType, setFilterType] = useState<DateFilterType>('week');
   
   // Custom Date Range
@@ -113,13 +115,13 @@ const ReportView: React.FC = () => {
       return log.startTime >= start.getTime() && log.startTime < end.getTime();
     });
 
-    // 2. 그룹화 (게시판 번호별)
+    // 2. 그룹화 (프로젝트 코드별)
     const grouped = filtered.reduce((acc, log) => {
-      const boardKey = log.boardNo || '미지정';
+      const projectKey = log.projectCode || '미지정';
       
-      if (!acc[boardKey]) {
-        acc[boardKey] = {
-          boardNo: boardKey,
+      if (!acc[projectKey]) {
+        acc[projectKey] = {
+          projectCode: projectKey,
           totalSeconds: 0,
           count: 0,
           titles: new Set<string>() // 어떤 업무들을 했는지 모아서 보여주기 위함
@@ -130,12 +132,12 @@ const ReportView: React.FC = () => {
       // 진행중인 것도 현재시간 기준으로 계산
       const duration = getDurationSecondsExcludingLunch(log.startTime, log.endTime, log.pausedDuration);
 
-      acc[boardKey].totalSeconds += duration;
-      acc[boardKey].count += 1;
-      acc[boardKey].titles.add(log.title);
+      acc[projectKey].totalSeconds += duration;
+      acc[projectKey].count += 1;
+      acc[projectKey].titles.add(log.title);
 
       return acc;
-    }, {} as Record<string, { boardNo: string, totalSeconds: number, count: number, titles: Set<string> }>);
+    }, {} as Record<string, { projectCode: string, totalSeconds: number, count: number, titles: Set<string> }>);
 
     return {
       aggregatedData: Object.values(grouped).sort((a, b) => b.totalSeconds - a.totalSeconds),
@@ -211,13 +213,13 @@ const ReportView: React.FC = () => {
       const mins = duration_min % 60;
       const time_str = hours > 0 ? `${hours}시간 ${mins}분` : `${mins}분`;
       
-      const board_str = group.boardNo !== '미지정' ? `[#${group.boardNo}] ` : '';
+      const project_str = group.projectCode !== '미지정' ? `[${getProjectName(group.projectCode)}] ` : '';
       const titles_arr = Array.from(group.titles);
       const titles_str = titles_arr.length > 3 
         ? `${titles_arr.slice(0, 3).join(', ')} 외 ${titles_arr.length - 3}건`
         : titles_arr.join(', ');
       
-      return `${board_str}${titles_str} - ${time_str} (${group.count}건)`;
+      return `${project_str}${titles_str} - ${time_str} (${group.count}건)`;
     });
 
     const total_min = Math.floor(totalTime / 60);
@@ -247,10 +249,11 @@ const ReportView: React.FC = () => {
   const downloadCSV = () => {
     // BOM for Excel Korean support
     const BOM = '\uFEFF';
-    const headers = ['게시판 번호', '업무 개수', '총 소요 시간(분)', '상세 업무'];
+    const headers = ['프로젝트 코드', '프로젝트명', '업무 개수', '총 소요 시간(분)', '상세 업무'];
     
     const rows = aggregatedData.map(item => [
-      item.boardNo,
+      item.projectCode,
+      item.projectCode === '미지정' ? '기타' : getProjectName(item.projectCode),
       item.count,
       Math.floor(item.totalSeconds / 60), // 분 단위
       Array.from(item.titles).join(', ')
@@ -420,7 +423,7 @@ const ReportView: React.FC = () => {
         <Table sx={{ minWidth: 650 }}>
           <TableHead>
             <TableRow sx={{ bgcolor: 'var(--bg-tertiary)' }}>
-              <TableCell sx={{ fontWeight: 600 }}>게시판 번호</TableCell>
+              <TableCell sx={{ fontWeight: 600 }}>프로젝트명</TableCell>
               <TableCell align="center" sx={{ fontWeight: 600 }}>업무 개수</TableCell>
               <TableCell align="right" sx={{ fontWeight: 600 }}>총 소요 시간</TableCell>
               <TableCell sx={{ fontWeight: 600 }}>포함된 업무 (요약)</TableCell>
@@ -429,14 +432,14 @@ const ReportView: React.FC = () => {
           <TableBody>
             {aggregatedData.map((row) => (
               <TableRow
-                key={row.boardNo}
+                key={row.projectCode}
                 sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
               >
                 <TableCell component="th" scope="row">
-                  {row.boardNo === '미지정' ? (
+                  {row.projectCode === '미지정' ? (
                     <Typography color="text.secondary" variant="body2" sx={{ fontStyle: 'italic' }}>미지정</Typography>
                   ) : (
-                    <Chip label={`#${row.boardNo}`} size="small" variant="outlined" />
+                    <Chip label={getProjectName(row.projectCode)} size="small" variant="outlined" title={`[${row.projectCode}]`} />
                   )}
                 </TableCell>
                 <TableCell align="center">{row.count}건</TableCell>

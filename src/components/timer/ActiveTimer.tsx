@@ -2,15 +2,16 @@ import React, { useMemo, useState } from 'react';
 import { Box, Typography, Button, Paper, Chip, IconButton } from '@mui/material';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import PauseIcon from '@mui/icons-material/Pause';
-import StopIcon from '@mui/icons-material/Stop';
 import CheckIcon from '@mui/icons-material/Check';
 import { useTimerStore } from '../../store/useTimerStore';
+import { useProjectStore } from '../../store/useProjectStore';
 import { useTimerLogic } from '../../hooks/useTimerLogic';
 import { formatTimeDisplay, formatDuration } from '../../utils/timeUtils';
 
 const ActiveTimer: React.FC = () => {
   const { activeTimer, elapsedSeconds, showSeconds } = useTimerLogic();
-  const { logs, pauseTimer, resumeTimer, completeTimer, stopTimer } = useTimerStore();
+  const { logs, pauseTimer, resumeTimer, completeTimer } = useTimerStore();
+  const { getProjectName } = useProjectStore();
 
   // 같은 제목의 모든 로그 누적 시간 계산 (현재 세션 포함)
   const totalAccumulatedSeconds = useMemo(() => {
@@ -77,10 +78,14 @@ const ActiveTimer: React.FC = () => {
                 sx={{ bgcolor: 'var(--bg-hover)', color: 'var(--text-secondary)' }} 
               />
             )}
-            {activeTimer.boardNo && (
-              <Typography variant="caption" color="text.secondary">
-                #{activeTimer.boardNo}
-              </Typography>
+            {activeTimer.projectCode && (
+              <Chip 
+                label={getProjectName(activeTimer.projectCode)} 
+                size="small" 
+                variant="outlined"
+                sx={{ height: 20, fontSize: '0.65rem' }}
+                title={`[${activeTimer.projectCode}]`}
+              />
             )}
           </Box>
           <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
@@ -165,16 +170,12 @@ const ActiveTimer: React.FC = () => {
             onClick={completeTimer}
             sx={{ 
                 bgcolor: 'var(--primary-color)', 
-                color: 'var(--bg-primary)', // 텍스트 색상 반전 (검정 배경엔 흰 글씨, 흰 배경엔 검정 글씨)
+                color: 'white', 
                 '&:hover': { bgcolor: 'var(--accent-color)' } 
             }}
           >
             완료
           </Button>
-
-          <IconButton onClick={stopTimer} sx={{ color: 'text.secondary' }} title="삭제(중단)">
-            <StopIcon />
-          </IconButton>
         </Box>
       </Box>
     </Paper>

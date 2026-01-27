@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Paper,
@@ -18,46 +18,25 @@ import {
   Divider,
   Alert,
   Snackbar,
+  CircularProgress,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import RefreshIcon from '@mui/icons-material/Refresh';
 
-// 게시글 타입
-interface Comment {
-  id: string;
-  nickname: string;
-  content: string;
-  password_hash: string;
-  created_at: number;
-}
-
-interface FeedbackPost {
-  id: string;
-  nickname: string;
-  title: string;
-  content: string;
-  password_hash: string; // 비밀번호 해시 (간단한 해시)
-  created_at: number;
-  updated_at: number;
-  category: 'idea' | 'bug' | 'etc';
-  comments: Comment[];
-}
-
-// LocalStorage 키
-const FEEDBACK_STORAGE_KEY = 'timekeeper-feedback-posts';
-
-// 간단한 해시 함수 (실제 서비스에서는 bcrypt 등 사용)
-const simpleHash = (str: string): string => {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash;
-  }
-  return hash.toString(36);
-};
+import {
+  FeedbackPost,
+  Comment,
+  fetchPosts,
+  createPost,
+  updatePost,
+  deletePost,
+  addComment,
+  deleteComment,
+  simpleHash,
+} from '../../services/feedbackService';
 
 // 카테고리 라벨
 const CATEGORY_LABELS: Record<string, { label: string; color: string }> = {
@@ -66,16 +45,16 @@ const CATEGORY_LABELS: Record<string, { label: string; color: string }> = {
   etc: { label: '기타', color: '#6b7280' },
 };
 
+// 카테고리 안전 접근 헬퍼
+const getCategoryInfo = (category: string | undefined) => {
+  return CATEGORY_LABELS[category || 'etc'] || CATEGORY_LABELS.etc;
+};
+
 const FeedbackBoard: React.FC = () => {
   // 게시글 목록
-  const [posts, setPosts] = useState<FeedbackPost[]>(() => {
-    try {
-      const saved = localStorage.getItem(FEEDBACK_STORAGE_KEY);
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [posts, setPosts] = useState<FeedbackPost[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   // 뷰 상태: 'list' | 'detail' | 'write'
   const [view, setView] = useState<'list' | 'detail' | 'write'>('list');
@@ -104,16 +83,27 @@ const FeedbackBoard: React.FC = () => {
   // 스낵바
   const [snackbar_open, setSnackbarOpen] = useState(false);
   const [snackbar_message, setSnackbarMessage] = useState('');
+  const [snackbar_severity, setSnackbarSeverity] = useState<'success' | 'error'>('success');
 
-  // LocalStorage 저장
+  // 게시글 로드
+  const loadPosts = useCallback(async () => {
+    setLoading(true);
+    const data = await fetchPosts();
+    setPosts(data);
+    setLoading(false);
+  }, []);
+
+  // 초기 로드
   useEffect(() => {
-    localStorage.setItem(FEEDBACK_STORAGE_KEY, JSON.stringify(posts));
-  }, [posts]);
+    loadPosts();
+  }, [loadPosts]);
 
-  // 정렬된 게시글 (최신순)
-  const sorted_posts = useMemo(() => {
-    return [...posts].sort((a, b) => b.created_at - a.created_at);
-  }, [posts]);
+  // 스낵바 표시 헬퍼
+  const showSnackbar = (message: string, severity: 'success' | 'error' = 'success') => {
+    setSnackbarMessage(message);
+    setSnackbarSeverity(severity);
+    setSnackbarOpen(true);
+  };
 
   // 글쓰기 폼 초기화
   const resetForm = () => {
@@ -145,36 +135,33 @@ const FeedbackBoard: React.FC = () => {
   };
 
   // 글 저장
-  const handleSave = () => {
-    if (!form_title.trim() || !form_content.trim() || !form_password.trim()) {
-      setSnackbarMessage('제목, 내용, 비밀번호를 모두 입력해주세요.');
-      setSnackbarOpen(true);
+  const handleSave = async () => {
+    if (!form_title.trim() || !form_content.trim() || (!is_editing && !form_password.trim())) {
+      showSnackbar('제목, 내용, 비밀번호를 모두 입력해주세요.', 'error');
       return;
     }
 
+    setSaving(true);
     const now = Date.now();
 
     if (is_editing && selected_post) {
       // 수정
-      setPosts((prev) =>
-        prev.map((p) =>
-          p.id === selected_post.id
-            ? {
-                ...p,
-                nickname: form_nickname || '익명',
-                title: form_title,
-                content: form_content,
-                category: form_category,
-                updated_at: now,
-              }
-            : p
-        )
-      );
-      setSnackbarMessage('게시글이 수정되었습니다.');
+      const success = await updatePost(selected_post.id, {
+        nickname: form_nickname || '익명',
+        title: form_title,
+        content: form_content,
+        category: form_category,
+      });
+
+      if (success) {
+        showSnackbar('게시글이 수정되었습니다.');
+        await loadPosts();
+      } else {
+        showSnackbar('수정에 실패했습니다.', 'error');
+      }
     } else {
       // 새 글 작성
-      const new_post: FeedbackPost = {
-        id: crypto.randomUUID(),
+      const new_post: Omit<FeedbackPost, 'id'> = {
         nickname: form_nickname || '익명',
         title: form_title,
         content: form_content,
@@ -184,11 +171,17 @@ const FeedbackBoard: React.FC = () => {
         category: form_category,
         comments: [],
       };
-      setPosts((prev) => [...prev, new_post]);
-      setSnackbarMessage('게시글이 등록되었습니다.');
+
+      const id = await createPost(new_post);
+      if (id) {
+        showSnackbar('게시글이 등록되었습니다.');
+        await loadPosts();
+      } else {
+        showSnackbar('등록에 실패했습니다.', 'error');
+      }
     }
 
-    setSnackbarOpen(true);
+    setSaving(false);
     handleBack();
   };
 
@@ -209,13 +202,14 @@ const FeedbackBoard: React.FC = () => {
   };
 
   // 댓글 등록
-  const handleCommentSubmit = () => {
+  const handleCommentSubmit = async () => {
     if (!selected_post) return;
     if (!comment_content.trim() || !comment_password.trim()) {
-      setSnackbarMessage('내용과 비밀번호를 입력해주세요.');
-      setSnackbarOpen(true);
+      showSnackbar('내용과 비밀번호를 입력해주세요.', 'error');
       return;
     }
+
+    setSaving(true);
 
     const new_comment: Comment = {
       id: crypto.randomUUID(),
@@ -225,21 +219,31 @@ const FeedbackBoard: React.FC = () => {
       created_at: Date.now(),
     };
 
-    const updated_post = {
-      ...selected_post,
-      comments: [...(selected_post.comments || []), new_comment],
-    };
+    const success = await addComment(
+      selected_post.id,
+      selected_post.comments || [],
+      new_comment
+    );
 
-    // 로컬 상태 및 전체 포스트 업데이트
-    setSelectedPost(updated_post);
-    setPosts((prev) => prev.map((p) => (p.id === selected_post.id ? updated_post : p)));
+    if (success) {
+      // 로컬 상태 업데이트
+      const updated_post = {
+        ...selected_post,
+        comments: [...(selected_post.comments || []), new_comment],
+      };
+      setSelectedPost(updated_post);
+      setPosts((prev) => prev.map((p) => (p.id === selected_post.id ? updated_post : p)));
 
-    // 폼 초기화
-    setCommentNickname('');
-    setCommentContent('');
-    setCommentPassword('');
-    setSnackbarMessage('댓글이 등록되었습니다.');
-    setSnackbarOpen(true);
+      // 폼 초기화
+      setCommentNickname('');
+      setCommentContent('');
+      setCommentPassword('');
+      showSnackbar('댓글이 등록되었습니다.');
+    } else {
+      showSnackbar('댓글 등록에 실패했습니다.', 'error');
+    }
+
+    setSaving(false);
   };
 
   // 댓글 삭제 클릭
@@ -252,7 +256,7 @@ const FeedbackBoard: React.FC = () => {
   };
 
   // 비밀번호 확인
-  const handlePasswordConfirm = () => {
+  const handlePasswordConfirm = async () => {
     if (!selected_post) return;
 
     const input_hash = simpleHash(password_input);
@@ -265,17 +269,27 @@ const FeedbackBoard: React.FC = () => {
         return;
       }
 
-      const updated_post = {
-        ...selected_post,
-        comments: selected_post.comments.filter((c) => c.id !== target_comment_id),
-      };
+      setSaving(true);
+      const success = await deleteComment(
+        selected_post.id,
+        selected_post.comments,
+        target_comment_id!
+      );
 
-      setSelectedPost(updated_post);
-      setPosts((prev) => prev.map((p) => (p.id === selected_post.id ? updated_post : p)));
-      
+      if (success) {
+        const updated_post = {
+          ...selected_post,
+          comments: selected_post.comments.filter((c) => c.id !== target_comment_id),
+        };
+        setSelectedPost(updated_post);
+        setPosts((prev) => prev.map((p) => (p.id === selected_post.id ? updated_post : p)));
+        showSnackbar('댓글이 삭제되었습니다.');
+      } else {
+        showSnackbar('댓글 삭제에 실패했습니다.', 'error');
+      }
+
+      setSaving(false);
       setPasswordModalOpen(false);
-      setSnackbarMessage('댓글이 삭제되었습니다.');
-      setSnackbarOpen(true);
       return;
     }
 
@@ -298,9 +312,17 @@ const FeedbackBoard: React.FC = () => {
       setView('write');
     } else {
       // 삭제
-      setPosts((prev) => prev.filter((p) => p.id !== selected_post.id));
-      setSnackbarMessage('게시글이 삭제되었습니다.');
-      setSnackbarOpen(true);
+      setSaving(true);
+      const success = await deletePost(selected_post.id);
+      
+      if (success) {
+        showSnackbar('게시글이 삭제되었습니다.');
+        await loadPosts();
+      } else {
+        showSnackbar('삭제에 실패했습니다.', 'error');
+      }
+      
+      setSaving(false);
       handleBack();
     }
   };
@@ -324,7 +346,7 @@ const FeedbackBoard: React.FC = () => {
         sx={{
           p: 3,
           mb: 3,
-          bgcolor: 'var(--bg-tertiary)', // 헤더 영역 구분감을 위해 tertiary 사용
+          bgcolor: 'var(--bg-tertiary)',
           borderColor: 'var(--border-color)',
         }}
       >
@@ -337,19 +359,31 @@ const FeedbackBoard: React.FC = () => {
               앱 개선 아이디어나 버그 리포트를 남겨주세요.
             </Typography>
           </Box>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={handleWriteClick}
-            sx={{ bgcolor: 'var(--primary-color)', color: 'var(--bg-primary)', '&:hover': { bgcolor: 'var(--accent-color)' } }}
-          >
-            글쓰기
-          </Button>
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <IconButton onClick={loadPosts} disabled={loading} title="새로고침">
+              <RefreshIcon />
+            </IconButton>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={handleWriteClick}
+              sx={{ bgcolor: 'var(--primary-color)', color: 'white', '&:hover': { bgcolor: 'var(--accent-color)' } }}
+            >
+              글쓰기
+            </Button>
+          </Box>
         </Box>
       </Paper>
 
       <Paper variant="outlined" sx={{ borderColor: 'var(--border-color)' }}>
-        {sorted_posts.length === 0 ? (
+        {loading ? (
+          <Box sx={{ p: 6, textAlign: 'center' }}>
+            <CircularProgress size={32} />
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+              게시글을 불러오는 중...
+            </Typography>
+          </Box>
+        ) : posts.length === 0 ? (
           <Box sx={{ p: 6, textAlign: 'center', color: 'text.secondary' }}>
             <Typography variant="body1" sx={{ mb: 1 }}>
               등록된 게시글이 없습니다.
@@ -360,7 +394,7 @@ const FeedbackBoard: React.FC = () => {
           </Box>
         ) : (
           <List disablePadding>
-            {sorted_posts.map((post, index) => (
+            {posts.map((post, index) => (
               <React.Fragment key={post.id}>
                 {index > 0 && <Divider />}
                 <ListItem disablePadding>
@@ -369,18 +403,23 @@ const FeedbackBoard: React.FC = () => {
                       primary={
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
                           <Chip
-                            label={CATEGORY_LABELS[post.category].label}
+                            label={getCategoryInfo(post.category).label}
                             size="small"
                             sx={{
                               height: 20,
                               fontSize: '0.7rem',
-                              bgcolor: CATEGORY_LABELS[post.category].color,
+                              bgcolor: getCategoryInfo(post.category).color,
                               color: '#fff',
                             }}
                           />
                           <Typography variant="body1" sx={{ fontWeight: 500 }}>
                             {post.title}
                           </Typography>
+                          {post.comments && post.comments.length > 0 && (
+                            <Typography variant="caption" color="primary">
+                              [{post.comments.length}]
+                            </Typography>
+                          )}
                         </Box>
                       }
                       secondary={
@@ -417,12 +456,12 @@ const FeedbackBoard: React.FC = () => {
             <Box>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                 <Chip
-                  label={CATEGORY_LABELS[selected_post.category].label}
+                  label={getCategoryInfo(selected_post.category).label}
                   size="small"
                   sx={{
                     height: 20,
                     fontSize: '0.7rem',
-                    bgcolor: CATEGORY_LABELS[selected_post.category].color,
+                    bgcolor: getCategoryInfo(selected_post.category).color,
                     color: '#fff',
                   }}
                 />
@@ -436,10 +475,10 @@ const FeedbackBoard: React.FC = () => {
               </Typography>
             </Box>
             <Box sx={{ display: 'flex', gap: 1 }}>
-              <IconButton size="small" onClick={handleEditClick}>
+              <IconButton size="small" onClick={handleEditClick} disabled={saving}>
                 <EditIcon fontSize="small" />
               </IconButton>
-              <IconButton size="small" onClick={handleDeleteClick} sx={{ color: '#ef4444' }}>
+              <IconButton size="small" onClick={handleDeleteClick} disabled={saving} sx={{ color: '#ef4444' }}>
                 <DeleteIcon fontSize="small" />
               </IconButton>
             </Box>
@@ -487,6 +526,7 @@ const FeedbackBoard: React.FC = () => {
                               <IconButton
                                 size="small"
                                 onClick={() => handleCommentDeleteClick(comment.id)}
+                                disabled={saving}
                                 sx={{ color: 'text.secondary', p: 0.5 }}
                               >
                                 <DeleteIcon sx={{ fontSize: 16 }} />
@@ -541,10 +581,10 @@ const FeedbackBoard: React.FC = () => {
               <Button
                 variant="contained"
                 onClick={handleCommentSubmit}
-                disabled={!comment_content.trim() || !comment_password.trim()}
-                sx={{ bgcolor: 'var(--primary-color)', color: 'var(--bg-primary)', '&:hover': { bgcolor: 'var(--accent-color)' } }}
+                disabled={!comment_content.trim() || !comment_password.trim() || saving}
+                sx={{ bgcolor: 'var(--primary-color)', color: 'white', '&:hover': { bgcolor: 'var(--accent-color)' } }}
               >
-                댓글 등록
+                {saving ? <CircularProgress size={20} color="inherit" /> : '댓글 등록'}
               </Button>
             </Box>
           </Paper>
@@ -637,15 +677,16 @@ const FeedbackBoard: React.FC = () => {
 
           {/* 버튼 */}
           <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end', mt: 2 }}>
-            <Button onClick={handleBack} color="inherit">
+            <Button onClick={handleBack} color="inherit" disabled={saving}>
               취소
             </Button>
             <Button
               variant="contained"
               onClick={handleSave}
-              sx={{ bgcolor: 'var(--primary-color)', color: 'var(--bg-primary)', '&:hover': { bgcolor: 'var(--accent-color)' } }}
+              disabled={saving}
+              sx={{ bgcolor: 'var(--primary-color)', color: 'white', '&:hover': { bgcolor: 'var(--accent-color)' } }}
             >
-              {is_editing ? '수정하기' : '등록하기'}
+              {saving ? <CircularProgress size={20} color="inherit" /> : (is_editing ? '수정하기' : '등록하기')}
             </Button>
           </Box>
         </Box>
@@ -675,7 +716,9 @@ const FeedbackBoard: React.FC = () => {
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
             {password_modal_type === 'edit'
               ? '게시글을 수정하려면 비밀번호를 입력하세요.'
-              : '게시글을 삭제하려면 비밀번호를 입력하세요.'}
+              : password_modal_type === 'delete'
+              ? '게시글을 삭제하려면 비밀번호를 입력하세요.'
+              : '댓글을 삭제하려면 비밀번호를 입력하세요.'}
           </Typography>
           <TextField
             type="password"
@@ -695,15 +738,17 @@ const FeedbackBoard: React.FC = () => {
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setPasswordModalOpen(false)} color="inherit">
+          <Button onClick={() => setPasswordModalOpen(false)} color="inherit" disabled={saving}>
             취소
           </Button>
           <Button
             onClick={handlePasswordConfirm}
             variant="contained"
-            color={password_modal_type === 'delete' ? 'error' : 'primary'}
+            color={password_modal_type === 'delete' || password_modal_type === 'comment_delete' ? 'error' : 'primary'}
+            disabled={saving}
           >
-            {password_modal_type === 'edit' ? '확인(Enter)' : '삭제(Enter)'}
+            {saving ? <CircularProgress size={20} color="inherit" /> : 
+              (password_modal_type === 'edit' ? '확인(Enter)' : '삭제(Enter)')}
           </Button>
         </DialogActions>
       </Dialog>
@@ -715,7 +760,7 @@ const FeedbackBoard: React.FC = () => {
         onClose={() => setSnackbarOpen(false)}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
-        <Alert severity="success" onClose={() => setSnackbarOpen(false)}>
+        <Alert severity={snackbar_severity} onClose={() => setSnackbarOpen(false)}>
           {snackbar_message}
         </Alert>
       </Snackbar>

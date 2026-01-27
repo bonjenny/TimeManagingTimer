@@ -1,28 +1,88 @@
-import React, { useState } from 'react';
-import { Paper, IconButton, Box, Autocomplete, TextField, Tooltip, InputBase } from '@mui/material';
+import React, { useState, useMemo, useCallback } from 'react';
+import { Paper, IconButton, Box, Autocomplete, TextField, Tooltip, Typography } from '@mui/material';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import CloseIcon from '@mui/icons-material/Close';
 import { useTimerStore } from '../../store/useTimerStore';
-
-const CATEGORIES = ['분석', '개발', '개발자테스트', '테스트오류수정', '센터오류수정', '환경세팅', '회의', '기타'];
+import { useProjectStore } from '../../store/useProjectStore';
+import CategoryAutocomplete from '../common/CategoryAutocomplete';
 
 const TimerInput: React.FC = () => {
-  const { startTimer, getRecentTitles } = useTimerStore();
+  const { startTimer, getRecentTitles, removeRecentTitle } = useTimerStore();
+  const { projects, addProject, getProjectByCode, deleteProject } = useProjectStore();
+  
   const [title, setTitle] = useState('');
-  const [boardNo, setBoardNo] = useState('');
+  const [projectCode, setProjectCode] = useState('');
+  const [projectName, setProjectName] = useState('');
   const [category, setCategory] = useState<string | null>(null);
 
-  const recentTitles = getRecentTitles(); // 매 렌더링마다 계산? 성능 이슈? -> 일단 컴포넌트 내부 호출. 필요시 useMemo
+  const recentTitles = getRecentTitles();
+  
+  // 프로젝트 코드 옵션
+  const projectCodeOptions = useMemo(() => {
+    return projects.map(p => p.code);
+  }, [projects]);
+  
+  // 프로젝트 명 옵션
+  const projectNameOptions = useMemo(() => {
+    return projects.map(p => p.name);
+  }, [projects]);
 
   const handleStart = () => {
     if (!title.trim()) return;
     
-    startTimer(title, boardNo, category || undefined);
+    // 프로젝트 코드와 이름이 있으면 저장
+    if (projectCode.trim() && projectName.trim()) {
+      addProject({ code: projectCode.trim(), name: projectName.trim() });
+    }
+    
+    startTimer(title, projectCode || undefined, category || undefined);
     
     // 초기화
     setTitle('');
-    setBoardNo('');
+    setProjectCode('');
+    setProjectName('');
     setCategory(null);
   };
+  
+  // 프로젝트 코드 입력 처리 - 일치하는 프로젝트 명 자동완성
+  const handleProjectCodeChange = useCallback((value: string) => {
+    setProjectCode(value);
+    
+    // 빈 값이면 프로젝트 명도 제거
+    if (!value) {
+      setProjectName('');
+      return;
+    }
+    
+    // localStorage에서 일치하는 프로젝트 찾기
+    const matchedProject = getProjectByCode(value);
+    if (matchedProject) {
+      setProjectName(matchedProject.name);
+    } else {
+      // 부분 일치도 확인 (코드가 정확히 일치하는 경우만)
+      const exactMatch = projects.find(p => p.code === value);
+      if (exactMatch) {
+        setProjectName(exactMatch.name);
+      }
+    }
+  }, [projects, getProjectByCode]);
+  
+  // 프로젝트 명 입력 처리 - 일치하는 프로젝트 코드 자동완성
+  const handleProjectNameChange = useCallback((value: string) => {
+    setProjectName(value);
+    
+    // 빈 값이면 프로젝트 코드도 제거
+    if (!value) {
+      setProjectCode('');
+      return;
+    }
+    
+    // localStorage에서 일치하는 프로젝트 찾기 (이름으로)
+    const matchedProject = projects.find(p => p.name === value);
+    if (matchedProject) {
+      setProjectCode(matchedProject.code);
+    }
+  }, [projects]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -49,13 +109,44 @@ const TimerInput: React.FC = () => {
         }
       }}
     >
-      <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', width: '100%', p: 1, gap: 2 }}>
+      <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', width: '100%', p: 1, gap: 1.5 }}>
         {/* 제목 입력 (가장 크게) */}
         <Autocomplete
           freeSolo
           options={recentTitles}
           value={title}
           onInputChange={(_e, newValue) => setTitle(newValue)}
+          renderOption={(props, option) => {
+            const { key, ...otherProps } = props;
+            return (
+              <Box
+                key={key}
+                component="li"
+                {...otherProps}
+                sx={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  '&.MuiAutocomplete-option': { py: 0.5, px: 1 }
+                }}
+              >
+                <Typography variant="body2" sx={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {option}
+                </Typography>
+                <IconButton
+                  size="small"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    removeRecentTitle(option);
+                  }}
+                  sx={{ p: 0.25, opacity: 0.5, '&:hover': { opacity: 1, color: 'error.main' } }}
+                >
+                  <CloseIcon sx={{ fontSize: 14 }} />
+                </IconButton>
+              </Box>
+            );
+          }}
           renderInput={(params) => (
             <TextField 
               {...params} 
@@ -66,37 +157,126 @@ const TimerInput: React.FC = () => {
               autoFocus
             />
           )}
-          sx={{ flexGrow: 2, minWidth: 200 }}
+          sx={{ flexGrow: 2, minWidth: 180 }}
         />
-        
 
-        {/* 게시판 번호 */}
-        <InputBase
-          placeholder="게시판 번호"
-          value={boardNo}
-          onChange={(e) => setBoardNo(e.target.value)}
+        {/* 프로젝트 코드 */}
+        <Autocomplete
+          freeSolo
+          options={projectCodeOptions}
+          value={projectCode}
+          onInputChange={(_e, newValue) => handleProjectCodeChange(newValue || '')}
+          renderOption={(props, option) => {
+            const { key, ...otherProps } = props;
+            return (
+              <Box
+                key={key}
+                component="li"
+                {...otherProps}
+                sx={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  '&.MuiAutocomplete-option': { py: 0.5, px: 1 }
+                }}
+              >
+                <Typography variant="body2" sx={{ flex: 1, fontSize: '0.8rem' }}>
+                  {option}
+                </Typography>
+                <IconButton
+                  size="small"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    deleteProject(option);
+                  }}
+                  sx={{ p: 0.25, opacity: 0.5, '&:hover': { opacity: 1, color: 'error.main' } }}
+                >
+                  <CloseIcon sx={{ fontSize: 12 }} />
+                </IconButton>
+              </Box>
+            );
+          }}
+          renderInput={(params) => (
+            <TextField 
+              {...params} 
+              placeholder="프로젝트 코드" 
+              variant="standard"
+              InputProps={{ ...params.InputProps, disableUnderline: true }}
+              size="small"
+            />
+          )}
           sx={{ 
-            width: 100,
-            fontSize: '0.875rem'
+            width: 120,
+            '& .MuiAutocomplete-input': { fontSize: '0.8rem', p: '0 !important' }
+          }}
+        />
+
+        {/* 프로젝트 명 */}
+        <Autocomplete
+          freeSolo
+          options={projectNameOptions}
+          value={projectName}
+          onInputChange={(_e, newValue) => handleProjectNameChange(newValue || '')}
+          renderOption={(props, option) => {
+            const { key, ...otherProps } = props;
+            const project = projects.find(p => p.name === option);
+            return (
+              <Box
+                key={key}
+                component="li"
+                {...otherProps}
+                sx={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  '&.MuiAutocomplete-option': { py: 0.5, px: 1 }
+                }}
+              >
+                <Typography variant="body2" sx={{ flex: 1, fontSize: '0.8rem' }}>
+                  {option}
+                </Typography>
+                <IconButton
+                  size="small"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    if (project) {
+                      deleteProject(project.code);
+                    }
+                  }}
+                  sx={{ p: 0.25, opacity: 0.5, '&:hover': { opacity: 1, color: 'error.main' } }}
+                >
+                  <CloseIcon sx={{ fontSize: 12 }} />
+                </IconButton>
+              </Box>
+            );
+          }}
+          renderInput={(params) => (
+            <TextField 
+              {...params} 
+              placeholder="프로젝트 명" 
+              variant="standard"
+              InputProps={{ ...params.InputProps, disableUnderline: true }}
+              size="small"
+            />
+          )}
+          sx={{ 
+            width: 140,
+            '& .MuiAutocomplete-input': { fontSize: '0.8rem', p: '0 !important' }
           }}
         />
 
         {/* 카테고리 */}
-        <Autocomplete
-          options={CATEGORIES}
+        <CategoryAutocomplete
           value={category}
-          onChange={(_e, newValue) => setCategory(newValue)}
-          renderInput={(params) => (
-            <TextField 
-              {...params} 
-              placeholder="카테고리" 
-              variant="standard" 
-              InputProps={{ ...params.InputProps, disableUnderline: true }} 
-            />
-          )}
+          onChange={(newValue) => setCategory(newValue)}
+          placeholder="카테고리"
+          variant="standard"
+          disableUnderline
           sx={{ 
-            width: 150,
-            '& .MuiAutocomplete-input': { fontSize: '0.875rem', p: '0 !important' }
+            width: 120,
+            '& .MuiAutocomplete-input': { fontSize: '0.8rem', p: '0 !important' }
           }}
         />
 
