@@ -1,5 +1,7 @@
-import { renderHook, act } from '@testing-library/react';
+import { renderHook, act, render, screen, fireEvent, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { useCategoryStore } from '../../../store/useCategoryStore';
+import CategoryAutocomplete from '../../../components/common/CategoryAutocomplete';
 
 describe('CategoryAutocomplete 관련 기능', () => {
   beforeEach(() => {
@@ -95,6 +97,117 @@ describe('CategoryAutocomplete 관련 기능', () => {
       
       expect(result.current.categories).toContain('개발');
       expect(result.current.categories).not.toContain('테스트');
+    });
+  });
+
+  describe('CategoryAutocomplete UI', () => {
+    it('드롭다운이 열리고 카테고리 목록이 표시된다', async () => {
+      const mockOnChange = jest.fn();
+      render(
+        <CategoryAutocomplete
+          value={null}
+          onChange={mockOnChange}
+          placeholder="카테고리 선택"
+        />
+      );
+
+      const input = screen.getByPlaceholderText('카테고리 선택');
+      await userEvent.click(input);
+
+      // 드롭다운이 열리고 기본 카테고리가 표시되는지 확인
+      await waitFor(() => {
+        expect(screen.getByText('개발')).toBeInTheDocument();
+      });
+    });
+
+    it('새 카테고리 입력 영역을 클릭해도 드롭다운이 닫히지 않는다', async () => {
+      const mockOnChange = jest.fn();
+      render(
+        <CategoryAutocomplete
+          value={null}
+          onChange={mockOnChange}
+          placeholder="카테고리 선택"
+        />
+      );
+
+      // Autocomplete 열기
+      const input = screen.getByPlaceholderText('카테고리 선택');
+      await userEvent.click(input);
+
+      // 드롭다운이 열렸는지 확인
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText('새 카테고리')).toBeInTheDocument();
+      });
+
+      // 새 카테고리 입력 영역 클릭
+      const newCategoryInput = screen.getByPlaceholderText('새 카테고리');
+      await userEvent.click(newCategoryInput);
+
+      // 드롭다운이 여전히 열려있는지 확인 (기존 옵션이 보이는지)
+      await waitFor(() => {
+        expect(screen.getByText('개발')).toBeInTheDocument();
+      });
+
+      // onChange가 호출되지 않았는지 확인 (옵션이 선택되지 않음)
+      expect(mockOnChange).not.toHaveBeenCalled();
+    });
+
+    it('새 카테고리 입력 후 추가 버튼 클릭 시 카테고리가 추가되고 옵션이 선택되지 않는다', async () => {
+      const mockOnChange = jest.fn();
+      render(
+        <CategoryAutocomplete
+          value={null}
+          onChange={mockOnChange}
+          placeholder="카테고리 선택"
+        />
+      );
+
+      // Autocomplete 열기
+      const input = screen.getByPlaceholderText('카테고리 선택');
+      await userEvent.click(input);
+
+      // 새 카테고리 입력
+      const newCategoryInput = screen.getByPlaceholderText('새 카테고리');
+      await userEvent.type(newCategoryInput, '테스트카테고리');
+
+      // 추가 버튼 클릭
+      const addButton = screen.getByRole('button', { name: '' }); // AddIcon 버튼
+      fireEvent.mouseDown(addButton);
+      fireEvent.click(addButton);
+
+      // 카테고리가 추가되었는지 확인
+      await waitFor(() => {
+        const { result } = renderHook(() => useCategoryStore());
+        expect(result.current.categories).toContain('테스트카테고리');
+      });
+
+      // 드롭다운이 여전히 열려있고 기존 카테고리 옵션이 선택되지 않았는지 확인
+      expect(mockOnChange).not.toHaveBeenCalled();
+    });
+
+    it('새 카테고리 입력 후 Enter 키로 추가할 수 있다', async () => {
+      const mockOnChange = jest.fn();
+      render(
+        <CategoryAutocomplete
+          value={null}
+          onChange={mockOnChange}
+          placeholder="카테고리 선택"
+        />
+      );
+
+      // Autocomplete 열기
+      const input = screen.getByPlaceholderText('카테고리 선택');
+      await userEvent.click(input);
+
+      // 새 카테고리 입력
+      const newCategoryInput = screen.getByPlaceholderText('새 카테고리');
+      await userEvent.type(newCategoryInput, '엔터테스트{enter}');
+
+      // 카테고리가 추가되었는지 확인
+      await waitFor(() => {
+        const { result } = renderHook(() => useCategoryStore());
+        expect(result.current.categories).toContain('엔터테스트');
+      });
     });
   });
 });
