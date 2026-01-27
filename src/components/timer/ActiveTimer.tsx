@@ -10,7 +10,7 @@ import { formatTimeDisplay, formatDuration } from '../../utils/timeUtils';
 
 const ActiveTimer: React.FC = () => {
   const { activeTimer, elapsedSeconds, showSeconds } = useTimerLogic();
-  const { logs, pauseTimer, resumeTimer, completeTimer, updateActiveTimer } = useTimerStore();
+  const { logs, resumeTimer, completeTimer, updateActiveTimer, pauseAndMoveToLogs } = useTimerStore();
   const { getProjectName } = useProjectStore();
   
   // 제목 편집 상태
@@ -231,7 +231,7 @@ const ActiveTimer: React.FC = () => {
         {/* 컨트롤 버튼 */}
         <Box sx={{ display: 'flex', gap: 1, mt: { xs: 2, md: 0 }, alignItems: 'center' }}>
           <IconButton 
-            onClick={isRunning ? pauseTimer : resumeTimer}
+            onClick={isRunning ? pauseAndMoveToLogs : resumeTimer}
             color="primary"
             sx={{ 
               width: 40, 
