@@ -166,8 +166,15 @@ const TimerInput: React.FC = () => {
           options={projectCodeOptions}
           value={projectCode}
           onInputChange={(_e, newValue) => handleProjectCodeChange(newValue || '')}
+          onChange={(_e, newValue) => {
+            // 키보드로 옵션 선택 시에도 프로젝트명 연동
+            if (newValue) {
+              handleProjectCodeChange(newValue);
+            }
+          }}
           renderOption={(props, option) => {
             const { key, ...otherProps } = props;
+            const project = projects.find(p => p.code === option);
             return (
               <Box
                 key={key}
@@ -180,9 +187,20 @@ const TimerInput: React.FC = () => {
                   '&.MuiAutocomplete-option': { py: 0.5, px: 1 }
                 }}
               >
-                <Typography variant="body2" sx={{ flex: 1, fontSize: '0.8rem' }}>
-                  {option}
-                </Typography>
+                <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
+                  <Typography variant="body2" sx={{ fontSize: '0.8rem', fontWeight: 500 }}>
+                    {option}
+                  </Typography>
+                  {project && (
+                    <Typography 
+                      variant="caption" 
+                      color="text.secondary" 
+                      sx={{ fontSize: '0.7rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                    >
+                      {project.name}
+                    </Typography>
+                  )}
+                </Box>
                 <IconButton
                   size="small"
                   onClick={(e) => {
@@ -218,6 +236,12 @@ const TimerInput: React.FC = () => {
           options={projectNameOptions}
           value={projectName}
           onInputChange={(_e, newValue) => handleProjectNameChange(newValue || '')}
+          onChange={(_e, newValue) => {
+            // 키보드로 옵션 선택 시에도 프로젝트 코드 연동
+            if (newValue) {
+              handleProjectNameChange(newValue);
+            }
+          }}
           renderOption={(props, option) => {
             const { key, ...otherProps } = props;
             const project = projects.find(p => p.name === option);
@@ -233,9 +257,20 @@ const TimerInput: React.FC = () => {
                   '&.MuiAutocomplete-option': { py: 0.5, px: 1 }
                 }}
               >
-                <Typography variant="body2" sx={{ flex: 1, fontSize: '0.8rem' }}>
-                  {option}
-                </Typography>
+                <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
+                  <Typography variant="body2" sx={{ fontSize: '0.8rem', fontWeight: 500 }}>
+                    {option}
+                  </Typography>
+                  {project && (
+                    <Typography 
+                      variant="caption" 
+                      color="text.secondary" 
+                      sx={{ fontSize: '0.7rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                    >
+                      {project.code}
+                    </Typography>
+                  )}
+                </Box>
                 <IconButton
                   size="small"
                   onClick={(e) => {

@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { Box, Typography, Button, Paper, Chip, IconButton } from '@mui/material';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
+import { Box, Typography, Button, Paper, Chip, IconButton, TextField } from '@mui/material';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import PauseIcon from '@mui/icons-material/Pause';
 import CheckIcon from '@mui/icons-material/Check';
@@ -10,8 +10,13 @@ import { formatTimeDisplay, formatDuration } from '../../utils/timeUtils';
 
 const ActiveTimer: React.FC = () => {
   const { activeTimer, elapsedSeconds, showSeconds } = useTimerLogic();
-  const { logs, pauseTimer, resumeTimer, completeTimer } = useTimerStore();
+  const { logs, pauseTimer, resumeTimer, completeTimer, updateActiveTimer } = useTimerStore();
   const { getProjectName } = useProjectStore();
+  
+  // 제목 편집 상태
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const titleInputRef = useRef<HTMLInputElement>(null);
 
   // 같은 제목의 모든 로그 누적 시간 계산 (현재 세션 포함)
   const totalAccumulatedSeconds = useMemo(() => {
@@ -29,6 +34,36 @@ const ActiveTimer: React.FC = () => {
     // 현재 진행 중인 세션 시간 추가
     return completed_duration + elapsedSeconds;
   }, [activeTimer, logs, elapsedSeconds]);
+
+  // 제목 편집 시작
+  const handleTitleClick = () => {
+    if (activeTimer) {
+      setEditTitle(activeTimer.title);
+      setIsEditingTitle(true);
+    }
+  };
+
+  // 제목 저장
+  const handleTitleSave = () => {
+    if (activeTimer && editTitle.trim() && editTitle.trim() !== activeTimer.title) {
+      updateActiveTimer({ title: editTitle.trim() });
+    }
+    setIsEditingTitle(false);
+  };
+
+  // 제목 편집 취소
+  const handleTitleCancel = () => {
+    setIsEditingTitle(false);
+    setEditTitle('');
+  };
+
+  // 편집 모드 진입 시 input에 포커스
+  useEffect(() => {
+    if (isEditingTitle && titleInputRef.current) {
+      titleInputRef.current.focus();
+      titleInputRef.current.select();
+    }
+  }, [isEditingTitle]);
 
   if (!activeTimer) {
     return null;
@@ -88,9 +123,54 @@ const ActiveTimer: React.FC = () => {
               />
             )}
           </Box>
-          <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
-            {activeTimer.title}
-          </Typography>
+          {isEditingTitle ? (
+            <TextField
+              inputRef={titleInputRef}
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              onBlur={handleTitleSave}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleTitleSave();
+                }
+                if (e.key === 'Escape') {
+                  handleTitleCancel();
+                }
+              }}
+              variant="standard"
+              fullWidth
+              InputProps={{ 
+                disableUnderline: true,
+                sx: { 
+                  fontSize: '1.5rem', 
+                  fontWeight: 700,
+                  lineHeight: 1.334,
+                  py: 0,
+                }
+              }}
+              sx={{ mb: 0.5 }}
+            />
+          ) : (
+            <Typography 
+              variant="h5" 
+              sx={{ 
+                fontWeight: 700, 
+                mb: 0.5,
+                cursor: 'pointer',
+                borderRadius: 1,
+                px: 0.5,
+                mx: -0.5,
+                '&:hover': { 
+                  bgcolor: 'action.hover',
+                }
+              }}
+              onClick={handleTitleClick}
+              title="클릭하여 제목 수정"
+            >
+              {activeTimer.title}
+            </Typography>
+          )}
           <Typography variant="body2" color="text.secondary">
             시작: {new Date(activeTimer.startTime).toLocaleTimeString()}
           </Typography>

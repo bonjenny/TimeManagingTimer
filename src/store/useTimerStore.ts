@@ -61,6 +61,7 @@ interface TimerState {
   reopenTimer: (id: string) => void; // 완료된 작업을 다시 진행 상태로 전환
   removeRecentTitle: (title: string) => void; // 자동완성에서 제목 제외
   pauseAndMoveToLogs: () => void; // 진행중인 타이머를 일시정지 후 logs로 이동
+  updateActiveTimer: (updates: Partial<TimerLog>) => void; // activeTimer 업데이트
 
   // --- Selectors ---
   getRecentTitles: () => string[];
@@ -295,6 +296,16 @@ export const useTimerStore = create<TimerState>()(
           logs: [...state.logs, timerToMove],
           activeTimer: null,
         }));
+      },
+
+      // activeTimer 업데이트
+      updateActiveTimer: (updates) => {
+        const { activeTimer } = get();
+        if (!activeTimer) return;
+
+        set({
+          activeTimer: { ...activeTimer, ...updates },
+        });
       },
 
       // 삭제된 로그 조회 (최근 30일)
