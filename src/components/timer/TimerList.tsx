@@ -610,16 +610,26 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                         onClick={(e) => {
                           e.stopPropagation();
                           if (all_completed && task.sessions.length > 0) {
-                            // 마지막 세션을 완료 취소
+                            // 완료된 작업 → 마지막 세션을 완료 취소
                             const lastSession = task.sessions[task.sessions.length - 1];
                             reopenTimer(lastSession.id);
+                          } else if (!all_completed && task.sessions.length > 0) {
+                            // 미완료 작업 → 모든 세션을 완료 상태로 변경
+                            task.sessions.forEach(session => {
+                              if (session.status !== 'COMPLETED') {
+                                updateLog(session.id, { 
+                                  status: 'COMPLETED', 
+                                  endTime: session.endTime || session.lastPausedAt || Date.now() 
+                                });
+                              }
+                            });
                           }
                         }}
-                        disabled={!all_completed}
+                        disabled={task.sessions.length === 0 || is_active_task}
                         sx={{ 
                           p: 0.25, 
-                          color: all_completed ? 'success.main' : 'text.disabled',
-                          '&:hover': { color: all_completed ? 'warning.main' : 'text.disabled' }
+                          color: all_completed ? 'success.main' : 'text.secondary',
+                          '&:hover': { color: all_completed ? 'warning.main' : 'success.main' }
                         }}
                       >
                         {all_completed ? (

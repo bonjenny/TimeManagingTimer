@@ -695,6 +695,9 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
+    // 우클릭(button === 2)은 드래그 시작하지 않음 (컨텍스트 메뉴용)
+    if (e.button === 2) return;
+    
     // 컨텍스트 메뉴가 열려있으면 닫기
     if (contextMenu) {
       setContextMenu(null);
@@ -730,27 +733,20 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
 
     setIsDragging(false);
 
-    // 드래그 거리가 너무 짧으면 무시 (단순 클릭 처리)
+    // 5분을 퍼센트로 환산
+    const fiveMinutesPercent = (5 / totalMinutes) * 100;
+
+    // 드래그 거리가 5분 미만이면 아무 작업도 하지 않음 (모달 띄우지 않음)
+    if (Math.abs(dragCurrentPercent - dragStartPercent) < fiveMinutesPercent) {
+      setDragStartPercent(null);
+      setDragCurrentPercent(null);
+      setDragRowIndex(null);
+      return;
+    }
+
+    // 드래그 범위 계산
     let start_p = Math.min(dragStartPercent, dragCurrentPercent);
     let end_p = Math.max(dragStartPercent, dragCurrentPercent);
-    
-    // 단순 클릭인 경우 (드래그 거리 1% 미만)
-    if (Math.abs(dragCurrentPercent - dragStartPercent) < 1) {
-      // 1. 기본 길이 설정 (1시간)
-      // 전체 분(totalMinutes) 중 60분이 차지하는 비율(%) 계산
-      const defaultDurationPercent = (60 / totalMinutes) * 100;
-      
-      // 2. 클릭한 위치를 시작점으로 설정
-      start_p = dragStartPercent;
-      
-      // 3. 종료점은 시작점 + 1시간 (최대 100%를 넘지 않도록)
-      end_p = Math.min(dragStartPercent + defaultDurationPercent, 100);
-      
-      // 4. 만약 종료점이 100%를 넘어서 잘렸다면, 시작점을 앞으로 당김 (길이 유지 노력)
-      if (end_p === 100) {
-        start_p = Math.max(0, 100 - defaultDurationPercent);
-      }
-    }
 
     // 시간 변환 로직
 
