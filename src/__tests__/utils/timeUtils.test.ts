@@ -189,7 +189,7 @@ describe('timeUtils', () => {
       localStorage.getItem = original_get_item;
     });
 
-    it('pausedDuration이 전체 duration보다 크면 0을 반환한다', () => {
+    it('pausedDuration이 전체 duration보다 크면 전체 duration을 반환한다 (비정상 데이터 무시)', () => {
       // 1시간(3600초) 작업에 5000초 일시정지 (비정상 데이터)
       const start = new Date('2026-01-26T09:00:00').getTime();
       const end = new Date('2026-01-26T10:00:00').getTime();
@@ -204,9 +204,9 @@ describe('timeUtils', () => {
 
       const result = getDurationSecondsExcludingLunch(start, end, paused_duration);
 
-      // safePaused = Math.min(5000, 3600) = 3600
-      // result = 3600 - 3600 = 0
-      expect(result).toBe(0);
+      // pausedDuration > durationSec이므로 safePaused = 0 (비정상 데이터 무시)
+      // result = 3600 - 0 = 3600
+      expect(result).toBe(3600);
 
       localStorage.getItem = original_get_item;
     });
