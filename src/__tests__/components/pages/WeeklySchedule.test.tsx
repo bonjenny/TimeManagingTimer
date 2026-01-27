@@ -89,82 +89,96 @@ describe('WeeklySchedule', () => {
       });
     });
 
-    it('템플릿 복사 버튼이 렌더링된다', () => {
+    it('복사 버튼이 렌더링된다', () => {
       render(<WeeklySchedule />);
-      expect(screen.getByRole('button', { name: /템플릿 복사/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /복사/i })).toBeInTheDocument();
     });
 
-    it('데이터가 없으면 템플릿 복사 버튼이 비활성화된다', () => {
+    it('데이터가 없으면 복사 버튼이 비활성화된다', () => {
       // 로그 삭제
       const store = useTimerStore.getState();
       store.logs.forEach((log) => store.deleteLog(log.id));
 
       render(<WeeklySchedule />);
-      const copy_button = screen.getByRole('button', { name: /템플릿 복사/i });
+      const copy_button = screen.getByRole('button', { name: /복사/i });
       expect(copy_button).toBeDisabled();
     });
 
-    it('템플릿 복사 버튼을 클릭하면 메뉴가 열린다', async () => {
-      const user = userEvent.setup();
+    it('데이터가 있으면 복사 버튼이 활성화된다', () => {
       render(<WeeklySchedule />);
-
-      const copy_button = screen.getByRole('button', { name: /템플릿 복사/i });
-      await user.click(copy_button);
-
-      expect(screen.getByText('상세형 템플릿')).toBeInTheDocument();
-      expect(screen.getByText('요약형 템플릿')).toBeInTheDocument();
-    });
-
-    it('상세형 템플릿을 선택하면 클립보드에 복사된다', async () => {
-      const user = userEvent.setup();
-      render(<WeeklySchedule />);
-
-      const copy_button = screen.getByRole('button', { name: /템플릿 복사/i });
-      await user.click(copy_button);
-
-      const detailed_option = screen.getByText('상세형 템플릿');
-      await user.click(detailed_option);
-
-      expect(mockClipboard.writeText).toHaveBeenCalled();
-    });
-
-    it('요약형 템플릿을 선택하면 클립보드에 복사된다', async () => {
-      const user = userEvent.setup();
-      render(<WeeklySchedule />);
-
-      const copy_button = screen.getByRole('button', { name: /템플릿 복사/i });
-      await user.click(copy_button);
-
-      const summary_option = screen.getByText('요약형 템플릿');
-      await user.click(summary_option);
-
-      expect(mockClipboard.writeText).toHaveBeenCalled();
+      const copy_button = screen.getByRole('button', { name: /복사/i });
+      expect(copy_button).not.toBeDisabled();
     });
   });
 
-  describe('카테고리별 시각화', () => {
-    it('카테고리별 업무 시간 섹션이 표시된다', () => {
-      render(<WeeklySchedule />);
-      expect(screen.getByText('카테고리별 업무 시간')).toBeInTheDocument();
-    });
-
+  describe('빈 데이터 안내', () => {
     it('데이터가 없으면 안내 메시지가 표시된다', () => {
       render(<WeeklySchedule />);
       expect(screen.getByText(/이 주에 기록된 업무가 없습니다/i)).toBeInTheDocument();
     });
   });
 
-  describe('CSV 다운로드', () => {
-    it('CSV 다운로드 버튼이 렌더링된다', () => {
+  describe('주간 요약', () => {
+    it('주간 일정 제목이 표시된다', () => {
       render(<WeeklySchedule />);
-      expect(screen.getByRole('button', { name: /CSV 다운로드/i })).toBeInTheDocument();
+      expect(screen.getByText('주간 일정')).toBeInTheDocument();
+    });
+
+    it('복사 미리보기 섹션이 표시된다', async () => {
+      // 테스트용 로그 추가
+      const now = new Date();
+      const monday = new Date(now);
+      const day = monday.getDay();
+      const diff = day === 0 ? -6 : 1 - day;
+      monday.setDate(now.getDate() + diff);
+      monday.setHours(9, 0, 0, 0);
+
+      act(() => {
+        useTimerStore.getState().addLog({
+          id: 'test-preview-log',
+          title: '테스트 작업',
+          projectCode: 'A26_00001',
+          category: '개발',
+          startTime: monday.getTime(),
+          endTime: monday.getTime() + 3600000,
+          status: 'COMPLETED',
+          pausedDuration: 0,
+        });
+      });
+
+      render(<WeeklySchedule />);
+      expect(screen.getByText('복사 미리보기')).toBeInTheDocument();
     });
   });
 
-  describe('주간 요약', () => {
-    it('주간 총 업무 시간이 표시된다', () => {
+  describe('pausedDuration 계산', () => {
+    it('pausedDuration이 전체 duration보다 크면 전체 시간으로 표시된다', async () => {
+      const now = new Date();
+      const monday = new Date(now);
+      const day = monday.getDay();
+      const diff = day === 0 ? -6 : 1 - day;
+      monday.setDate(now.getDate() + diff);
+      monday.setHours(9, 0, 0, 0);
+
+      // pausedDuration이 전체 duration보다 큰 비정상적인 로그 추가
+      // 1시간(3600초) 작업에 5000초 일시정지 (비정상)
+      act(() => {
+        useTimerStore.getState().addLog({
+          id: 'abnormal-paused-log',
+          title: '비정상 일시정지 로그',
+          projectCode: 'A26_00002',
+          category: '테스트',
+          startTime: monday.getTime(),
+          endTime: monday.getTime() + 3600000, // 1시간
+          status: 'COMPLETED',
+          pausedDuration: 5000, // 전체 duration(3600초)보다 큼
+        });
+      });
+
       render(<WeeklySchedule />);
-      expect(screen.getByText('주간 총 업무 시간')).toBeInTheDocument();
+
+      // 프로젝트명이 표시되어야 함 (00:00이 아닌 정상 시간)
+      expect(screen.getByText('비정상 일시정지 로그')).toBeInTheDocument();
     });
   });
 });

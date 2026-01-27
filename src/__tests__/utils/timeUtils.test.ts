@@ -188,5 +188,66 @@ describe('timeUtils', () => {
 
       localStorage.getItem = original_get_item;
     });
+
+    it('pausedDuration이 전체 duration보다 크면 0을 반환한다', () => {
+      // 1시간(3600초) 작업에 5000초 일시정지 (비정상 데이터)
+      const start = new Date('2026-01-26T09:00:00').getTime();
+      const end = new Date('2026-01-26T10:00:00').getTime();
+      const paused_duration = 5000; // 전체 3600초보다 큼
+
+      const original_get_item = localStorage.getItem;
+      localStorage.getItem = jest.fn(() => JSON.stringify({
+        lunchStart: '12:00',
+        lunchEnd: '13:00',
+        lunchExcludeEnabled: false,
+      }));
+
+      const result = getDurationSecondsExcludingLunch(start, end, paused_duration);
+
+      // safePaused = Math.min(5000, 3600) = 3600
+      // result = 3600 - 3600 = 0
+      expect(result).toBe(0);
+
+      localStorage.getItem = original_get_item;
+    });
+
+    it('pausedDuration이 duration과 같으면 0을 반환한다', () => {
+      const start = new Date('2026-01-26T09:00:00').getTime();
+      const end = new Date('2026-01-26T10:00:00').getTime();
+      const paused_duration = 3600; // 전체 duration과 동일
+
+      const original_get_item = localStorage.getItem;
+      localStorage.getItem = jest.fn(() => JSON.stringify({
+        lunchStart: '12:00',
+        lunchEnd: '13:00',
+        lunchExcludeEnabled: false,
+      }));
+
+      const result = getDurationSecondsExcludingLunch(start, end, paused_duration);
+
+      expect(result).toBe(0);
+
+      localStorage.getItem = original_get_item;
+    });
+
+    it('pausedDuration이 duration보다 작으면 정상 계산된다', () => {
+      const start = new Date('2026-01-26T09:00:00').getTime();
+      const end = new Date('2026-01-26T10:00:00').getTime();
+      const paused_duration = 600; // 10분
+
+      const original_get_item = localStorage.getItem;
+      localStorage.getItem = jest.fn(() => JSON.stringify({
+        lunchStart: '12:00',
+        lunchEnd: '13:00',
+        lunchExcludeEnabled: false,
+      }));
+
+      const result = getDurationSecondsExcludingLunch(start, end, paused_duration);
+
+      // 3600 - 600 = 3000
+      expect(result).toBe(3000);
+
+      localStorage.getItem = original_get_item;
+    });
   });
 });
