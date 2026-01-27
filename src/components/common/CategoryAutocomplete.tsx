@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useMemo } from 'react';
 import {
   Autocomplete,
   TextField,
@@ -26,17 +26,31 @@ interface CategoryAutocompleteProps {
 }
 
 // 커스텀 Paper 컴포넌트 (드롭다운 하단에 추가 UI 포함)
-const CustomPaper: React.FC<{
+// React.memo로 불필요한 리렌더링 방지
+const CustomPaper = React.memo<{
   children?: React.ReactNode;
-  newCategory: string;
-  setNewCategory: (value: string) => void;
-  onAddCategory: () => void;
   inputRef: React.RefObject<HTMLInputElement | null>;
+  onAddCategory: () => void;
   onInputFocus: () => void;
   onInputBlur: () => void;
-  onCompositionStart: () => void;
-  onCompositionEnd: () => void;
-}> = ({ children, newCategory, setNewCategory, onAddCategory, inputRef, onInputFocus, onInputBlur, onCompositionStart, onCompositionEnd }) => {
+}>(({ children, inputRef, onAddCategory, onInputFocus, onInputBlur }) => {
+  const [addButtonDisabled, setAddButtonDisabled] = useState(true);
+
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setAddButtonDisabled(!e.target.value.trim());
+  }, []);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+    e.stopPropagation();
+    if (e.key === 'Enter') {
+      const input = e.target as HTMLInputElement;
+      if (input.value.trim()) {
+        e.preventDefault();
+        onAddCategory();
+      }
+    }
+  }, [onAddCategory]);
+
   return (
     <Paper elevation={8} sx={{ overflow: 'hidden', minWidth: 200 }}>
       {children}
@@ -44,10 +58,8 @@ const CustomPaper: React.FC<{
       <Box 
         sx={{ p: 1, display: 'flex', alignItems: 'center', gap: 0.5 }}
         onMouseDown={(e) => {
-          // Autocomplete가 이 영역 클릭을 옵션 선택으로 처리하지 않도록 방지
           e.stopPropagation();
           e.preventDefault();
-          // onClose보다 먼저 실행되므로 여기서 플래그 설정
           onInputFocus();
         }}
         onClick={(e) => {
@@ -58,24 +70,14 @@ const CustomPaper: React.FC<{
         <TextField
           size="small"
           placeholder="새 카테고리"
-          value={newCategory}
-          onChange={(e) => setNewCategory(e.target.value)}
-          onKeyDown={(e) => {
-            e.stopPropagation();
-            if (e.key === 'Enter' && newCategory.trim()) {
-              e.preventDefault();
-              onAddCategory();
-            }
-          }}
+          onChange={handleInputChange}
+          onKeyDown={handleKeyDown}
           onMouseDown={(e) => {
             e.stopPropagation();
-            // onClose보다 먼저 실행되므로 여기서 플래그 설정
             onInputFocus();
           }}
           onFocus={onInputFocus}
           onBlur={onInputBlur}
-          onCompositionStart={onCompositionStart}
-          onCompositionEnd={onCompositionEnd}
           inputRef={inputRef}
           sx={{ 
             flex: 1,
@@ -92,10 +94,9 @@ const CustomPaper: React.FC<{
           onMouseDown={(e) => {
             e.stopPropagation();
             e.preventDefault();
-            // onClose보다 먼저 실행되므로 여기서 플래그 설정
             onInputFocus();
           }}
-          disabled={!newCategory.trim()}
+          disabled={addButtonDisabled}
           sx={{ p: 0.5 }}
         >
           <AddIcon fontSize="small" />
@@ -107,7 +108,6 @@ const CustomPaper: React.FC<{
           onMouseDown={(e) => {
             e.stopPropagation();
             e.preventDefault();
-            // onClose보다 먼저 실행되므로 여기서 플래그 설정
             onInputFocus();
           }}
         >
@@ -116,7 +116,9 @@ const CustomPaper: React.FC<{
       </Box>
     </Paper>
   );
-};
+});
+
+CustomPaper.displayName = 'CustomPaper';
 
 const CategoryAutocomplete: React.FC<CategoryAutocompleteProps> = ({
   value,
@@ -131,26 +133,25 @@ const CategoryAutocomplete: React.FC<CategoryAutocompleteProps> = ({
   onKeyDown,
 }) => {
   const { categories, addCategory, removeCategory } = useCategoryStore();
-  const [newCategory, setNewCategory] = useState('');
   const [open, setOpen] = useState(false);
   const isAddInputFocused = useRef(false);
   const addInputRef = useRef<HTMLInputElement | null>(null);
-  const isComposing = useRef(false); // IME composition 상태 추적
 
   const handleAddCategory = useCallback(() => {
-    if (newCategory.trim()) {
-      addCategory(newCategory.trim());
-      setNewCategory('');
-      // 추가 후에도 드롭다운 유지
-      addInputRef.current?.focus();
+    const inputValue = addInputRef.current?.value?.trim();
+    if (inputValue) {
+      addCategory(inputValue);
+      if (addInputRef.current) {
+        addInputRef.current.value = '';
+        addInputRef.current.focus();
+      }
     }
-  }, [newCategory, addCategory]);
+  }, [addCategory]);
 
   const handleRemoveCategory = (e: React.MouseEvent, categoryToRemove: string) => {
     e.stopPropagation();
     e.preventDefault();
     removeCategory(categoryToRemove);
-    // 현재 선택된 카테고리가 삭제되면 초기화
     if (value === categoryToRemove) {
       onChange(null);
     }
@@ -161,45 +162,37 @@ const CategoryAutocomplete: React.FC<CategoryAutocompleteProps> = ({
   }, []);
 
   const handleInputBlur = useCallback(() => {
-    // blur 시 플래그를 false로 리셋
     isAddInputFocused.current = false;
     
-    // 약간의 지연 후 닫기 (다른 요소로 포커스 이동 확인)
     setTimeout(() => {
-      // 다시 포커스가 들어왔는지 확인 (다른 내부 요소로 이동한 경우)
       if (!isAddInputFocused.current) {
         setOpen(false);
       }
     }, 150);
   }, []);
 
-  // newCategory 상태 변경으로 리렌더링 후에도 포커스 유지
-  // 단, IME composition 중에는 포커스를 다시 설정하지 않음 (한글 입력 깨짐 방지)
-  React.useEffect(() => {
-    if (isAddInputFocused.current && addInputRef.current && !isComposing.current) {
-      addInputRef.current.focus();
-    }
-  }, [newCategory]);
-
-  const handleCompositionStart = useCallback(() => {
-    isComposing.current = true;
-  }, []);
-
-  const handleCompositionEnd = useCallback(() => {
-    isComposing.current = false;
-  }, []);
-
   const handleClose = useCallback((_event: React.SyntheticEvent, reason: string) => {
-    // 새 카테고리 입력 필드에 포커스가 있으면 닫지 않음
     if (isAddInputFocused.current) {
       return;
     }
-    // blur로 닫히려 할 때도 새 카테고리 입력 필드 확인
     if (reason === 'blur' && isAddInputFocused.current) {
       return;
     }
     setOpen(false);
   }, []);
+
+  // PaperComponent를 useMemo로 메모이제이션하여 불필요한 리마운트 방지
+  const paperComponent = useMemo(() => {
+    return (paperProps: React.HTMLAttributes<HTMLDivElement>) => (
+      <CustomPaper
+        {...paperProps}
+        inputRef={addInputRef}
+        onAddCategory={handleAddCategory}
+        onInputFocus={handleInputFocus}
+        onInputBlur={handleInputBlur}
+      />
+    );
+  }, [handleAddCategory, handleInputFocus, handleInputBlur]);
 
   return (
     <Autocomplete
@@ -236,19 +229,7 @@ const CategoryAutocomplete: React.FC<CategoryAutocompleteProps> = ({
           ],
         },
       }}
-      PaperComponent={(paperProps) => (
-        <CustomPaper
-          {...paperProps}
-          newCategory={newCategory}
-          setNewCategory={setNewCategory}
-          onAddCategory={handleAddCategory}
-          inputRef={addInputRef}
-          onInputFocus={handleInputFocus}
-          onInputBlur={handleInputBlur}
-          onCompositionStart={handleCompositionStart}
-          onCompositionEnd={handleCompositionEnd}
-        />
-      )}
+      PaperComponent={paperComponent}
       renderOption={(props, option) => {
         const { key, ...otherProps } = props;
         return (

@@ -1,0 +1,625 @@
+{
+  "timekeeper-storage": {
+    "state": {
+      "activeTimer": {
+        "id": "45d00841-f34f-44d0-8239-7dc10f6c6cfb",
+        "title": "개발.12577 3) Abort 구조 설계 및 적용",
+        "projectCode": "A26_00413",
+        "category": "개발",
+        "startTime": 1769498545946,
+        "status": "RUNNING",
+        "pausedDuration": 0
+      },
+      "logs": [
+        {
+          "id": "c5777e43-bcd7-4111-a354-99477922968d",
+          "title": "개발.12577 3) Abort 구조 설계 및 적용",
+          "projectCode": "A26_00413",
+          "category": "개발",
+          "startTime": 1769476140000,
+          "status": "PAUSED",
+          "pausedDuration": 0,
+          "lastPausedAt": 1769481352393,
+          "endTime": 1769481600000
+        },
+        {
+          "id": "68c15b0b-ba81-4c05-ba10-7a7a52f7c5dd",
+          "title": "HTML영역 다크모드 적용 stage",
+          "projectCode": "A25_07788",
+          "category": "회의",
+          "startTime": 1769475172612.9377,
+          "endTime": 1769476168611.67,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "98bc29b2-d15b-4376-b099-17259b215193",
+          "title": "HTML영역 다크모드 적용 stage",
+          "projectCode": "A25_07788",
+          "category": "환경세팅",
+          "startTime": 1769485200000,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1769487015403.65
+        },
+        {
+          "id": "42b44967-67d2-4acc-953f-c386649b51a4",
+          "title": "개발.12577 3) Abort 구조 설계 및 적용",
+          "projectCode": "A26_00413",
+          "category": "개발",
+          "startTime": 1769487015403.65,
+          "status": "PAUSED",
+          "pausedDuration": 2.6910000000000003,
+          "endTime": 1769490579617,
+          "lastPausedAt": 1769489702526
+        },
+        {
+          "id": "f31b411c-1e76-46c1-b5ba-269126508565",
+          "title": "업무 기록 타이머 개발",
+          "projectCode": "A25_05591",
+          "category": "개발",
+          "startTime": 1769472000000,
+          "endTime": 1769475172612.9377,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "12eb325f-1f18-454c-a282-9f906d52d688",
+          "title": "업무 기록 타이머 개발",
+          "projectCode": "A25_05591",
+          "category": "개발",
+          "startTime": 1769490579617,
+          "status": "COMPLETED",
+          "pausedDuration": 351.668,
+          "lastPausedAt": 1769490940966,
+          "endTime": 1769490965717
+        },
+        {
+          "id": "7c78cd40-1e4f-4e47-bd04-638ad0de1d0a",
+          "title": "HTML영역 다크모드 적용 TP.15009 stage 아이콘바 설정 > 업무지원 AI 아이콘이 보이지 않습니다.",
+          "projectCode": "A25_07788",
+          "category": "테스트오류수정",
+          "startTime": 1769490965717,
+          "status": "COMPLETED",
+          "pausedDuration": 1690.23,
+          "lastPausedAt": 1769493936856,
+          "endTime": 1769492422972.7
+        },
+        {
+          "id": "eea7373f-6365-4b4d-8e95-ba8d71fc7e73",
+          "title": "업무 기록 타이머 개발",
+          "projectCode": "A25_05591",
+          "category": "개발",
+          "startTime": 1769492422972.7,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1769494798484,
+          "lastPausedAt": 1769493985347
+        },
+        {
+          "id": "24a564ae-f5d0-4165-9063-db91ffb7075b",
+          "title": "개발.12577 3) Abort 구조 설계 및 적용",
+          "projectCode": "A26_00413",
+          "category": "개발",
+          "startTime": 1769494798484,
+          "status": "PAUSED",
+          "pausedDuration": 0,
+          "endTime": 1769497581976.6194,
+          "lastPausedAt": 1769498238285
+        },
+        {
+          "id": "4fee7ea6-2cc3-4a85-bcc6-0dc666ab16bc",
+          "title": "예나님 presentation impl 관련 질의에 응답",
+          "projectCode": "A25_05591",
+          "category": "질의응답",
+          "startTime": 1769497581976.6194,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1769497800000,
+          "lastPausedAt": 1769498465212
+        },
+        {
+          "id": "518d0c14-fdfd-4e41-9f74-b05c98f28ce0",
+          "title": "업무 기록 타이머 개발",
+          "projectCode": "A25_05591",
+          "category": "개발",
+          "startTime": 1769497800000,
+          "endTime": 1769498481231.3362,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "520280d7-c5a0-45cd-b265-0933f684dcd2",
+          "title": "개발.12577 3) Abort 구조 설계 및 적용",
+          "projectCode": "A26_00413",
+          "category": "개발",
+          "startTime": 1769498527089,
+          "status": "PAUSED",
+          "pausedDuration": 0,
+          "lastPausedAt": 1769498534166,
+          "endTime": 1769498534166
+        }
+      ],
+      "deleted_logs": [
+        {
+          "id": "0bee7fe0-0dd2-4a93-b3fd-5587e17c2a00",
+          "title": "123123",
+          "startTime": 1769500870906.92,
+          "endTime": 1769507203547.2166,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "deletedAt": 1769498555995
+        },
+        {
+          "id": "4ab810f6-42b5-47ac-b217-8f5c2438a336",
+          "title": "7",
+          "startTime": 1769498534166,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1769498541364,
+          "deletedAt": 1769498543442
+        },
+        {
+          "id": "4c467fd6-c3d6-43f4-bad0-4131a16bfcd8",
+          "title": "7",
+          "startTime": 1769521965392.354,
+          "endTime": 1769526000000,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "deletedAt": 1769498543442
+        },
+        {
+          "id": "75755150-ca0b-4dff-aeb6-c174fa5d887f",
+          "title": "질의응답",
+          "projectCode": "A25_05591",
+          "startTime": 1769496406200.386,
+          "status": "PAUSED",
+          "pausedDuration": 0,
+          "endTime": 1769498359450,
+          "lastPausedAt": 1769498359450,
+          "deletedAt": 1769498456789
+        },
+        {
+          "id": "129fc178-211b-4b14-a918-ae61439b15f4",
+          "title": "6",
+          "startTime": 1769518800000,
+          "endTime": 1769521965392.354,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "deletedAt": 1769496440001
+        },
+        {
+          "id": "597a326f-4fca-4239-b71f-aa5e83e737bf",
+          "title": "5",
+          "startTime": 1769515200000,
+          "endTime": 1769518800000,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "deletedAt": 1769496437488
+        },
+        {
+          "id": "731d4177-6b40-4c95-b2d1-c0ca9f482e7a",
+          "title": "4",
+          "startTime": 1769510209255.5332,
+          "endTime": 1769515200000,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "deletedAt": 1769496435132
+        },
+        {
+          "id": "bda937a8-8b7c-4bf4-9f21-f81144ff0795",
+          "title": "3",
+          "startTime": 1769505808853.1187,
+          "endTime": 1769510209255.5332,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "deletedAt": 1769496431997
+        },
+        {
+          "id": "dc1b8819-dad8-4264-8a54-122d08f99656",
+          "title": "1",
+          "startTime": 1769496385338,
+          "endTime": 1769500072032.193,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "deletedAt": 1769496429291
+        },
+        {
+          "id": "d58adb5f-411b-4a24-8bf4-5c588f3e8a91",
+          "title": "2",
+          "startTime": 1769500072032.193,
+          "endTime": 1769505808853.1187,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "deletedAt": 1769496425735
+        },
+        {
+          "id": "01615c3e-604a-49bd-8393-20c3f5f096d4",
+          "title": "업무 기록 타이머 개발",
+          "projectCode": "A25_05591",
+          "category": "개발",
+          "startTime": 1769494411802,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1769494711802,
+          "deletedAt": 1769494791095
+        },
+        {
+          "id": "45ce6b7a-e045-49b4-bc64-7feb6da6d042",
+          "title": "업무 기록 타이머 개발",
+          "projectCode": "A25_05591",
+          "category": "개발",
+          "startTime": 1769494244000,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1769494544000,
+          "deletedAt": 1769494408561
+        },
+        {
+          "id": "ccd1341f-d288-4ebf-bb00-a79cd1f5bb09",
+          "title": "업무 기록 타이머 개발",
+          "projectCode": "A25_05591",
+          "category": "개발",
+          "startTime": 1769494237106,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1769494537106,
+          "deletedAt": 1769494241193
+        },
+        {
+          "id": "5cfb5579-2e18-4cdb-8e16-69b9759898a4",
+          "title": "HTML영역 다크모드 적용 TP",
+          "projectCode": "A25_07788",
+          "category": "테스트오류수정",
+          "startTime": 1769494185963,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1769494485963,
+          "deletedAt": 1769494234391
+        },
+        {
+          "id": "0c58dc65-aff5-45d1-944f-da8ea9086264",
+          "title": "HTML영역 다크모드 적용 TP",
+          "projectCode": "A25_07788",
+          "category": "테스트오류수정",
+          "startTime": 1769493994129,
+          "status": "PAUSED",
+          "pausedDuration": 0,
+          "endTime": 1769494294129,
+          "lastPausedAt": 1769494021423,
+          "deletedAt": 1769494112609
+        },
+        {
+          "id": "2453865e-ecab-42c4-bacb-09ba1276c1c1",
+          "title": "업무 기록 타이머 개발",
+          "projectCode": "A25_05591",
+          "category": "개발",
+          "startTime": 1769492422972.7,
+          "endTime": 1769493817303.823,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "deletedAt": 1769493978715
+        },
+        {
+          "id": "b50c95a1-3096-4c97-b05c-db55870fafa5",
+          "title": "개발.12577 3) Abort 구조 설계 및 적용",
+          "projectCode": "A26_00413",
+          "category": "개발",
+          "startTime": 1769489705361,
+          "status": "PAUSED",
+          "pausedDuration": 0,
+          "lastPausedAt": 1769490579617,
+          "deletedAt": 1769490959035
+        },
+        {
+          "id": "8a9037e9-9340-4f1d-b48a-609c632444b9",
+          "title": "업무 기록 타이머 개발",
+          "projectCode": "A25_05591",
+          "category": "개발",
+          "startTime": 1769472000000,
+          "status": "PAUSED",
+          "pausedDuration": 0,
+          "deletedAt": 1769490947213
+        },
+        {
+          "id": "41319278-5877-480e-a15f-ff590d880ac9",
+          "title": "업무 기록 타이머 개발",
+          "projectCode": "A25_05591",
+          "category": "개발",
+          "startTime": 1769487015403.65,
+          "status": "PAUSED",
+          "pausedDuration": 0,
+          "deletedAt": 1769490937710
+        },
+        {
+          "id": "f42f319a-d62e-4bf2-8a96-67af40afa669",
+          "title": "개발.12577 3) Abort 구조 설계 및 적용",
+          "projectCode": "A26_00413",
+          "category": "개발",
+          "startTime": 1769487764120,
+          "status": "PAUSED",
+          "pausedDuration": 5.159,
+          "lastPausedAt": 1769487771560,
+          "deletedAt": 1769489015528
+        },
+        {
+          "id": "dcda8c4b-786e-4599-8980-40bc72d341f5",
+          "title": "업무 기록 타이머 개발",
+          "projectCode": "A25_05591",
+          "category": "개발",
+          "startTime": 1769487786200,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1769487809047,
+          "deletedAt": 1769487811700
+        },
+        {
+          "id": "b81cd8bf-9ffc-4234-8bb7-330e9095130e",
+          "title": "업무 기록 타이머 개발",
+          "projectCode": "A25_05591",
+          "category": "개발",
+          "startTime": 1769476168611.67,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "lastPausedAt": 1769487618167,
+          "endTime": 1769481068790,
+          "deletedAt": 1769487804493
+        },
+        {
+          "id": "22862265-91ae-4a55-95a5-3cbad5316929",
+          "title": "개발.12577 3) Abort 구조 설계 및 적용",
+          "projectCode": "A26_00413",
+          "category": "개발",
+          "startTime": 1769487740082,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1769487745745,
+          "deletedAt": 1769487778303
+        },
+        {
+          "id": "ab8754a7-f263-4d50-b9f4-b3414f41caaf",
+          "title": "개발.12577 3) Abort 구조 설계 및 적용",
+          "projectCode": "A26_00413",
+          "category": "개발",
+          "startTime": 1769487066951,
+          "status": "PAUSED",
+          "pausedDuration": 0,
+          "lastPausedAt": 1769487608688,
+          "deletedAt": 1769487777592
+        },
+        {
+          "id": "9c16cbe3-641c-4125-82ba-26a8c138cda9",
+          "title": "업무 기록 타이머 개발",
+          "projectCode": "A25_05591",
+          "category": "개발",
+          "startTime": 1769487679016,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "lastPausedAt": 1769487683628,
+          "endTime": 1769487685061,
+          "deletedAt": 1769487688661
+        },
+        {
+          "id": "44d1716b-3aa8-486f-8194-070dc1ba60d0",
+          "title": "HTML영역 다크모드 적용 stage",
+          "projectCode": "A25_07788",
+          "category": "회의",
+          "startTime": 1769485832965,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1769486132965,
+          "deletedAt": 1769485866595
+        },
+        {
+          "id": "c6f69505-8b44-4946-b754-ab316b0233fd",
+          "title": "개발.12577 3) Abort 구조 설계 및 적용",
+          "projectCode": "A26_00413",
+          "category": "개발",
+          "startTime": 1769481068790,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1769481370786,
+          "deletedAt": 1769485588049
+        },
+        {
+          "id": "6b3ff09d-82b4-46cc-9f91-56df55a19f26",
+          "title": "개발.12577 3) Abort 구조 설계 및 적용",
+          "projectCode": "A26_00413",
+          "category": "개발",
+          "startTime": 1769481302282,
+          "status": "PAUSED",
+          "pausedDuration": 0,
+          "lastPausedAt": 1769481340130,
+          "deletedAt": 1769481367108
+        },
+        {
+          "id": "9b25cb52-c1cc-427a-a3b4-6a8269aa125a",
+          "title": "업무 기록 타이머 개발",
+          "projectCode": "A25_05591",
+          "category": "개발",
+          "startTime": 1769481347548,
+          "status": "PAUSED",
+          "pausedDuration": 0,
+          "lastPausedAt": 1769481349978,
+          "deletedAt": 1769481360943
+        },
+        {
+          "id": "7ce559e8-1029-47cd-ac33-df156fc5f03b",
+          "title": "업무 기록 타이머 개발",
+          "projectCode": "A25_05591",
+          "category": "개발",
+          "startTime": 1769481352393,
+          "status": "PAUSED",
+          "pausedDuration": 0,
+          "lastPausedAt": 1769481355160,
+          "deletedAt": 1769481360305
+        },
+        {
+          "id": "325dfcc2-c270-4748-a036-a6901f1220e7",
+          "title": "업무 일정 기록 타이머 개발",
+          "projectCode": "A25_05591",
+          "category": "개발",
+          "startTime": 1769471973537.3481,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1769481277445.0486,
+          "deletedAt": 1769481309227
+        },
+        {
+          "id": "80b768ab-ae47-45d2-b3a5-78d67452aa07",
+          "title": "개발.12577 3) Abort 구조 설계 및 적용",
+          "projectCode": "A26_00413",
+          "startTime": 1769481279812,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1769481281560,
+          "deletedAt": 1769481283105
+        },
+        {
+          "id": "bb863638-4c51-4cb4-9cb0-2e50ad7b3a2a",
+          "title": "개발.12577 3) Abort 구조 설계 및 적용",
+          "projectCode": "A26_00413",
+          "category": "개발",
+          "startTime": 1769481191849,
+          "status": "COMPLETED",
+          "pausedDuration": 24.023,
+          "lastPausedAt": 1769481229088,
+          "endTime": 1769481229590,
+          "deletedAt": 1769481283104
+        },
+        {
+          "id": "2e1a3652-2142-4700-87f2-a9fd6608eb04",
+          "title": "3",
+          "startTime": 1769481277445.0486,
+          "endTime": 1769484965794.7686,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "deletedAt": 1769481223777
+        },
+        {
+          "id": "eabc44c3-c5a3-4ad6-815b-8efda7e3f201",
+          "title": "1",
+          "startTime": 1769481191849,
+          "endTime": 1769488833802.817,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "deletedAt": 1769481220394
+        },
+        {
+          "id": "a5dc1fc2-264b-433f-8ca3-1ad86ccb1338",
+          "title": "업무 일정 기록 타이머 개발",
+          "projectCode": "A25_05591",
+          "startTime": 1769478759927,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "lastPausedAt": 1769478761817,
+          "endTime": 1769478763557,
+          "deletedAt": 1769478767398
+        },
+        {
+          "id": "b58b228f-4b5e-4749-ae47-b2385a7b8aa4",
+          "title": "업무 일정 기록 타이머 개발",
+          "projectCode": "A25_05591",
+          "category": "개발",
+          "startTime": 1769477411986,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1769477414807,
+          "deletedAt": 1769477422839
+        },
+        {
+          "id": "28482fe8-0d7d-4b05-a4ce-301f97a2196d",
+          "title": "2",
+          "startTime": 1769474716382,
+          "endTime": 1769479055130.7847,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "deletedAt": 1769477336122
+        },
+        {
+          "id": "23ea1567-3e05-43b6-8d88-63488b53d1f0",
+          "title": "1",
+          "startTime": 1769471935972.674,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1769474716382,
+          "lastPausedAt": 1769474715565,
+          "deletedAt": 1769477333976
+        },
+        {
+          "id": "1290b949-d32f-44a0-8425-00869ab12146",
+          "title": "1",
+          "startTime": 1769471822558.6057,
+          "status": "PAUSED",
+          "pausedDuration": 0,
+          "lastPausedAt": 1769474612043,
+          "endTime": 1769474616928,
+          "deletedAt": 1769474638088
+        },
+        {
+          "id": "b3af9c96-4ef8-4e76-9e3f-ec529a259758",
+          "title": "2",
+          "startTime": 1769474612043,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "lastPausedAt": 1769474614641,
+          "endTime": 1769471822558.6057,
+          "deletedAt": 1769474635815
+        }
+      ],
+      "excludedTitles": [],
+      "themeConfig": {
+        "primaryColor": "#264653",
+        "accentColor": "#e76f51",
+        "isDark": true
+      },
+      "titleColorIndexMap": {
+        "7": 4,
+        "123123": 7,
+        "업무 기록 타이머 개발": 0,
+        "HTML영역 다크모드 적용 stage": 1,
+        "개발.12577 3) Abort 구조 설계 및 적용": 2,
+        "HTML영역 다크모드 적용 TP.15009 stage 아이콘바 설정 > 업무지원 AI 아이콘이 보이지 않습니다.": 3,
+        "질의응답": 5,
+        "예나님 presentation impl 관련 질의에 응답": 6
+      },
+      "nextColorIndex": 8
+    },
+    "version": 0
+  },
+  "timekeeper-settings": {
+    "lunchStart": "11:40",
+    "lunchEnd": "12:40",
+    "lunchExcludeEnabled": true,
+    "autoCompleteEnabled": true
+  },
+  "timekeeper-manual-presets": [
+    {
+      "id": "9e267c4e-773f-40ad-80ae-2a640eaf16a1",
+      "title": "HTML영역 다크모드 적용 TP",
+      "projectCode": "A25_07788",
+      "category": "테스트오류수정",
+      "color": "#e76f51",
+      "is_favorite": false
+    },
+    {
+      "id": "4a711ed7-2d7b-4ff7-a057-e3b56151909e",
+      "title": "질의응답",
+      "projectCode": "A25_05591",
+      "category": "질의응답",
+      "is_favorite": false
+    },
+    {
+      "id": "673adf06-8eb5-479b-ad57-8966b213a206",
+      "title": "업무 기록 타이머 개발",
+      "projectCode": "A25_05591",
+      "category": "개발",
+      "color": "#e76f51",
+      "is_favorite": true
+    }
+  ],
+  "timekeeper-feedback-posts": [],
+  "timekeeper-palette-settings": {
+    "type": "navy-orange"
+  }
+}
