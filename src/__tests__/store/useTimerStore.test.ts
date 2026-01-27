@@ -600,4 +600,74 @@ describe('useTimerStore', () => {
       expect(log).toBeDefined(); // 로그 데이터는 유지됨
     });
   });
+
+  describe('getOrAssignColorIndex (색상 인덱스 관리)', () => {
+    beforeEach(() => {
+      // 색상 인덱스 초기화
+      useTimerStore.setState({ titleColorIndexMap: {}, nextColorIndex: 0 });
+    });
+
+    it('새 제목에 대해 순차적인 색상 인덱스를 할당한다', () => {
+      const { getOrAssignColorIndex } = useTimerStore.getState();
+
+      const index1 = getOrAssignColorIndex('작업 A');
+      const index2 = getOrAssignColorIndex('작업 B');
+      const index3 = getOrAssignColorIndex('작업 C');
+
+      expect(index1).toBe(0);
+      expect(index2).toBe(1);
+      expect(index3).toBe(2);
+    });
+
+    it('같은 제목에 대해 동일한 색상 인덱스를 반환한다', () => {
+      const { getOrAssignColorIndex } = useTimerStore.getState();
+
+      const firstCall = getOrAssignColorIndex('동일 작업');
+      const secondCall = getOrAssignColorIndex('동일 작업');
+      const thirdCall = getOrAssignColorIndex('동일 작업');
+
+      expect(firstCall).toBe(secondCall);
+      expect(secondCall).toBe(thirdCall);
+    });
+
+    it('서로 다른 제목에 대해 다른 색상 인덱스를 할당한다', () => {
+      const { getOrAssignColorIndex } = useTimerStore.getState();
+
+      const indexA = getOrAssignColorIndex('작업 A');
+      const indexB = getOrAssignColorIndex('작업 B');
+
+      expect(indexA).not.toBe(indexB);
+    });
+
+    it('색상 인덱스가 titleColorIndexMap에 저장된다', () => {
+      const { getOrAssignColorIndex } = useTimerStore.getState();
+
+      getOrAssignColorIndex('저장될 작업');
+
+      const { titleColorIndexMap } = useTimerStore.getState();
+      expect(titleColorIndexMap['저장될 작업']).toBe(0);
+    });
+
+    it('nextColorIndex가 올바르게 증가한다', () => {
+      const { getOrAssignColorIndex } = useTimerStore.getState();
+
+      getOrAssignColorIndex('작업 1');
+      getOrAssignColorIndex('작업 2');
+      getOrAssignColorIndex('작업 3');
+
+      const { nextColorIndex } = useTimerStore.getState();
+      expect(nextColorIndex).toBe(3);
+    });
+
+    it('같은 제목을 다시 호출해도 nextColorIndex는 증가하지 않는다', () => {
+      const { getOrAssignColorIndex } = useTimerStore.getState();
+
+      getOrAssignColorIndex('반복 작업');
+      getOrAssignColorIndex('반복 작업');
+      getOrAssignColorIndex('반복 작업');
+
+      const { nextColorIndex } = useTimerStore.getState();
+      expect(nextColorIndex).toBe(1); // 최초 1번만 증가
+    });
+  });
 });

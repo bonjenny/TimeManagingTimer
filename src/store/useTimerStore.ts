@@ -45,6 +45,10 @@ interface TimerState {
   
   themeConfig: ThemeConfig;
 
+  // --- 색상 인덱스 관리 (글로벌) ---
+  titleColorIndexMap: Record<string, number>; // 작업 제목별 색상 인덱스 매핑
+  nextColorIndex: number; // 다음에 할당할 색상 인덱스
+
   // --- Actions ---
   startTimer: (title: string, projectCode?: string, category?: string) => void;
   pauseTimer: () => void;
@@ -66,6 +70,7 @@ interface TimerState {
   // --- Selectors ---
   getRecentTitles: () => string[];
   getDeletedLogs: () => TimerLog[]; // 최근 30일 이내 삭제된 로그 반환
+  getOrAssignColorIndex: (title: string) => number; // 색상 인덱스 조회 또는 할당
 
   // --- Theme Actions ---
   setThemeConfig: (config: Partial<ThemeConfig>) => void;
@@ -89,6 +94,29 @@ export const useTimerStore = create<TimerState>()(
         primaryColor: '#000000',
         accentColor: '#000000',
         isDark: false,
+      },
+
+      // 색상 인덱스 관리 초기값
+      titleColorIndexMap: {},
+      nextColorIndex: 0,
+
+      // 색상 인덱스 조회 또는 할당
+      getOrAssignColorIndex: (title) => {
+        const { titleColorIndexMap, nextColorIndex } = get();
+        
+        // 이미 할당된 색상이 있으면 반환
+        if (title in titleColorIndexMap) {
+          return titleColorIndexMap[title];
+        }
+        
+        // 새 색상 인덱스 할당 및 저장
+        const assignedIndex = nextColorIndex;
+        set({
+          titleColorIndexMap: { ...titleColorIndexMap, [title]: assignedIndex },
+          nextColorIndex: nextColorIndex + 1
+        });
+        
+        return assignedIndex;
       },
 
       // 자동완성에서 제목 제외

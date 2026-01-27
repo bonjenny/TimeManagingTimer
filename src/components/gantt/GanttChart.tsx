@@ -27,7 +27,7 @@ import { useTimerStore, TimerLog } from '../../store/useTimerStore';
 import { useProjectStore } from '../../store/useProjectStore';
 import { formatTimeRange, formatDuration } from '../../utils/timeUtils';
 import CategoryAutocomplete from '../common/CategoryAutocomplete';
-import { getPalette, getAdjustedPalette, getColorForTask, loadPaletteSettings } from '../../utils/colorPalette';
+import { getPalette, getAdjustedPalette, getColorByIndex, loadPaletteSettings } from '../../utils/colorPalette';
 
 // Snackbar 슬라이드 트랜지션 (위에서 아래로 나타남, 위로 사라짐)
 const SlideTransition = (props: SlideProps) => {
@@ -63,7 +63,7 @@ const MAX_LABEL_WIDTH = 400;
 const LABEL_WIDTH_STORAGE_KEY = 'timekeeper-gantt-label-width';
 
 const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
-  const { logs, activeTimer, addLog, updateLog, deleteLog, stopTimer, themeConfig } = useTimerStore();
+  const { logs, activeTimer, addLog, updateLog, deleteLog, stopTimer, themeConfig, getOrAssignColorIndex } = useTimerStore();
   const { getProjectName, projects } = useProjectStore();
   
   // 프로젝트 옵션 (코드 + 이름 형태로 표시)
@@ -571,8 +571,9 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
       if (!title_to_row_index.has(log.title)) {
         const row_index = rows.length;
         title_to_row_index.set(log.title, row_index);
-        // 작업 제목 기반 색상 할당 (컬러 팔레트 사용)
-        const color = getColorForTask(log.title, colorPalette);
+        // 글로벌 색상 인덱스 기반 색상 할당 (색상 충돌 방지)
+        const colorIndex = getOrAssignColorIndex(log.title);
+        const color = getColorByIndex(colorIndex, colorPalette);
         rows.push({
           title: log.title,
           projectCode: log.projectCode,
@@ -594,8 +595,9 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
       const left_percent = Math.max(0, (start_offset / totalMinutes) * 100);
       const width_percent = Math.min((width / totalMinutes) * 100, 100 - left_percent);
 
-      // 작업 제목 기반 색상 할당
-      const color = getColorForTask(log.title, colorPalette);
+      // 글로벌 색상 인덱스 기반 색상 할당
+      const colorIndex = getOrAssignColorIndex(log.title);
+      const color = getColorByIndex(colorIndex, colorPalette);
 
       const row_index = title_to_row_index.get(log.title) ?? 0;
 
@@ -609,7 +611,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
     });
 
     return { chartItems: items, uniqueRows: rows };
-  }, [todayLogs, currentTime, colorPalette, getOffsetMinutes, totalMinutes]);
+  }, [todayLogs, currentTime, colorPalette, getOffsetMinutes, totalMinutes, getOrAssignColorIndex]);
 
   // 시간축 라벨 생성 (동적 범위에 맞게)
   const timeLabels = useMemo(() => {

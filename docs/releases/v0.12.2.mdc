@@ -1,0 +1,24 @@
+---
+version: 0.12.2
+date: 2026-01-27
+step: Patch
+---
+
+# v0.12.2 릴리즈 노트
+
+## 주요 변경사항
+- 간트차트 작업 색상 할당 로직 개선
+
+## 버그 수정
+- **색상 충돌 문제 해결**: 간트차트에서 드래그로 추가한 작업과 입력창(Enter)으로 추가한 작업의 색상 인덱스가 각각 따로 매겨져 다른 작업임에도 같은 색상이 할당되는 문제 수정
+  - 기존: 해시 기반 색상 할당 → 해시 충돌 시 다른 제목도 같은 색상
+  - 변경: 글로벌 색상 인덱스 기반 할당 → 순차적으로 다른 색상 할당
+
+## 기술적 변경사항
+- `useTimerStore`에 `titleColorIndexMap`, `nextColorIndex`, `getOrAssignColorIndex` 추가
+- `colorPalette.ts`에 `getColorByIndex` 함수 추가
+- `GanttChart.tsx`에서 새 색상 할당 방식 적용
+- 색상 인덱스는 localStorage에 저장되어 앱 재시작 후에도 일관성 유지
+
+## 다음 버전 예정
+- 추가 UI/UX 개선
