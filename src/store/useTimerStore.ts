@@ -209,10 +209,19 @@ export const useTimerStore = create<TimerState>()(
         if (!activeTimer) return;
 
         const now = Date.now();
+        
+        // PAUSED 상태에서 완료 시, 마지막 일시정지 시간을 pausedDuration에 추가
+        let finalPausedDuration = activeTimer.pausedDuration;
+        if (activeTimer.status === 'PAUSED' && activeTimer.lastPausedAt) {
+          finalPausedDuration += (now - activeTimer.lastPausedAt) / 1000;
+        }
+        
         const completedLog: TimerLog = {
           ...activeTimer,
           status: 'COMPLETED',
           endTime: now,
+          pausedDuration: finalPausedDuration,
+          lastPausedAt: undefined,
         };
 
         set((state) => ({
