@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import {
   Select,
   MenuItem,
@@ -32,6 +32,9 @@ const StatusSelect: React.FC<StatusSelectProps> = ({
   const { statuses, addStatus, removeStatus, getStatusLabel } = useStatusStore();
   const [newLabel, setNewLabel] = useState('');
   const [newValue, setNewValue] = useState('');
+  const [open, setOpen] = useState(false);
+  const isAddInputFocused = useRef(false);
+  const addInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleChange = (event: SelectChangeEvent<string>) => {
     const selectedValue = event.target.value;
@@ -41,7 +44,7 @@ const StatusSelect: React.FC<StatusSelectProps> = ({
     }
   };
 
-  const handleAddStatus = (e: React.MouseEvent) => {
+  const handleAddStatus = useCallback((e: React.MouseEvent | React.KeyboardEvent) => {
     e.stopPropagation();
     e.preventDefault();
     if (newLabel.trim()) {
@@ -50,8 +53,32 @@ const StatusSelect: React.FC<StatusSelectProps> = ({
       addStatus({ value: statusValue, label: newLabel.trim() });
       setNewLabel('');
       setNewValue('');
+      // 추가 후에도 드롭다운 유지
+      addInputRef.current?.focus();
     }
-  };
+  }, [newLabel, newValue, addStatus]);
+
+  const handleInputFocus = useCallback(() => {
+    isAddInputFocused.current = true;
+  }, []);
+
+  const handleInputBlur = useCallback(() => {
+    isAddInputFocused.current = false;
+    // 약간의 지연 후 닫기 (다른 요소로 포커스 이동 확인)
+    setTimeout(() => {
+      if (!isAddInputFocused.current) {
+        setOpen(false);
+      }
+    }, 150);
+  }, []);
+
+  const handleClose = useCallback(() => {
+    // 새 상태 입력 필드에 포커스가 있으면 닫지 않음
+    if (isAddInputFocused.current) {
+      return;
+    }
+    setOpen(false);
+  }, []);
 
   const handleRemoveStatus = (e: React.MouseEvent, statusValue: string) => {
     e.stopPropagation();
@@ -72,6 +99,9 @@ const StatusSelect: React.FC<StatusSelectProps> = ({
       onChange={handleChange}
       size={size}
       variant={variant}
+      open={open}
+      onOpen={() => setOpen(true)}
+      onClose={handleClose}
       sx={{
         '& .MuiSelect-select': { py: 0, px: 1, fontSize: '0.75rem' },
         ...sx
@@ -132,12 +162,19 @@ const StatusSelect: React.FC<StatusSelectProps> = ({
             value={newLabel}
             onChange={(e) => setNewLabel(e.target.value)}
             onClick={(e) => e.stopPropagation()}
-            onMouseDown={(e) => e.stopPropagation()}
+            onMouseDown={(e) => {
+              e.stopPropagation();
+              // onClose보다 먼저 실행되므로 여기서 플래그 설정
+              isAddInputFocused.current = true;
+            }}
+            onFocus={handleInputFocus}
+            onBlur={handleInputBlur}
+            inputRef={addInputRef}
             onKeyDown={(e) => {
               e.stopPropagation();
               if (e.key === 'Enter' && newLabel.trim()) {
                 e.preventDefault();
-                handleAddStatus(e as unknown as React.MouseEvent);
+                handleAddStatus(e);
               }
             }}
             sx={{ 
@@ -151,6 +188,8 @@ const StatusSelect: React.FC<StatusSelectProps> = ({
             onMouseDown={(e) => {
               e.stopPropagation();
               e.preventDefault();
+              // onClose보다 먼저 실행되므로 여기서 플래그 설정
+              isAddInputFocused.current = true;
             }}
             disabled={!newLabel.trim()}
             sx={{ p: 0.5 }}
