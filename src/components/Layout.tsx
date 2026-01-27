@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { AppBar, Toolbar, Typography, Tabs, Tab, Box, Container, IconButton, Tooltip, Dialog, DialogContent, Button } from '@mui/material';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
@@ -8,6 +8,19 @@ import DarkModeIcon from '@mui/icons-material/DarkMode';
 import CloseIcon from '@mui/icons-material/Close';
 import { useTimerStore } from '../store/useTimerStore';
 import FeedbackBoard from './pages/FeedbackBoard';
+
+// 로컬스토리지 사용량 계산 함수
+const getLocalStorageUsage = (): { usageKB: string; usageMB: string } => {
+  let total = 0;
+  for (const key in localStorage) {
+    if (!Object.prototype.hasOwnProperty.call(localStorage, key)) continue;
+    total += ((localStorage[key].length + key.length) * 2); // UTF-16 기준
+  }
+  return {
+    usageKB: (total / 1024).toFixed(1),
+    usageMB: (total / (1024 * 1024)).toFixed(2)
+  };
+};
 
 export type PageType = 'daily' | 'weekly' | 'settings';
 
@@ -24,9 +37,12 @@ const PAGE_MAP: { page: PageType; label: string; icon: React.ReactNode }[] = [
 ];
 
 const Layout: React.FC<LayoutProps> = ({ children, currentPage, onPageChange }) => {
-  const { themeConfig, toggleDarkMode } = useTimerStore();
+  const { themeConfig, toggleDarkMode, logs, deleted_logs } = useTimerStore();
   const current_tab_index = PAGE_MAP.findIndex(p => p.page === currentPage);
   const [openQnA, setOpenQnA] = useState(false);
+  
+  // 로컬스토리지 사용량 (logs/deleted_logs 변경 시 재계산)
+  const storageUsage = useMemo(() => getLocalStorageUsage(), [logs.length, deleted_logs.length]);
 
   const handleChange = (_event: React.SyntheticEvent, newValue: number) => {
     onPageChange(PAGE_MAP[newValue].page);
@@ -147,8 +163,9 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, onPageChange }) 
           }
         }}
       >
-        <Typography variant="caption" sx={{ fontSize: '0.6rem', color: 'text.disabled', maxWidth: 800, px: 2 }}>
-          모든 기록은 내 컴퓨터(브라우저)에 저장되며, 서버로 전송되지 않습니다. 저장 공간이 부족할 경우 오래된 데이터부터 자동 삭제될 수 있습니다.
+        <Typography variant="caption" sx={{ fontSize: '0.6rem', color: 'text.disabled', maxWidth: 900, px: 2, textAlign: 'center' }}>
+          모든 기록은 내 컴퓨터(브라우저)에 저장되며, 서버로 전송되지 않습니다. 
+          현재 저장 용량: <strong>{storageUsage.usageKB} KB</strong> ({storageUsage.usageMB} MB / 약 5MB 제한)
         </Typography>
         <Typography variant="caption" sx={{ fontSize: '0.65rem' }}>
           © {new Date().getFullYear()} TimeKeeper. Jihee Eom All rights reserved.
