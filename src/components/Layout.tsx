@@ -191,7 +191,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, onPageChange }) 
             <CloseIcon />
           </IconButton>
         </Box>
-        <DialogContent sx={{ p: 0, '& .MuiContainer-root': { px: 2 } }}>
+        <DialogContent sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
           <FeedbackBoard />
         </DialogContent>
       </Dialog>
