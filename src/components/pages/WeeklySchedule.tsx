@@ -78,7 +78,10 @@ const WeeklySchedule: React.FC = () => {
   const [excludedProject, setExcludedProject] = useState<string>('');
 
   // 복사 미리보기 탭
-  const [copyFormat, setCopyFormat] = useState<'1' | '2'>('1');
+  const [copyFormat, setCopyFormat] = useState<'1' | '2'>(() => {
+    const saved = localStorage.getItem('weeklyScheduleCopyFormat');
+    return (saved === '1' || saved === '2') ? saved : '1';
+  });
 
   // 확장된 프로젝트 상태
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
@@ -180,11 +183,11 @@ const WeeklySchedule: React.FC = () => {
           group.status = 'in_progress';
         }
 
-        // 소요 시간 계산 (pausedDuration이 전체 duration을 초과하지 않도록 보정)
+        // 소요 시간 계산 (pausedDuration이 전체 duration보다 크면 비정상 데이터로 무시)
         const rawDurationSec = log.endTime 
           ? (log.endTime - log.startTime) / 1000
           : (Date.now() - log.startTime) / 1000;
-        const safePausedDuration = Math.min(log.pausedDuration, rawDurationSec);
+        const safePausedDuration = log.pausedDuration > rawDurationSec ? 0 : log.pausedDuration;
         const duration = rawDurationSec - safePausedDuration;
 
         group.totalSeconds += Math.max(0, duration);
@@ -640,7 +643,12 @@ const WeeklySchedule: React.FC = () => {
             <ToggleButtonGroup
               value={copyFormat}
               exclusive
-              onChange={(_, value) => value && setCopyFormat(value)}
+              onChange={(_, value) => {
+                if (value) {
+                  setCopyFormat(value);
+                  localStorage.setItem('weeklyScheduleCopyFormat', value);
+                }
+              }}
               size="small"
             >
               <ToggleButton value="1" sx={{ px: 2 }}>
