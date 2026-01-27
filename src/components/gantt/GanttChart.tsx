@@ -27,7 +27,7 @@ import { useTimerStore, TimerLog } from '../../store/useTimerStore';
 import { useProjectStore } from '../../store/useProjectStore';
 import { formatTimeRange, formatDuration } from '../../utils/timeUtils';
 import CategoryAutocomplete from '../common/CategoryAutocomplete';
-import { getPalette, getColorForTask, loadPaletteSettings } from '../../utils/colorPalette';
+import { getPalette, getAdjustedPalette, getColorForTask, loadPaletteSettings } from '../../utils/colorPalette';
 
 // Snackbar 슬라이드 트랜지션 (위에서 아래로 나타남, 위로 사라짐)
 const SlideTransition = (props: SlideProps) => {
@@ -71,9 +71,12 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
     return projects.map(p => `[${p.code}] ${p.name}`);
   }, [projects]);
 
-  // 컬러 팔레트 설정 로드
+  // 컬러 팔레트 설정 로드 (다크모드일 때 색상 보정 적용)
   const [paletteSettings, setPaletteSettings] = useState(() => loadPaletteSettings());
-  const colorPalette = useMemo(() => getPalette(paletteSettings), [paletteSettings]);
+  const colorPalette = useMemo(
+    () => getAdjustedPalette(paletteSettings, themeConfig.isDark, 45), 
+    [paletteSettings, themeConfig.isDark]
+  );
 
   // 점심시간 설정 로드
   const [lunchConfig, setLunchConfig] = useState<{start: string, end: string, enabled: boolean}>({

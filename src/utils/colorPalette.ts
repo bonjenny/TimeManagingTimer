@@ -1,4 +1,4 @@
-import { generateToneOnTonePalette } from './colorUtils'; // 필요시 경로 수정 또는 직접 구현
+import { generateToneOnTonePalette, adjustColorForDarkMode } from './colorUtils';
 
 // 팔레트 타입 정의
 export type PaletteType = 'navy-orange' | 'olive-yellow' | 'pastel-rainbow' | 'ocean-blue' | 'sunset' | 'forest' | 'beige-brown' | 'pink-purple' | 'terracotta' | 'custom';
@@ -116,6 +116,43 @@ export const getPalette = (settings: PaletteSettings): string[] => {
     return settings.custom_colors || [];
   }
   return COOLORS_PALETTES[settings.type].colors;
+};
+
+/**
+ * 다크모드에서 보정된 팔레트 색상 배열 가져오기
+ * 너무 어두운 색상은 밝기를 높여서 가시성 확보
+ * 
+ * @param settings - 팔레트 설정
+ * @param isDark - 다크모드 여부
+ * @param minLightness - 최소 밝기 (기본값: 45%)
+ * @returns 보정된 색상 배열
+ */
+export const getAdjustedPalette = (
+  settings: PaletteSettings,
+  isDark: boolean,
+  minLightness: number = 45
+): string[] => {
+  const palette = getPalette(settings);
+  
+  if (!isDark) return palette;
+  
+  return palette.map(color => adjustColorForDarkMode(color, true, minLightness));
+};
+
+/**
+ * 다크모드에서 보정된 단일 색상 가져오기
+ * 
+ * @param color - 원본 색상
+ * @param isDark - 다크모드 여부
+ * @param minLightness - 최소 밝기 (기본값: 45%)
+ * @returns 보정된 색상
+ */
+export const getAdjustedColor = (
+  color: string,
+  isDark: boolean,
+  minLightness: number = 45
+): string => {
+  return adjustColorForDarkMode(color, isDark, minLightness);
 };
 
 // 현재 팔레트의 대표 색상 가져오기

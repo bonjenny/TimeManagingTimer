@@ -30,7 +30,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import HistoryIcon from '@mui/icons-material/History';
 import { useTimerStore } from '../../store/useTimerStore';
 import { useProjectStore } from '../../store/useProjectStore';
-import { getPalette, loadPaletteSettings } from '../../utils/colorPalette';
+import { getAdjustedPalette, loadPaletteSettings } from '../../utils/colorPalette';
 import CategoryAutocomplete from '../common/CategoryAutocomplete';
 
 // 프리셋 데이터 타입
@@ -47,21 +47,24 @@ interface PresetItem {
 const PRESETS_STORAGE_KEY = 'timekeeper-manual-presets';
 
 const PresetPanel: React.FC = () => {
-  const { startTimer, logs } = useTimerStore();
+  const { startTimer, logs, themeConfig } = useTimerStore();
   const { projects, addProject, getProjectName } = useProjectStore();
 
-  // 컬러 팔레트 로드
+  // 컬러 팔레트 로드 (다크모드일 때 색상 보정 적용)
   const [colorPalette, setColorPalette] = useState<string[]>(() => {
     const settings = loadPaletteSettings();
-    return getPalette(settings);
+    return getAdjustedPalette(settings, themeConfig.isDark, 45);
   });
 
-  // 팔레트 설정 변경 감지
+  // 팔레트 설정 변경 감지 및 다크모드 변경 감지
   useEffect(() => {
     const handlePaletteUpdate = () => {
       const settings = loadPaletteSettings();
-      setColorPalette(getPalette(settings));
+      setColorPalette(getAdjustedPalette(settings, themeConfig.isDark, 45));
     };
+    
+    // 초기 로드 시 다크모드 상태 반영
+    handlePaletteUpdate();
     
     window.addEventListener('storage', handlePaletteUpdate);
     window.addEventListener('focus', handlePaletteUpdate);
@@ -73,7 +76,7 @@ const PresetPanel: React.FC = () => {
       window.removeEventListener('focus', handlePaletteUpdate);
       window.removeEventListener('palette-changed', handlePaletteUpdate);
     };
-  }, []);
+  }, [themeConfig.isDark]);
 
   // 프리셋 목록 (LocalStorage에서 로드)
   const [presets, setPresets] = useState<PresetItem[]>(() => {
