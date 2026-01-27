@@ -1,0 +1,110 @@
+---
+version: 0.12.1
+date: 2026-01-27
+step: Step 12 (Patch)
+---
+
+# v0.12.1 릴리즈 노트
+
+## 주요 변경사항
+
+### CategoryAutocomplete 드롭다운 개선
+- "새 카테고리" 입력 영역 클릭 시 드롭다운이 닫히는 버그 수정
+- 입력 중 포커스가 빠지는 문제 해결 (useEffect로 포커스 복원)
+- 드롭다운이 모달 하단에서 잘리는 문제 해결 (flip/preventOverflow modifier 추가)
+- Paper 최소 너비 200px 설정으로 입력 필드 가독성 개선
+
+### StatusSelect 컴포넌트 리팩토링
+- MUI Select에서 Autocomplete 기반으로 완전 재작성
+- CategoryAutocomplete와 동일한 구조로 통일
+- 드롭다운 내 새 상태 추가 기능 개선
+
+### PresetPanel 텍스트 잘림 처리
+- 프리셋 제목이 18글자 초과 시 `...`으로 축약
+- 프로젝트명 Chip이 18글자 초과 시 `...`으로 축약
+- 카테고리 Chip이 8글자 초과 시 `...`으로 축약
+- 전체 텍스트는 마우스 hover 시 tooltip으로 확인 가능
+
+### 완료된 작업 재시작 시 세션 유지
+- 완료된 작업을 재시작할 때 기존 세션의 종료시간이 유지됨
+- 이전에는 재시작 시 기존 세션이 PAUSED로 변경되고 endTime이 삭제되는 버그 있었음
+
+## 버그 수정
+
+### 완료된 작업 재시작 시 종료시간 사라지는 문제 해결
+- **원인**: `startTimer`에서 완료된 세션을 `PAUSED`로 변경하고 `endTime: undefined` 설정
+- **해결**: 완료된 세션은 그대로 유지, 새 세션만 생성
+
+```typescript
+// 변경 전 (버그)
+const updatedLogs = logs.map(log => 
+  log.title === title && log.status === 'COMPLETED'
+    ? { ...log, status: 'PAUSED', endTime: undefined }  // endTime 삭제됨
+    : log
+);
+
+// 변경 후 (수정)
+// 기존 완료된 세션은 그대로 유지
+// 새 세션만 새로 시작
+```
+
+### 드롭다운 닫힘 문제 해결
+- **원인**: `onMouseDown` 이벤트에서 `isAddInputFocused` 플래그 미설정
+- **이벤트 순서**: `onMouseDown` → `onClose` → `onFocus`
+- **해결**: `onMouseDown`에서 `onInputFocus()` 호출하여 `onClose` 전에 플래그 설정
+
+### 드롭다운이 외부 클릭 시 닫히지 않는 문제 해결
+- **원인**: `handleInputBlur`에서 `isAddInputFocused` 플래그를 `false`로 리셋하지 않음
+- **해결**: blur 시 플래그를 `false`로 리셋 후, setTimeout으로 다시 포커스가 들어왔는지 확인
+
+```typescript
+const handleInputBlur = useCallback(() => {
+  // blur 시 플래그를 false로 리셋
+  isAddInputFocused.current = false;
+  
+  setTimeout(() => {
+    // 다시 포커스가 들어왔는지 확인
+    if (!isAddInputFocused.current) {
+      setOpen(false);
+    }
+  }, 150);
+}, []);
+```
+
+### 입력 중 포커스 빠짐 문제 해결
+- **원인**: `PaperComponent` 인라인 함수로 인해 매 렌더링마다 새 컴포넌트 생성
+- **해결**: `useEffect`로 상태 변경 후 포커스 자동 복원
+
+```tsx
+React.useEffect(() => {
+  if (isAddInputFocused.current && addInputRef.current) {
+    addInputRef.current.focus();
+  }
+}, [newCategory]);
+```
+
+### 드롭다운 위치 문제 해결
+- **원인**: `disablePortal` 사용 시 부모 요소 overflow로 인해 잘림
+- **해결**: Popper modifiers 추가
+  - `flip`: 공간 부족 시 위쪽으로 열림
+  - `preventOverflow`: 화면 밖으로 나가지 않도록 조정
+
+## 기술적 변경사항
+
+### StatusSelect
+- `Select` → `Autocomplete` 컴포넌트로 변경
+- `PaperComponent`를 통한 커스텀 드롭다운 UI
+- `disablePortal` + Popper modifiers로 위치 제어
+
+### CategoryAutocomplete
+- `onMouseDown` 핸들러에서 `onInputFocus()` 호출 추가
+- `useEffect`로 포커스 복원 로직 추가
+- `slotProps.popper.modifiers` 설정 추가
+
+## Breaking Changes
+- 없음
+
+## 다음 버전 예정
+- 주간 일정 개선
+- 통계/리포트 확장
+- 데이터 내보내기 기능

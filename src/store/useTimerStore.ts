@@ -127,12 +127,8 @@ export const useTimerStore = create<TimerState>()(
         const now = Date.now();
         const { logs } = get();
         
-        // 같은 제목의 완료된 작업이 있으면 자동으로 완료 취소 (COMPLETED → PAUSED)
-        const updatedLogs = logs.map(log => 
-          log.title === title && log.status === 'COMPLETED'
-            ? { ...log, status: 'PAUSED' as const, endTime: undefined }
-            : log
-        );
+        // 기존 완료된 세션은 그대로 유지 (endTime, status 변경 없음)
+        // 새 세션만 새로 시작
         
         const newTimer: TimerLog = {
           id: crypto.randomUUID(),
@@ -162,12 +158,12 @@ export const useTimerStore = create<TimerState>()(
           }
           
           set({
-            logs: [...updatedLogs, timerToMove],
+            logs: [...logs, timerToMove],
             activeTimer: newTimer,
           });
         } else {
           set({ 
-            logs: updatedLogs,
+            logs,
             activeTimer: newTimer 
           });
         }

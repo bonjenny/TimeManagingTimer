@@ -36,7 +36,7 @@ const CustomPaper: React.FC<{
   onInputBlur: () => void;
 }> = ({ children, newCategory, setNewCategory, onAddCategory, inputRef, onInputFocus, onInputBlur }) => {
   return (
-    <Paper elevation={8} sx={{ overflow: 'hidden' }}>
+    <Paper elevation={8} sx={{ overflow: 'hidden', minWidth: 200 }}>
       {children}
       <Divider />
       <Box 
@@ -45,6 +45,8 @@ const CustomPaper: React.FC<{
           // Autocomplete가 이 영역 클릭을 옵션 선택으로 처리하지 않도록 방지
           e.stopPropagation();
           e.preventDefault();
+          // onClose보다 먼저 실행되므로 여기서 플래그 설정
+          onInputFocus();
         }}
         onClick={(e) => {
           e.stopPropagation();
@@ -65,6 +67,8 @@ const CustomPaper: React.FC<{
           }}
           onMouseDown={(e) => {
             e.stopPropagation();
+            // onClose보다 먼저 실행되므로 여기서 플래그 설정
+            onInputFocus();
           }}
           onFocus={onInputFocus}
           onBlur={onInputBlur}
@@ -83,7 +87,9 @@ const CustomPaper: React.FC<{
           }}
           onMouseDown={(e) => {
             e.stopPropagation();
-            e.preventDefault(); // blur 방지
+            e.preventDefault();
+            // onClose보다 먼저 실행되므로 여기서 플래그 설정
+            onInputFocus();
           }}
           disabled={!newCategory.trim()}
           sx={{ p: 0.5 }}
@@ -97,6 +103,8 @@ const CustomPaper: React.FC<{
           onMouseDown={(e) => {
             e.stopPropagation();
             e.preventDefault();
+            // onClose보다 먼저 실행되므로 여기서 플래그 설정
+            onInputFocus();
           }}
         >
           추가
@@ -148,14 +156,24 @@ const CategoryAutocomplete: React.FC<CategoryAutocompleteProps> = ({
   }, []);
 
   const handleInputBlur = useCallback(() => {
+    // blur 시 플래그를 false로 리셋
     isAddInputFocused.current = false;
+    
     // 약간의 지연 후 닫기 (다른 요소로 포커스 이동 확인)
     setTimeout(() => {
+      // 다시 포커스가 들어왔는지 확인 (다른 내부 요소로 이동한 경우)
       if (!isAddInputFocused.current) {
         setOpen(false);
       }
     }, 150);
   }, []);
+
+  // newCategory 상태 변경으로 리렌더링 후에도 포커스 유지
+  React.useEffect(() => {
+    if (isAddInputFocused.current && addInputRef.current) {
+      addInputRef.current.focus();
+    }
+  }, [newCategory]);
 
   const handleClose = useCallback((_event: React.SyntheticEvent, reason: string) => {
     // 새 카테고리 입력 필드에 포커스가 있으면 닫지 않음
@@ -185,6 +203,25 @@ const CategoryAutocomplete: React.FC<CategoryAutocompleteProps> = ({
       fullWidth={fullWidth}
       size={size}
       disablePortal
+      slotProps={{
+        popper: {
+          modifiers: [
+            {
+              name: 'flip',
+              enabled: true,
+            },
+            {
+              name: 'preventOverflow',
+              enabled: true,
+              options: {
+                altAxis: true,
+                tether: false,
+                padding: 8,
+              },
+            },
+          ],
+        },
+      }}
       PaperComponent={(paperProps) => (
         <CustomPaper
           {...paperProps}

@@ -46,6 +46,11 @@ interface PresetItem {
 // LocalStorage 키
 const PRESETS_STORAGE_KEY = 'timekeeper-manual-presets';
 
+// 텍스트 자르기 헬퍼 함수
+const truncateText = (text: string, maxLength: number = 12): string => {
+  return text.length > maxLength ? text.slice(0, maxLength) + '...' : text;
+};
+
 const PresetPanel: React.FC = () => {
   const { startTimer, logs, themeConfig } = useTimerStore();
   const { projects, addProject, getProjectName } = useProjectStore();
@@ -433,44 +438,32 @@ const PresetPanel: React.FC = () => {
                           }}
                           title={preset.title}
                         >
-                          {preset.title}
+                          {truncateText(preset.title, 18)}
                         </Typography>
                       }
                       secondary={
                         <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5, overflow: 'hidden' }}>
                           {preset.projectCode && (
                             <Chip
-                              label={getProjectName(preset.projectCode)}
+                              label={truncateText(getProjectName(preset.projectCode), 18)}
                               size="small"
                               variant="outlined"
                               sx={{ 
                                 height: 18, 
                                 fontSize: '0.65rem',
-                                maxWidth: 120,
-                                '& .MuiChip-label': {
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                  whiteSpace: 'nowrap',
-                                }
                               }}
                               title={`[${preset.projectCode}] ${getProjectName(preset.projectCode)}`}
                             />
                           )}
                           {preset.category && (
                             <Chip
-                              label={preset.category}
+                              label={truncateText(preset.category, 8)}
                               size="small"
                               sx={{
                                 height: 18,
                                 fontSize: '0.65rem',
                                 bgcolor: 'var(--bg-hover)',
                                 color: 'var(--text-secondary)',
-                                maxWidth: 120,
-                                '& .MuiChip-label': {
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                  whiteSpace: 'nowrap',
-                                }
                               }}
                               title={preset.category}
                             />

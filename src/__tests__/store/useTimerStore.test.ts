@@ -26,7 +26,7 @@ describe('useTimerStore', () => {
       const { activeTimer } = useTimerStore.getState();
       expect(activeTimer).not.toBeNull();
       expect(activeTimer?.title).toBe('테스트 작업');
-      expect(activeTimer?.boardNo).toBe('12345');
+      expect(activeTimer?.projectCode).toBe('12345');
       expect(activeTimer?.category).toBe('개발');
       expect(activeTimer?.status).toBe('RUNNING');
     });
@@ -43,6 +43,117 @@ describe('useTimerStore', () => {
       const { activeTimer } = useTimerStore.getState();
       expect(activeTimer?.startTime).toBeGreaterThanOrEqual(before);
       expect(activeTimer?.startTime).toBeLessThanOrEqual(after);
+    });
+
+    it('다른 작업 진행 중에 새 작업을 시작하면 새 startTime이 현재 시간으로 설정된다', async () => {
+      const { startTimer } = useTimerStore.getState();
+      
+      // 1. 첫 번째 작업 시작
+      act(() => {
+        startTimer('작업 A', 'P001', '개발');
+      });
+      
+      const firstTimer = useTimerStore.getState().activeTimer;
+      expect(firstTimer?.title).toBe('작업 A');
+      const firstStartTime = firstTimer?.startTime;
+      
+      // 2. 100ms 대기
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // 3. 두 번째 작업 시작 (기존 작업은 logs로 이동)
+      const beforeSecond = Date.now();
+      act(() => {
+        startTimer('작업 B', 'P002', '회의');
+      });
+      const afterSecond = Date.now();
+      
+      // 4. 새 activeTimer 확인
+      const { activeTimer, logs } = useTimerStore.getState();
+      
+      // 새 activeTimer는 '작업 B'
+      expect(activeTimer?.title).toBe('작업 B');
+      
+      // 새 activeTimer의 startTime은 현재 시간 (beforeSecond ~ afterSecond 사이)
+      expect(activeTimer?.startTime).toBeGreaterThanOrEqual(beforeSecond);
+      expect(activeTimer?.startTime).toBeLessThanOrEqual(afterSecond);
+      
+      // 새 startTime은 첫 번째 작업의 startTime보다 커야 함
+      expect(activeTimer?.startTime).toBeGreaterThan(firstStartTime!);
+      
+      // 기존 작업 A는 logs로 이동됨
+      const movedLog = logs.find(l => l.title === '작업 A');
+      expect(movedLog).toBeDefined();
+      expect(movedLog?.status).toBe('PAUSED');
+    });
+
+    it('완료된 작업을 다시 시작하면 새 startTime이 현재 시간으로 설정된다', async () => {
+      const { startTimer, completeTimer } = useTimerStore.getState();
+      
+      // 1. 첫 번째 작업 완료
+      act(() => {
+        startTimer('작업 A', 'P001', '개발');
+        completeTimer();
+      });
+      
+      const { logs: logsAfterComplete } = useTimerStore.getState();
+      const completedLog = logsAfterComplete[0];
+      const originalStartTime = completedLog.startTime;
+      
+      // 2. 100ms 대기
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // 3. 같은 작업을 다시 시작
+      const beforeRestart = Date.now();
+      act(() => {
+        startTimer('작업 A', 'P001', '개발');
+      });
+      const afterRestart = Date.now();
+      
+      // 4. 새 activeTimer 확인
+      const { activeTimer } = useTimerStore.getState();
+      
+      // 새 activeTimer는 '작업 A'
+      expect(activeTimer?.title).toBe('작업 A');
+      
+      // 새 activeTimer의 startTime은 현재 시간 (이전 startTime과 다름)
+      expect(activeTimer?.startTime).toBeGreaterThanOrEqual(beforeRestart);
+      expect(activeTimer?.startTime).toBeLessThanOrEqual(afterRestart);
+      expect(activeTimer?.startTime).toBeGreaterThan(originalStartTime);
+    });
+
+    it('v0.12.1: 완료된 작업을 다시 시작해도 기존 세션의 상태와 종료시간이 유지된다', async () => {
+      const { startTimer, completeTimer } = useTimerStore.getState();
+      
+      // 1. 첫 번째 작업 완료
+      act(() => {
+        startTimer('작업 A', 'P001', '개발');
+        completeTimer();
+      });
+      
+      const { logs: logsAfterComplete } = useTimerStore.getState();
+      const completedLog = logsAfterComplete[0];
+      const originalEndTime = completedLog.endTime;
+      const originalStatus = completedLog.status;
+      
+      // 완료된 세션의 상태와 종료시간 확인
+      expect(originalStatus).toBe('COMPLETED');
+      expect(originalEndTime).toBeDefined();
+      
+      // 2. 100ms 대기
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // 3. 같은 작업을 다시 시작
+      act(() => {
+        startTimer('작업 A', 'P001', '개발');
+      });
+      
+      // 4. 기존 완료된 세션의 상태와 종료시간이 유지되는지 확인
+      const { logs } = useTimerStore.getState();
+      const existingCompletedLog = logs.find(l => l.id === completedLog.id);
+      
+      expect(existingCompletedLog).toBeDefined();
+      expect(existingCompletedLog?.status).toBe('COMPLETED'); // PAUSED가 아닌 COMPLETED 유지
+      expect(existingCompletedLog?.endTime).toBe(originalEndTime); // 종료시간 유지
     });
   });
 
