@@ -18,7 +18,11 @@ export interface Comment {
   content: string;
   password_hash: string;
   created_at: number;
+  is_admin?: boolean; // 관리자 댓글 여부
 }
+
+// 관리자 상태 타입
+export type AdminStatus = 'reviewing' | 'rejected' | 'completed';
 
 export interface FeedbackPost {
   id: string;
@@ -30,6 +34,8 @@ export interface FeedbackPost {
   updated_at: number;
   category: 'idea' | 'bug' | 'etc';
   comments: Comment[];
+  admin_status?: AdminStatus;     // 검토중 | 반려 | 완료
+  completed_version?: string;     // 완료 시 버전 (예: "v2.0.4")
 }
 
 // Firestore 컬렉션 참조
