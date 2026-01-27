@@ -172,13 +172,48 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
       }
     });
 
+    // activeTimer가 있으면 해당 그룹에 반영 (first_start 업데이트)
+    if (activeTimer) {
+      const date_range_check = activeTimer.startTime >= date_range.start && activeTimer.startTime < date_range.end;
+      if (date_range_check) {
+        const existingGroup = groups.get(activeTimer.title);
+        if (existingGroup) {
+          // activeTimer의 startTime이 더 이르면 업데이트
+          if (activeTimer.startTime < existingGroup.first_start) {
+            existingGroup.first_start = activeTimer.startTime;
+          }
+          existingGroup.has_running = true;
+          existingGroup.last_end = undefined;
+        } else {
+          // 새 그룹 생성 (activeTimer만 있는 경우)
+          groups.set(activeTimer.title, {
+            title: activeTimer.title,
+            projectCode: activeTimer.projectCode,
+            category: activeTimer.category,
+            sessions: [],
+            total_duration: 0,
+            first_start: activeTimer.startTime,
+            last_end: undefined,
+            has_running: true
+          });
+        }
+      }
+    }
+
     // 세션들을 시작 시간순으로 정렬
     groups.forEach(group => {
       group.sessions.sort((a, b) => a.startTime - b.startTime);
     });
 
-    // 정렬: 미완료 우선 → 프로젝트 코드 오름차순 → 작업명 오름차순
+    // 정렬: 진행 중 우선 → 미완료 우선 → 프로젝트 코드 오름차순 → 작업명 오름차순
     return Array.from(groups.values()).sort((a, b) => {
+      // 0. 현재 진행 중인 작업 (activeTimer) 최상위
+      const a_is_active = activeTimer?.title === a.title;
+      const b_is_active = activeTimer?.title === b.title;
+      
+      if (a_is_active && !b_is_active) return -1; // a가 진행 중 → a 우선
+      if (!a_is_active && b_is_active) return 1;  // b가 진행 중 → b 우선
+      
       // 1. 완료 여부 (미완료 우선)
       const a_all_completed = a.sessions.every(s => s.status === 'COMPLETED');
       const b_all_completed = b.sessions.every(s => s.status === 'COMPLETED');
@@ -196,7 +231,7 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
       // 3. 작업명 오름차순
       return a.title.localeCompare(b.title);
     });
-  }, [logs, showCompleted, selectedDate]);
+  }, [logs, showCompleted, selectedDate, activeTimer]);
 
   // 총 시간 합계 계산
   const totalDurationSeconds = useMemo(() => {
@@ -568,7 +603,7 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                 {/* 좌측: 완료상태 토글 버튼 + 시작/재시작 버튼 */}
                 <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 0.25 }}>
                   {/* 완료 상태 토글 버튼 */}
-                  <Tooltip title={all_completed ? "완료 취소" : "모든 세션 완료됨"}>
+                  <Tooltip title={all_completed ? "완료 취소" : "완료"}>
                     <span>
                       <IconButton 
                         size="small" 
@@ -599,10 +634,8 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                   {/* 시작/재시작/일시정지 버튼 */}
                   {(() => {
                     const tooltip_text = is_active_task 
-                      ? "일시정지 후 기록으로 이동" 
-                      : all_completed 
-                        ? "완료 취소 후 새 타이머 시작" 
-                        : "이 업무로 새 타이머 시작";
+                      ? "일시정지" 
+                      : "진행";
                     
                     return (
                       <Tooltip title={tooltip_text}>
@@ -766,7 +799,7 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
 
                 {/* 시작-종료 */}
                 <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.8rem' }}>
-                  {formatTime(task.first_start)} ~ {task.last_end ? formatTime(task.last_end) : (is_active_task ? '진행 중' : '일시정지')}
+                  {formatTime(is_active_task && activeTimer ? activeTimer.startTime : task.first_start)} ~ {task.last_end ? formatTime(task.last_end) : (is_active_task ? '진행 중' : '일시정지')}
                 </Typography>
 
                 {/* 세션 수 */}

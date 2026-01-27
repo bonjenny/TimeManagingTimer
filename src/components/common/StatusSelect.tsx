@@ -31,7 +31,7 @@ const CustomPaper: React.FC<{
   onInputBlur: () => void;
 }> = ({ children, newLabel, setNewLabel, onAddStatus, inputRef, onInputFocus, onInputBlur }) => {
   return (
-    <Paper elevation={8} sx={{ overflow: 'hidden' }}>
+    <Paper elevation={8} sx={{ overflow: 'hidden', minWidth: 200 }}>
       {children}
       <Divider />
       <Box 
@@ -145,14 +145,24 @@ const StatusSelect: React.FC<StatusSelectProps> = ({
   }, []);
 
   const handleInputBlur = useCallback(() => {
+    // blur 시 플래그를 false로 리셋
     isAddInputFocused.current = false;
+    
     // 약간의 지연 후 닫기 (다른 요소로 포커스 이동 확인)
     setTimeout(() => {
+      // 다시 포커스가 들어왔는지 확인 (다른 내부 요소로 이동한 경우)
       if (!isAddInputFocused.current) {
         setOpen(false);
       }
     }, 150);
   }, []);
+
+  // newLabel 상태 변경으로 리렌더링 후에도 포커스 유지
+  React.useEffect(() => {
+    if (isAddInputFocused.current && addInputRef.current) {
+      addInputRef.current.focus();
+    }
+  }, [newLabel]);
 
   const handleClose = useCallback((_event: React.SyntheticEvent, reason: string) => {
     // 새 상태 입력 필드에 포커스가 있으면 닫지 않음
@@ -186,6 +196,25 @@ const StatusSelect: React.FC<StatusSelectProps> = ({
       size={size}
       disablePortal
       disableClearable
+      slotProps={{
+        popper: {
+          modifiers: [
+            {
+              name: 'flip',
+              enabled: true,
+            },
+            {
+              name: 'preventOverflow',
+              enabled: true,
+              options: {
+                altAxis: true,
+                tether: false,
+                padding: 8,
+              },
+            },
+          ],
+        },
+      }}
       PaperComponent={(paperProps) => (
         <CustomPaper
           {...paperProps}

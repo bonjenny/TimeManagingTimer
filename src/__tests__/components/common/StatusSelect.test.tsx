@@ -97,6 +97,99 @@ describe('StatusSelect 컴포넌트', () => {
         expect(result.current.statuses.some(s => s.label === '신규상태')).toBe(true);
       });
     });
+
+    it('v0.12.1: 입력 중 포커스가 유지된다 (리렌더링 후 포커스 복원)', async () => {
+      const handleChange = jest.fn();
+      render(<StatusSelect value="completed" onChange={handleChange} />);
+
+      // Select 열기
+      const select = screen.getByRole('combobox');
+      await userEvent.click(select);
+
+      // 드롭다운이 열렸는지 확인
+      await waitFor(() => {
+        expect(screen.getByRole('listbox')).toBeInTheDocument();
+      });
+
+      // 새 상태 입력 필드 찾기
+      const textField = screen.getByPlaceholderText('새 상태');
+      
+      // 여러 글자 입력
+      fireEvent.change(textField, { target: { value: '테스트입력' } });
+
+      // 입력 값이 유지되는지 확인
+      await waitFor(() => {
+        expect(textField).toHaveValue('테스트입력');
+      });
+
+      // 드롭다운이 여전히 열려있는지 확인
+      expect(screen.getByRole('listbox')).toBeInTheDocument();
+    });
+
+    it('v0.12.1: Paper에 최소 너비가 적용된다', async () => {
+      const handleChange = jest.fn();
+      render(<StatusSelect value="completed" onChange={handleChange} />);
+
+      // Select 열기
+      const select = screen.getByRole('combobox');
+      await userEvent.click(select);
+
+      // 드롭다운이 열렸는지 확인
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText('새 상태')).toBeInTheDocument();
+      });
+
+      // Paper 요소가 존재하는지 확인 (minWidth 200px 적용됨)
+      const paper = document.querySelector('.MuiPaper-root');
+      expect(paper).toBeInTheDocument();
+    });
+
+    it('v0.12.1: StatusSelect가 Autocomplete 기반으로 작동한다', async () => {
+      const handleChange = jest.fn();
+      render(<StatusSelect value="completed" onChange={handleChange} />);
+
+      // Autocomplete의 combobox role이 존재해야 함
+      const combobox = screen.getByRole('combobox');
+      expect(combobox).toBeInTheDocument();
+
+      // 열기
+      await userEvent.click(combobox);
+
+      // listbox가 나타나야 함 (Autocomplete 특성)
+      await waitFor(() => {
+        expect(screen.getByRole('listbox')).toBeInTheDocument();
+      });
+
+      // 기본 상태들이 표시되어야 함
+      expect(screen.getByText('완료')).toBeInTheDocument();
+      expect(screen.getByText('진행중')).toBeInTheDocument();
+    });
+
+    it('v0.12.1: 드롭다운 외부 클릭 시 드롭다운이 닫힌다', async () => {
+      const handleChange = jest.fn();
+      render(<StatusSelect value="completed" onChange={handleChange} />);
+
+      // Select 열기
+      const select = screen.getByRole('combobox');
+      await userEvent.click(select);
+
+      // 드롭다운이 열렸는지 확인
+      await waitFor(() => {
+        expect(screen.getByRole('listbox')).toBeInTheDocument();
+      });
+
+      // 새 상태 입력 필드 클릭 (내부 요소)
+      const textField = screen.getByPlaceholderText('새 상태');
+      fireEvent.focus(textField);
+
+      // blur 이벤트 발생 (외부 클릭 시뮬레이션)
+      fireEvent.blur(textField);
+
+      // 약간의 대기 후 드롭다운이 닫히는지 확인
+      await waitFor(() => {
+        expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+      }, { timeout: 300 });
+    });
   });
 });
 

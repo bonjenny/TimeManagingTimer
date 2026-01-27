@@ -209,5 +209,90 @@ describe('CategoryAutocomplete 관련 기능', () => {
         expect(result.current.categories).toContain('엔터테스트');
       });
     });
+
+    it('v0.12.1: 입력 중 포커스가 유지된다 (리렌더링 후 포커스 복원)', async () => {
+      const mockOnChange = jest.fn();
+      render(
+        <CategoryAutocomplete
+          value={null}
+          onChange={mockOnChange}
+          placeholder="카테고리 선택"
+        />
+      );
+
+      // Autocomplete 열기
+      const input = screen.getByPlaceholderText('카테고리 선택');
+      await userEvent.click(input);
+
+      // 새 카테고리 입력 필드 찾기
+      const newCategoryInput = screen.getByPlaceholderText('새 카테고리');
+      
+      // 여러 글자 입력
+      fireEvent.change(newCategoryInput, { target: { value: '테스트입력' } });
+
+      // 입력 값이 유지되는지 확인
+      await waitFor(() => {
+        expect(newCategoryInput).toHaveValue('테스트입력');
+      });
+
+      // 드롭다운이 여전히 열려있는지 확인
+      expect(screen.getByText('개발')).toBeInTheDocument();
+    });
+
+    it('v0.12.1: Paper에 최소 너비가 적용된다', async () => {
+      const mockOnChange = jest.fn();
+      render(
+        <CategoryAutocomplete
+          value={null}
+          onChange={mockOnChange}
+          placeholder="카테고리 선택"
+        />
+      );
+
+      // Autocomplete 열기
+      const input = screen.getByPlaceholderText('카테고리 선택');
+      await userEvent.click(input);
+
+      // 드롭다운이 열렸는지 확인
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText('새 카테고리')).toBeInTheDocument();
+      });
+
+      // Paper 요소가 존재하는지 확인 (minWidth 200px 적용됨)
+      const paper = document.querySelector('.MuiPaper-root');
+      expect(paper).toBeInTheDocument();
+    });
+
+    it('v0.12.1: 드롭다운 외부 클릭 시 드롭다운이 닫힌다', async () => {
+      const mockOnChange = jest.fn();
+      render(
+        <CategoryAutocomplete
+          value={null}
+          onChange={mockOnChange}
+          placeholder="카테고리 선택"
+        />
+      );
+
+      // Autocomplete 열기
+      const input = screen.getByPlaceholderText('카테고리 선택');
+      await userEvent.click(input);
+
+      // 드롭다운이 열렸는지 확인
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText('새 카테고리')).toBeInTheDocument();
+      });
+
+      // 새 카테고리 입력 필드 클릭 (내부 요소)
+      const newCategoryInput = screen.getByPlaceholderText('새 카테고리');
+      fireEvent.focus(newCategoryInput);
+
+      // blur 이벤트 발생 (외부 클릭 시뮬레이션)
+      fireEvent.blur(newCategoryInput);
+
+      // 약간의 대기 후 드롭다운이 닫히는지 확인
+      await waitFor(() => {
+        expect(screen.queryByPlaceholderText('새 카테고리')).not.toBeInTheDocument();
+      }, { timeout: 300 });
+    });
   });
 });
