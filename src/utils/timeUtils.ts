@@ -104,7 +104,9 @@ export const getDurationSecondsExcludingLunch = (
   paused_duration: number = 0
 ): number => {
   const duration_ms = calculateDurationExcludingLunch(start_time, end_time);
-  return Math.max(0, Math.floor(duration_ms / 1000 - paused_duration));
+  const durationSec = duration_ms / 1000;
+  const safePaused = Math.min(paused_duration, durationSec);
+  return Math.max(0, Math.floor(durationSec - safePaused));
 };
 
 // 초 단위 시간을 받아서 "80분 / 01:20 시간" 형식의 문자열로 반환

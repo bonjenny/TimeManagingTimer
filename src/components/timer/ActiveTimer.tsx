@@ -40,7 +40,9 @@ const ActiveTimer: React.FC = () => {
         // COMPLETED 상태는 endTime을 사용
         // endTime도 lastPausedAt도 없으면 startTime을 사용 (0초)
         const end = log.endTime || log.lastPausedAt || log.startTime;
-        const duration = Math.floor((end - log.startTime) / 1000 - log.pausedDuration);
+        const rawDurationSec = (end - log.startTime) / 1000;
+        const safePaused = Math.min(log.pausedDuration, rawDurationSec);
+        const duration = Math.floor(rawDurationSec - safePaused);
         return sum + Math.max(0, duration);
       }, 0);
     

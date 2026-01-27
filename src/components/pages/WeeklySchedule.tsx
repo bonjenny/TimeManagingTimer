@@ -180,10 +180,12 @@ const WeeklySchedule: React.FC = () => {
           group.status = 'in_progress';
         }
 
-        // 소요 시간 계산
-        const duration = log.endTime 
-          ? (log.endTime - log.startTime) / 1000 - log.pausedDuration
-          : (Date.now() - log.startTime) / 1000 - log.pausedDuration;
+        // 소요 시간 계산 (pausedDuration이 전체 duration을 초과하지 않도록 보정)
+        const rawDurationSec = log.endTime 
+          ? (log.endTime - log.startTime) / 1000
+          : (Date.now() - log.startTime) / 1000;
+        const safePausedDuration = Math.min(log.pausedDuration, rawDurationSec);
+        const duration = rawDurationSec - safePausedDuration;
 
         group.totalSeconds += Math.max(0, duration);
 
