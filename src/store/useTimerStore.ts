@@ -151,6 +151,7 @@ export const useTimerStore = create<TimerState>()(
               ...currentActive,
               status: 'PAUSED',
               lastPausedAt: now,
+              endTime: now, // 종료 시간도 함께 설정
             };
           } else {
             // PAUSED 상태면 그대로 유지
