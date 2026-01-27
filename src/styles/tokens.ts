@@ -7,6 +7,8 @@
  * 3. 변경 시 한 곳만 수정하면 전체 적용
  */
 
+import { adjustColorForDarkMode } from '../utils/colorUtils';
+
 // ============================================================
 // 시맨틱 색상 토큰 (의미 기반)
 // ============================================================
@@ -121,15 +123,24 @@ export interface ThemeColors {
  */
 export const applyThemeColors = (colors: ThemeColors): void => {
   const root = document.documentElement;
-  root.style.setProperty('--primary-color', colors.primary);
-  root.style.setProperty('--accent-color', colors.accent);
+  
+  // 다크모드일 때 색상 자동 보정 (너무 어두운 색상을 밝게)
+  const adjustedPrimary = adjustColorForDarkMode(colors.primary, !!colors.isDark, 45);
+  const adjustedAccent = adjustColorForDarkMode(colors.accent, !!colors.isDark, 50);
+  
+  root.style.setProperty('--primary-color', adjustedPrimary);
+  root.style.setProperty('--accent-color', adjustedAccent);
+  
+  // 원본 색상도 저장 (필요시 사용)
+  root.style.setProperty('--primary-color-original', colors.primary);
+  root.style.setProperty('--accent-color-original', colors.accent);
   
   // 강조색 (하이라이트) - 테마 색상 중 가장 진한 색(Accent) 사용
-  root.style.setProperty('--highlight-color', colors.accent);
-  root.style.setProperty('--highlight-hover', adjustBrightness(colors.accent, -10));
+  root.style.setProperty('--highlight-color', adjustedAccent);
+  root.style.setProperty('--highlight-hover', adjustBrightness(adjustedAccent, -10));
   
   // 연한 강조색 (primary 기반)
-  const light_highlight = hexToRgba(colors.primary, 0.1);
+  const light_highlight = hexToRgba(adjustedPrimary, 0.1);
   root.style.setProperty('--highlight-light', light_highlight);
 
   // 다크 모드 색상 (사용자 정의 색상 기준)
