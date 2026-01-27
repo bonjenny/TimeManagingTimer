@@ -411,16 +411,27 @@ const PresetPanel: React.FC = () => {
                       />
                     )}
                     <ListItemText
+                      sx={{ 
+                        overflow: 'hidden',
+                        '& .MuiListItemText-primary': { 
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }
+                      }}
                       primary={
                         <Typography
                           variant="body2"
+                          component="span"
                           sx={{
                             fontWeight: preset.is_favorite ? 600 : 500,
+                            display: 'block',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
                             whiteSpace: 'nowrap',
                             color: 'var(--text-primary)',
                           }}
+                          title={preset.title}
                         >
                           {preset.title}
                         </Typography>

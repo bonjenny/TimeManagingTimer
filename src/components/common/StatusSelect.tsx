@@ -1,14 +1,12 @@
 import React, { useState, useRef, useCallback } from 'react';
 import {
-  Select,
-  MenuItem,
+  Autocomplete,
+  TextField,
   Box,
   IconButton,
-  TextField,
+  Paper,
   Divider,
   Typography,
-  ListSubheader,
-  SelectChangeEvent,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import AddIcon from '@mui/icons-material/Add';
@@ -22,6 +20,87 @@ interface StatusSelectProps {
   sx?: object;
 }
 
+// 커스텀 Paper 컴포넌트 (드롭다운 하단에 추가 UI 포함)
+const CustomPaper: React.FC<{
+  children?: React.ReactNode;
+  newLabel: string;
+  setNewLabel: (value: string) => void;
+  onAddStatus: () => void;
+  inputRef: React.RefObject<HTMLInputElement | null>;
+  onInputFocus: () => void;
+  onInputBlur: () => void;
+}> = ({ children, newLabel, setNewLabel, onAddStatus, inputRef, onInputFocus, onInputBlur }) => {
+  return (
+    <Paper elevation={8} sx={{ overflow: 'hidden' }}>
+      {children}
+      <Divider />
+      <Box 
+        sx={{ p: 1, display: 'flex', alignItems: 'center', gap: 0.5 }}
+        onMouseDown={(e) => {
+          // Autocomplete가 이 영역 클릭을 옵션 선택으로 처리하지 않도록 방지
+          e.stopPropagation();
+          e.preventDefault();
+        }}
+        onClick={(e) => {
+          e.stopPropagation();
+          e.preventDefault();
+        }}
+      >
+        <TextField
+          size="small"
+          placeholder="새 상태"
+          value={newLabel}
+          onChange={(e) => setNewLabel(e.target.value)}
+          onKeyDown={(e) => {
+            e.stopPropagation();
+            if (e.key === 'Enter' && newLabel.trim()) {
+              e.preventDefault();
+              onAddStatus();
+            }
+          }}
+          onMouseDown={(e) => {
+            e.stopPropagation();
+          }}
+          onFocus={onInputFocus}
+          onBlur={onInputBlur}
+          inputRef={inputRef}
+          sx={{ 
+            flex: 1,
+            '& .MuiInputBase-input': { fontSize: '0.75rem', py: 0.5 }
+          }}
+        />
+        <IconButton 
+          size="small" 
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            onAddStatus();
+          }}
+          onMouseDown={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+          }}
+          disabled={!newLabel.trim()}
+          sx={{ p: 0.5 }}
+        >
+          <AddIcon fontSize="small" />
+        </IconButton>
+        <Typography 
+          variant="caption" 
+          color="text.secondary" 
+          sx={{ ml: 0.5 }}
+          onMouseDown={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+          }}
+        >
+          추가
+        </Typography>
+      </Box>
+    </Paper>
+  );
+};
+
 const StatusSelect: React.FC<StatusSelectProps> = ({
   value,
   onChange,
@@ -31,32 +110,35 @@ const StatusSelect: React.FC<StatusSelectProps> = ({
 }) => {
   const { statuses, addStatus, removeStatus, getStatusLabel } = useStatusStore();
   const [newLabel, setNewLabel] = useState('');
-  const [newValue, setNewValue] = useState('');
   const [open, setOpen] = useState(false);
   const isAddInputFocused = useRef(false);
   const addInputRef = useRef<HTMLInputElement | null>(null);
 
-  const handleChange = (event: SelectChangeEvent<string>) => {
-    const selectedValue = event.target.value;
-    // 특수 값이 아닌 경우에만 onChange 호출
-    if (selectedValue !== '__add__') {
-      onChange(selectedValue);
-    }
-  };
+  // Status 객체를 옵션으로 사용
+  const selectedStatus = statuses.find(s => s.value === value) || null;
 
-  const handleAddStatus = useCallback((e: React.MouseEvent | React.KeyboardEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
+  const handleAddStatus = useCallback(() => {
     if (newLabel.trim()) {
-      // value가 비어있으면 label을 snake_case로 변환
-      const statusValue = newValue.trim() || newLabel.trim().toLowerCase().replace(/\s+/g, '_');
+      const statusValue = newLabel.trim().toLowerCase().replace(/\s+/g, '_');
       addStatus({ value: statusValue, label: newLabel.trim() });
       setNewLabel('');
-      setNewValue('');
       // 추가 후에도 드롭다운 유지
       addInputRef.current?.focus();
     }
-  }, [newLabel, newValue, addStatus]);
+  }, [newLabel, addStatus]);
+
+  const handleRemoveStatus = (e: React.MouseEvent, statusValue: string) => {
+    e.stopPropagation();
+    e.preventDefault();
+    removeStatus(statusValue);
+    // 현재 선택된 상태가 삭제되면 첫 번째 상태로 변경
+    if (value === statusValue && statuses.length > 1) {
+      const remaining = statuses.filter(s => s.value !== statusValue);
+      if (remaining.length > 0) {
+        onChange(remaining[0].value);
+      }
+    }
+  };
 
   const handleInputFocus = useCallback(() => {
     isAddInputFocused.current = true;
@@ -72,155 +154,108 @@ const StatusSelect: React.FC<StatusSelectProps> = ({
     }, 150);
   }, []);
 
-  const handleClose = useCallback(() => {
+  const handleClose = useCallback((_event: React.SyntheticEvent, reason: string) => {
     // 새 상태 입력 필드에 포커스가 있으면 닫지 않음
     if (isAddInputFocused.current) {
+      return;
+    }
+    // blur로 닫히려 할 때도 입력 필드 확인
+    if (reason === 'blur' && isAddInputFocused.current) {
       return;
     }
     setOpen(false);
   }, []);
 
-  const handleRemoveStatus = (e: React.MouseEvent, statusValue: string) => {
-    e.stopPropagation();
-    e.preventDefault();
-    removeStatus(statusValue);
-    // 현재 선택된 상태가 삭제되면 첫 번째 상태로 변경
-    if (value === statusValue && statuses.length > 1) {
-      const remaining = statuses.filter(s => s.value !== statusValue);
-      if (remaining.length > 0) {
-        onChange(remaining[0].value);
-      }
-    }
-  };
-
   return (
-    <Select
-      value={value}
-      onChange={handleChange}
-      size={size}
-      variant={variant}
+    <Autocomplete
+      options={statuses}
+      value={selectedStatus}
+      onChange={(_e, newValue) => {
+        if (newValue) {
+          onChange(newValue.value);
+        }
+        if (!isAddInputFocused.current) {
+          setOpen(false);
+        }
+      }}
+      getOptionLabel={(option) => option.label}
+      isOptionEqualToValue={(option, val) => option.value === val.value}
       open={open}
       onOpen={() => setOpen(true)}
       onClose={handleClose}
-      sx={{
-        '& .MuiSelect-select': { py: 0, px: 1, fontSize: '0.75rem' },
-        ...sx
-      }}
-      MenuProps={{
-        autoFocus: false,
-        disableAutoFocus: true,
-        disableEnforceFocus: true,
-        disableRestoreFocus: true,
-        PaperProps: {
-          sx: { maxHeight: 300 },
-          onMouseDown: (e: React.MouseEvent) => {
-            // Paper 영역 클릭 시 Select blur 방지
-            e.preventDefault();
-          }
-        },
-        MenuListProps: {
-          autoFocus: false,
-          autoFocusItem: false,
-        }
-      }}
-      renderValue={(val) => getStatusLabel(val)}
-    >
-      {statuses.map((status) => (
-        <MenuItem 
-          key={status.value} 
-          value={status.value}
-          sx={{ 
-            fontSize: '0.75rem',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            py: 0.5,
-            px: 1,
-          }}
-        >
-          <span>{status.label}</span>
-          <IconButton
-            size="small"
-            onClick={(e) => handleRemoveStatus(e, status.value)}
-            sx={{ 
-              p: 0.25,
-              ml: 1,
-              opacity: 0.5,
-              '&:hover': { opacity: 1, color: 'error.main' }
-            }}
-          >
-            <CloseIcon sx={{ fontSize: 12 }} />
-          </IconButton>
-        </MenuItem>
-      ))}
-      
-      <Divider />
-      
-      <ListSubheader 
-        sx={{ lineHeight: 'normal', py: 1 }}
-        onMouseDown={(e) => {
-          e.stopPropagation();
-          e.preventDefault();
-        }}
-        onClick={(e) => {
-          e.stopPropagation();
-          e.preventDefault();
-        }}
-      >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-          <TextField
-            size="small"
-            placeholder="새 상태"
-            value={newLabel}
-            onChange={(e) => setNewLabel(e.target.value)}
-            onClick={(e) => e.stopPropagation()}
-            onMouseDown={(e) => {
-              e.stopPropagation();
-              // onClose보다 먼저 실행되므로 여기서 플래그 설정
-              isAddInputFocused.current = true;
-            }}
-            onFocus={handleInputFocus}
-            onBlur={handleInputBlur}
-            inputRef={addInputRef}
-            onKeyDown={(e) => {
-              e.stopPropagation();
-              if (e.key === 'Enter' && newLabel.trim()) {
-                e.preventDefault();
-                handleAddStatus(e);
+      size={size}
+      disablePortal
+      disableClearable
+      PaperComponent={(paperProps) => (
+        <CustomPaper
+          {...paperProps}
+          newLabel={newLabel}
+          setNewLabel={setNewLabel}
+          onAddStatus={handleAddStatus}
+          inputRef={addInputRef}
+          onInputFocus={handleInputFocus}
+          onInputBlur={handleInputBlur}
+        />
+      )}
+      renderOption={(props, option) => {
+        const { key, ...otherProps } = props;
+        return (
+          <Box
+            key={key}
+            component="li"
+            {...otherProps}
+            sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              '&.MuiAutocomplete-option': {
+                py: 0.5,
+                px: 1,
               }
             }}
-            sx={{ 
-              flex: 1,
-              '& .MuiInputBase-input': { fontSize: '0.75rem', py: 0.5 }
-            }}
-          />
-          <IconButton 
-            size="small" 
-            onClick={handleAddStatus}
-            onMouseDown={(e) => {
-              e.stopPropagation();
-              e.preventDefault();
-              // onClose보다 먼저 실행되므로 여기서 플래그 설정
-              isAddInputFocused.current = true;
-            }}
-            disabled={!newLabel.trim()}
-            sx={{ p: 0.5 }}
           >
-            <AddIcon fontSize="small" />
-          </IconButton>
-          <Typography 
-            variant="caption" 
-            color="text.secondary"
-            onMouseDown={(e) => {
-              e.stopPropagation();
-              e.preventDefault();
-            }}
-          >
-            추가
-          </Typography>
-        </Box>
-      </ListSubheader>
-    </Select>
+            <Typography variant="body2" sx={{ flex: 1, fontSize: '0.75rem' }}>
+              {option.label}
+            </Typography>
+            <IconButton
+              size="small"
+              onClick={(e) => handleRemoveStatus(e, option.value)}
+              onMouseDown={(e) => e.preventDefault()}
+              sx={{ 
+                p: 0.25,
+                opacity: 0.5,
+                '&:hover': { opacity: 1, color: 'error.main' }
+              }}
+            >
+              <CloseIcon sx={{ fontSize: 12 }} />
+            </IconButton>
+          </Box>
+        );
+      }}
+      renderInput={(params) => (
+        <TextField
+          {...params}
+          variant={variant}
+          InputProps={{
+            ...params.InputProps,
+            sx: {
+              '& .MuiInputBase-input': { 
+                py: 0, 
+                px: 1, 
+                fontSize: '0.75rem',
+              },
+            },
+          }}
+        />
+      )}
+      sx={{
+        '& .MuiAutocomplete-inputRoot': {
+          py: 0,
+          px: 0,
+        },
+        ...sx
+      }}
+    />
   );
 };
 
