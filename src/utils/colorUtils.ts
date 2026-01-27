@@ -1,5 +1,5 @@
 // Hex to HSL 변환
-const hexToHsl = (hex: string): { h: number; s: number; l: number } => {
+export const hexToHsl = (hex: string): { h: number; s: number; l: number } => {
   let r = 0, g = 0, b = 0;
   if (hex.length === 4) {
     r = parseInt("0x" + hex[1] + hex[1]);
@@ -46,7 +46,7 @@ const hexToHsl = (hex: string): { h: number; s: number; l: number } => {
 };
 
 // HSL to Hex 변환
-const hslToHex = (h: number, s: number, l: number): string => {
+export const hslToHex = (h: number, s: number, l: number): string => {
   s /= 100;
   l /= 100;
 
@@ -114,4 +114,41 @@ export const generateToneOnTonePalette = (baseColor: string): string[] => {
   // 여기서는 단순히 자동 생성된 10개를 반환
   
   return palette;
+};
+
+/**
+ * 다크모드에서 색상 밝기 자동 보정
+ * 색상이 너무 어두우면 같은 색조(hue)를 유지하면서 밝기를 높임
+ * 
+ * @param hex - HEX 색상 코드 (#RRGGBB 또는 #RGB)
+ * @param isDark - 다크모드 여부
+ * @param minLightness - 다크모드에서 최소 밝기 (기본값: 45%)
+ * @returns 보정된 HEX 색상 코드
+ */
+export const adjustColorForDarkMode = (
+  hex: string,
+  isDark: boolean,
+  minLightness: number = 45
+): string => {
+  if (!isDark || !hex || !hex.startsWith('#')) return hex;
+  
+  const { h, s, l } = hexToHsl(hex);
+  
+  // 밝기가 최소값보다 낮으면 보정
+  if (l < minLightness) {
+    // 채도도 약간 높여서 색감 유지
+    const adjustedSaturation = Math.min(s + 10, 100);
+    return hslToHex(h, adjustedSaturation, minLightness);
+  }
+  
+  return hex;
+};
+
+/**
+ * 색상의 밝기(luminance) 계산
+ * 0 (어두움) ~ 100 (밝음)
+ */
+export const getColorLightness = (hex: string): number => {
+  const { l } = hexToHsl(hex);
+  return l;
 };
