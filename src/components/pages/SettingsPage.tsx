@@ -34,6 +34,8 @@ import {
   PALETTE_STORAGE_KEY,
   getPaletteList,
   getPalette,
+  getAdjustedPalette,
+  getAdjustedColor,
   generateToneOnTonePalette,
   getPaletteThemeColors,
 } from '../../utils/colorPalette';
@@ -51,7 +53,7 @@ const DEFAULT_SETTINGS = {
 };
 
 const SettingsPage: React.FC = () => {
-  const { setThemeConfig } = useTimerStore();
+  const { setThemeConfig, themeConfig } = useTimerStore();
   const { categories, addCategory, removeCategory, resetToDefault: resetCategories } = useCategoryStore();
   const { statuses, addStatus, removeStatus, resetToDefault: resetStatuses } = useStatusStore();
   
@@ -167,12 +169,16 @@ const SettingsPage: React.FC = () => {
   // 팔레트 목록
   const palette_list = getPaletteList();
 
-  // 컬러 팔레트 미리보기 가져오기
+  // 다크모드 여부
+  const isDark = themeConfig.isDark;
+
+  // 컬러 팔레트 미리보기 가져오기 (다크모드 보정 적용)
   const getCurrentPalettePreview = () => {
     if (palette_type === 'custom' && custom_colors.length > 0) {
-      return custom_colors.slice(0, 8);
+      const colors = custom_colors.slice(0, 8);
+      return isDark ? colors.map(c => getAdjustedColor(c, true, 45)) : colors;
     }
-    const palette = getPalette({ type: palette_type });
+    const palette = getAdjustedPalette({ type: palette_type }, isDark, 45);
     return palette.slice(0, 8);
   };
   
@@ -392,7 +398,7 @@ const SettingsPage: React.FC = () => {
                 {palette.name}
               </Typography>
               
-              {/* 색상 미리보기 */}
+              {/* 색상 미리보기 (다크모드 보정 적용) */}
               <Box sx={{ display: 'flex', gap: 0.25, mb: 1 }}>
                 {palette.colors.slice(0, 5).map((color, idx) => (
                   <Box
@@ -400,16 +406,16 @@ const SettingsPage: React.FC = () => {
                     sx={{
                       flex: 1,
                       height: 24,
-                      bgcolor: color,
+                      bgcolor: getAdjustedColor(color, isDark, 45),
                       borderRadius: idx === 0 ? '4px 0 0 4px' : idx === 4 ? '0 4px 4px 0' : 0,
                     }}
                   />
                 ))}
               </Box>
 
-              {/* 대표 색상 표시 */}
+              {/* 대표 색상 표시 (다크모드 보정 적용) */}
               <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                <Box sx={{ width: 12, height: 12, borderRadius: '50%', bgcolor: palette.primary }} />
+                <Box sx={{ width: 12, height: 12, borderRadius: '50%', bgcolor: getAdjustedColor(palette.primary, isDark, 45) }} />
                 <Typography variant="caption" color="text.secondary">Primary</Typography>
               </Box>
             </Box>
@@ -491,7 +497,7 @@ const SettingsPage: React.FC = () => {
                       width: 32,
                       height: 32,
                       borderRadius: 1,
-                      bgcolor: color,
+                      bgcolor: getAdjustedColor(color, isDark, 45),
                       border: editing_color_index === index ? '2px solid' : '1px solid',
                       borderColor: editing_color_index === index ? 'text.primary' : 'divider',
                       cursor: 'pointer',

@@ -17,7 +17,7 @@ import TodayIcon from '@mui/icons-material/Today';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import { useTimerStore } from './store/useTimerStore';
 import { applyThemeColors, applyPaletteHighlight } from './styles/tokens';
-import { loadPaletteSettings, getPalette } from './utils/colorPalette';
+import { loadPaletteSettings, getPalette, getAdjustedColor } from './utils/colorPalette';
 
 // 설정 저장 키
 const SETTINGS_STORAGE_KEY = 'timekeeper-settings';
@@ -141,9 +141,11 @@ function App() {
     }
   }, [setThemeConfig]);
 
-  // 동적 테마 생성
+  // 동적 테마 생성 (다크모드일 때 색상 보정 적용)
   const currentTheme = useMemo(() => {
-    return createAppTheme(themeConfig.primaryColor, themeConfig.accentColor, themeConfig.isDark);
+    const adjustedPrimary = getAdjustedColor(themeConfig.primaryColor, themeConfig.isDark, 45);
+    const adjustedAccent = getAdjustedColor(themeConfig.accentColor, themeConfig.isDark, 50);
+    return createAppTheme(adjustedPrimary, adjustedAccent, themeConfig.isDark);
   }, [themeConfig.primaryColor, themeConfig.accentColor, themeConfig.isDark]);
 
   // CSS 변수 업데이트

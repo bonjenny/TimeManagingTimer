@@ -1,11 +1,12 @@
 /**
- * v0.7.0/v0.8.0 테스트: 컬러 팔레트 기능
+ * v0.7.0/v0.8.0/v0.10.5 테스트: 컬러 팔레트 기능
+ * - v0.10.5: getAdjustedPalette, getAdjustedColor 추가
  */
 import {
   COOLORS_PALETTES,
-  PASTEL_PALETTE,
-  DEFAULT_PALETTE,
   getPalette,
+  getAdjustedPalette,
+  getAdjustedColor,
   getPaletteList,
   getColorForTask,
   loadPaletteSettings,
@@ -13,6 +14,7 @@ import {
   PALETTE_STORAGE_KEY,
   PaletteSettings,
 } from '../../utils/colorPalette';
+import { getColorLightness } from '../../utils/colorUtils';
 
 describe('colorPalette', () => {
   beforeEach(() => {
@@ -41,6 +43,11 @@ describe('colorPalette', () => {
       const unique_names = new Set(names);
       expect(unique_names.size).toBe(names.length);
     });
+
+    it('9개의 Coolors 팔레트가 있다', () => {
+      const palette_count = Object.keys(COOLORS_PALETTES).length;
+      expect(palette_count).toBe(9);
+    });
   });
 
   describe('getPalette', () => {
@@ -51,32 +58,33 @@ describe('colorPalette', () => {
       expect(palette).toEqual(COOLORS_PALETTES['navy-orange'].colors);
     });
 
-    it('pastel 타입으로 PASTEL_PALETTE를 반환한다', () => {
-      const settings: PaletteSettings = { type: 'pastel' };
+    it('ocean-blue 타입으로 올바른 팔레트를 반환한다', () => {
+      const settings: PaletteSettings = { type: 'ocean-blue' };
       const palette = getPalette(settings);
 
-      expect(palette).toEqual(PASTEL_PALETTE);
+      expect(palette).toEqual(COOLORS_PALETTES['ocean-blue'].colors);
     });
 
-    it('default 타입으로 DEFAULT_PALETTE를 반환한다', () => {
-      const settings: PaletteSettings = { type: 'default' };
+    it('커스텀 타입은 custom_colors를 반환한다', () => {
+      const custom_colors = ['#ff0000', '#00ff00', '#0000ff'];
+      const settings: PaletteSettings = { type: 'custom', custom_colors };
       const palette = getPalette(settings);
 
-      expect(palette).toEqual(DEFAULT_PALETTE);
+      expect(palette).toEqual(custom_colors);
     });
 
-    it('알 수 없는 타입은 기본값(navy-orange)을 반환한다', () => {
-      const settings = { type: 'unknown-type' } as PaletteSettings;
+    it('커스텀 타입에 custom_colors가 없으면 빈 배열을 반환한다', () => {
+      const settings: PaletteSettings = { type: 'custom' };
       const palette = getPalette(settings);
 
-      expect(palette).toEqual(COOLORS_PALETTES['navy-orange'].colors);
+      expect(palette).toEqual([]);
     });
   });
 
   describe('getPaletteList', () => {
-    it('12개의 팔레트 옵션을 반환한다', () => {
+    it('9개의 팔레트 옵션을 반환한다', () => {
       const list = getPaletteList();
-      expect(list.length).toBe(12); // Coolors 10개 + pastel + default
+      expect(list.length).toBe(9); // Coolors 9개
     });
 
     it('각 팔레트에 type, name, colors가 포함된다', () => {
@@ -87,6 +95,17 @@ describe('colorPalette', () => {
         expect(palette).toHaveProperty('name');
         expect(palette).toHaveProperty('colors');
         expect(Array.isArray(palette.colors)).toBe(true);
+      });
+    });
+
+    it('각 팔레트에 primary와 accent 색상이 포함된다', () => {
+      const list = getPaletteList();
+
+      list.forEach((palette) => {
+        expect(palette).toHaveProperty('primary');
+        expect(palette).toHaveProperty('accent');
+        expect(palette.primary).toMatch(/^#[0-9A-Fa-f]{6}$/);
+        expect(palette.accent).toMatch(/^#[0-9A-Fa-f]{6}$/);
       });
     });
   });
@@ -137,6 +156,11 @@ describe('colorPalette', () => {
         expect(test_palette).toContain(color);
       });
     });
+
+    it('빈 팔레트는 기본색을 반환한다', () => {
+      const color = getColorForTask('테스트', []);
+      expect(color).toBe('#ccc');
+    });
   });
 
   describe('savePaletteSettings / loadPaletteSettings', () => {
@@ -172,6 +196,21 @@ describe('colorPalette', () => {
       expect(stored).not.toBeNull();
       expect(JSON.parse(stored!)).toEqual(settings);
     });
+
+    it('커스텀 설정을 저장하고 로드할 수 있다', () => {
+      const settings: PaletteSettings = {
+        type: 'custom',
+        custom_colors: ['#ff0000', '#00ff00'],
+        custom_base_color: '#ff0000',
+      };
+
+      savePaletteSettings(settings);
+      const loaded = loadPaletteSettings();
+
+      expect(loaded.type).toBe('custom');
+      expect(loaded.custom_colors).toEqual(['#ff0000', '#00ff00']);
+      expect(loaded.custom_base_color).toBe('#ff0000');
+    });
   });
 
   describe('팔레트 색상 품질', () => {
@@ -183,12 +222,127 @@ describe('colorPalette', () => {
       });
     });
 
-    it('PASTEL_PALETTE에 15개의 색상이 있다', () => {
-      expect(PASTEL_PALETTE.length).toBe(15);
+    it('모든 Coolors 팔레트가 10개의 색상을 가진다', () => {
+      Object.values(COOLORS_PALETTES).forEach((palette) => {
+        expect(palette.colors.length).toBe(10);
+      });
+    });
+  });
+
+  // v0.10.5: 다크모드 색상 보정 함수 테스트
+  describe('getAdjustedPalette (v0.10.5)', () => {
+    it('라이트모드에서는 원본 팔레트를 그대로 반환한다', () => {
+      const settings: PaletteSettings = { type: 'navy-orange' };
+      const original = getPalette(settings);
+      const adjusted = getAdjustedPalette(settings, false);
+      
+      expect(adjusted).toEqual(original);
     });
 
-    it('DEFAULT_PALETTE에 15개의 색상이 있다', () => {
-      expect(DEFAULT_PALETTE.length).toBe(15);
+    it('다크모드에서 어두운 색상들이 보정된 팔레트를 반환한다', () => {
+      const settings: PaletteSettings = { type: 'navy-orange' };
+      const adjusted = getAdjustedPalette(settings, true, 45);
+      
+      // 보정된 팔레트의 모든 색상 밝기가 최소 45% 이상이어야 함
+      adjusted.forEach((color) => {
+        const lightness = getColorLightness(color);
+        expect(lightness).toBeGreaterThanOrEqual(44); // 반올림 오차 허용
+      });
+    });
+
+    it('다크모드에서 이미 밝은 색상은 변경하지 않는다', () => {
+      const settings: PaletteSettings = { type: 'pink-purple' }; // 밝은 색상 팔레트
+      const original = getPalette(settings);
+      const adjusted = getAdjustedPalette(settings, true, 45);
+      
+      // 원래 밝기가 45% 이상인 색상은 변경되지 않아야 함
+      original.forEach((color, idx) => {
+        const original_lightness = getColorLightness(color);
+        if (original_lightness >= 45) {
+          expect(adjusted[idx]).toBe(color);
+        }
+      });
+    });
+
+    it('minLightness 파라미터가 적용된다', () => {
+      const settings: PaletteSettings = { type: 'navy-orange' };
+      const adjusted_45 = getAdjustedPalette(settings, true, 45);
+      const adjusted_60 = getAdjustedPalette(settings, true, 60);
+      
+      // 더 높은 minLightness로 보정된 팔레트가 더 밝아야 함
+      adjusted_45.forEach((color_45, idx) => {
+        const lightness_45 = getColorLightness(color_45);
+        const lightness_60 = getColorLightness(adjusted_60[idx]);
+        
+        expect(lightness_60).toBeGreaterThanOrEqual(lightness_45);
+      });
+    });
+
+    it('커스텀 팔레트에서도 동작한다', () => {
+      const settings: PaletteSettings = {
+        type: 'custom',
+        custom_colors: ['#000000', '#333333', '#666666', '#ffffff'],
+      };
+      const adjusted = getAdjustedPalette(settings, true, 45);
+      
+      expect(adjusted.length).toBe(4);
+      adjusted.forEach((color) => {
+        const lightness = getColorLightness(color);
+        expect(lightness).toBeGreaterThanOrEqual(44);
+      });
+    });
+
+    it('빈 커스텀 팔레트는 빈 배열을 반환한다', () => {
+      const settings: PaletteSettings = {
+        type: 'custom',
+        custom_colors: [],
+      };
+      const adjusted = getAdjustedPalette(settings, true);
+      
+      expect(adjusted).toEqual([]);
+    });
+  });
+
+  describe('getAdjustedColor (v0.10.5)', () => {
+    it('라이트모드에서는 원본 색상을 그대로 반환한다', () => {
+      const dark_color = '#264653';
+      const result = getAdjustedColor(dark_color, false);
+      
+      expect(result).toBe(dark_color);
+    });
+
+    it('다크모드에서 어두운 색상을 밝게 보정한다', () => {
+      const dark_color = '#264653'; // 밝기 약 25%
+      const result = getAdjustedColor(dark_color, true, 45);
+      
+      const result_lightness = getColorLightness(result);
+      expect(result_lightness).toBeGreaterThanOrEqual(44);
+    });
+
+    it('다크모드에서 이미 밝은 색상은 변경하지 않는다', () => {
+      const bright_color = '#e9c46a'; // 밝기 약 66%
+      const result = getAdjustedColor(bright_color, true, 45);
+      
+      expect(result).toBe(bright_color);
+    });
+
+    it('minLightness 파라미터를 커스텀할 수 있다', () => {
+      const dark_color = '#333333';
+      
+      const result_45 = getAdjustedColor(dark_color, true, 45);
+      const result_60 = getAdjustedColor(dark_color, true, 60);
+      
+      const lightness_45 = getColorLightness(result_45);
+      const lightness_60 = getColorLightness(result_60);
+      
+      expect(lightness_45).toBeGreaterThanOrEqual(44);
+      expect(lightness_60).toBeGreaterThanOrEqual(59);
+    });
+
+    it('유효하지 않은 HEX 값은 그대로 반환한다', () => {
+      expect(getAdjustedColor('invalid', true)).toBe('invalid');
+      expect(getAdjustedColor('', true)).toBe('');
+      expect(getAdjustedColor('rgb(0,0,0)', true)).toBe('rgb(0,0,0)');
     });
   });
 });
