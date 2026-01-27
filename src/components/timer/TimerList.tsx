@@ -137,7 +137,9 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
       
       const get_duration = (l: TimerLog) => {
         // 점심시간 제외 적용
-        return getDurationSecondsExcludingLunch(l.startTime, l.endTime, l.pausedDuration);
+        // PAUSED 상태에서 endTime이 없으면 lastPausedAt 사용
+        const effectiveEndTime = l.endTime || l.lastPausedAt || l.startTime;
+        return getDurationSecondsExcludingLunch(l.startTime, effectiveEndTime, l.pausedDuration);
       };
       
       if (existing) {
@@ -219,7 +221,9 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
 
   const getDuration = (log: TimerLog) => {
     // 점심시간 제외 적용
-    return getDurationSecondsExcludingLunch(log.startTime, log.endTime, log.pausedDuration);
+    // PAUSED 상태에서 endTime이 없으면 lastPausedAt 사용
+    const effectiveEndTime = log.endTime || log.lastPausedAt || log.startTime;
+    return getDurationSecondsExcludingLunch(log.startTime, effectiveEndTime, log.pausedDuration);
   };
 
   // timestamp를 datetime-local 형식으로 변환
@@ -762,7 +766,7 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
 
                 {/* 시작-종료 */}
                 <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.8rem' }}>
-                  {formatTime(task.first_start)} ~ {task.last_end ? formatTime(task.last_end) : '진행 중'}
+                  {formatTime(task.first_start)} ~ {task.last_end ? formatTime(task.last_end) : (is_active_task ? '진행 중' : '일시정지')}
                 </Typography>
 
                 {/* 세션 수 */}
@@ -1006,7 +1010,7 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                     </Table>
                   </TableContainer>
                   <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-                    첫 시작: {formatTime(task.first_start)} | 마지막 종료: {task.last_end ? formatTime(task.last_end) : '진행 중'} | 총 {formatDuration(task.total_duration)}
+                    첫 시작: {formatTime(task.first_start)} | 마지막 종료: {task.last_end ? formatTime(task.last_end) : (is_active_task ? '진행 중' : '일시정지')} | 총 {formatDuration(task.total_duration)}
                   </Typography>
                 </Box>
               </Collapse>
