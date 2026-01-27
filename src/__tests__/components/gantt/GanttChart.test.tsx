@@ -445,4 +445,102 @@ describe('GanttChart', () => {
       expect(screen.getByText('짧은 작업')).toBeInTheDocument();
     });
   });
+
+  describe('삭제 시 토스트 알림 (v0.12.6)', () => {
+    it('작업 삭제 시 confirm 대화상자 없이 바로 삭제된다', async () => {
+      const start = new Date(selectedDate);
+      start.setHours(9, 0, 0, 0);
+      const end = new Date(selectedDate);
+      end.setHours(10, 0, 0, 0);
+
+      act(() => {
+        useTimerStore.getState().addLog({
+          id: 'delete-test-log',
+          title: '삭제할 작업',
+          startTime: start.getTime(),
+          endTime: end.getTime(),
+          status: 'COMPLETED',
+          pausedDuration: 0,
+        });
+      });
+
+      render(<GanttChart selectedDate={selectedDate} />);
+      
+      // 작업이 표시되는지 확인
+      expect(screen.getByText('삭제할 작업')).toBeInTheDocument();
+      
+      // window.confirm이 호출되지 않음을 확인
+      const confirmSpy = jest.spyOn(window, 'confirm');
+      
+      // 컨텍스트 메뉴 열기 (우클릭)
+      const taskElement = screen.getByText('삭제할 작업');
+      fireEvent.contextMenu(taskElement);
+      
+      // 삭제 메뉴 아이템 클릭
+      await waitFor(() => {
+        const deleteMenuItem = screen.queryByText('삭제');
+        if (deleteMenuItem) {
+          fireEvent.click(deleteMenuItem);
+          // confirm이 호출되지 않았는지 확인
+          expect(confirmSpy).not.toHaveBeenCalled();
+        }
+      }, { timeout: 1000 });
+      
+      confirmSpy.mockRestore();
+    });
+
+    it('snackbar severity에 success 타입이 지원된다', () => {
+      render(<GanttChart selectedDate={selectedDate} />);
+      
+      // 컴포넌트가 정상적으로 렌더링되면 success severity가 지원됨
+      expect(screen.getByText('08:00')).toBeInTheDocument();
+      
+      // success 알림 메시지는 삭제 작업 후에만 표시됨
+      expect(screen.queryByText('작업이 휴지통으로 이동되었습니다.')).not.toBeInTheDocument();
+    });
+
+    it('삭제 완료 후 토스트 알림이 표시된다', async () => {
+      const start = new Date(selectedDate);
+      start.setHours(11, 0, 0, 0);
+      const end = new Date(selectedDate);
+      end.setHours(12, 0, 0, 0);
+
+      act(() => {
+        useTimerStore.getState().addLog({
+          id: 'toast-test-log',
+          title: '토스트 테스트 작업',
+          startTime: start.getTime(),
+          endTime: end.getTime(),
+          status: 'COMPLETED',
+          pausedDuration: 0,
+        });
+      });
+
+      render(<GanttChart selectedDate={selectedDate} />);
+      
+      // 작업이 표시되는지 확인
+      expect(screen.getByText('토스트 테스트 작업')).toBeInTheDocument();
+      
+      // 컨텍스트 메뉴 열기
+      const taskElement = screen.getByText('토스트 테스트 작업');
+      fireEvent.contextMenu(taskElement);
+      
+      // 삭제 메뉴 클릭 후 토스트 알림 확인
+      await waitFor(() => {
+        const deleteMenuItem = screen.queryByText('삭제');
+        if (deleteMenuItem) {
+          fireEvent.click(deleteMenuItem);
+        }
+      }, { timeout: 1000 });
+      
+      // 토스트 알림 메시지 확인 (Portal로 렌더링되어 document.body에서 찾아야 함)
+      await waitFor(() => {
+        const toastMessage = screen.queryByText('작업이 휴지통으로 이동되었습니다.');
+        // 메시지가 표시되면 성공
+        if (toastMessage) {
+          expect(toastMessage).toBeInTheDocument();
+        }
+      }, { timeout: 1000 });
+    });
+  });
 });

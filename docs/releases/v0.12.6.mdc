@@ -1,0 +1,47 @@
+---
+version: 0.12.6
+date: 2026-01-27
+step: Step 12 (Patch)
+---
+
+# v0.12.6 릴리즈 노트
+
+## 주요 변경사항
+
+### 간트차트 삭제 UX 개선
+- 작업 삭제 시 확인 대화상자(confirm) 제거
+- 토스트 알림으로 "작업이 휴지통으로 이동되었습니다." 메시지 표시
+- 삭제 작업의 빠른 실행으로 사용자 경험 향상
+
+## 새로운 기능
+
+### 토스트 알림 확장
+- Snackbar severity에 'success' 타입 추가
+- 성공 알림용 초록색 스타일 적용 (다크/라이트 모드 지원)
+- 기존 info(파란색), warning(주황색)에 success(초록색) 추가
+
+## 기술적 변경사항
+
+### 수정된 파일
+
+| 파일 | 수정 내용 |
+|------|-----------|
+| `src/components/gantt/GanttChart.tsx` | handleDeleteTask 함수에서 confirm 제거, 토스트 알림 추가 |
+| `src/components/gantt/GanttChart.tsx` | snackbar severity 타입에 'success' 추가 |
+| `src/components/gantt/GanttChart.tsx` | Snackbar Box 스타일에 success 색상 추가 |
+
+### Snackbar 색상 체계
+
+| Severity | 다크모드 | 라이트모드 |
+|----------|----------|------------|
+| info | #64b5f6 | #1565c0 |
+| warning | #ffb74d | #e65100 |
+| success | #81c784 | #2e7d32 |
+
+## Breaking Changes
+- 없음 (삭제 확인 대화상자가 사라졌으나 휴지통 기능으로 복구 가능)
+
+## 다음 버전 예정
+- 완료된 업무 취소선 스타일 적용
+- 주간 일정 개선
+- 통계/리포트 확장
