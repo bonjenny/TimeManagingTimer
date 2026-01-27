@@ -107,8 +107,20 @@ const StatusSelect: React.FC<StatusSelectProps> = ({
         ...sx
       }}
       MenuProps={{
+        autoFocus: false,
+        disableAutoFocus: true,
+        disableEnforceFocus: true,
+        disableRestoreFocus: true,
         PaperProps: {
-          sx: { maxHeight: 300 }
+          sx: { maxHeight: 300 },
+          onMouseDown: (e: React.MouseEvent) => {
+            // Paper 영역 클릭 시 Select blur 방지
+            e.preventDefault();
+          }
+        },
+        MenuListProps: {
+          autoFocus: false,
+          autoFocusItem: false,
         }
       }}
       renderValue={(val) => getStatusLabel(val)}
