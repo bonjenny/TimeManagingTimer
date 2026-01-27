@@ -1,15 +1,7 @@
 {
   "timekeeper-storage": {
     "state": {
-      "activeTimer": {
-        "id": "45d00841-f34f-44d0-8239-7dc10f6c6cfb",
-        "title": "개발.12577 3) Abort 구조 설계 및 적용",
-        "projectCode": "A26_00413",
-        "category": "개발",
-        "startTime": 1769498545946,
-        "status": "RUNNING",
-        "pausedDuration": 0
-      },
+      "activeTimer": null,
       "logs": [
         {
           "id": "c5777e43-bcd7-4111-a354-99477922968d",
@@ -17,7 +9,7 @@
           "projectCode": "A26_00413",
           "category": "개발",
           "startTime": 1769476140000,
-          "status": "PAUSED",
+          "status": "COMPLETED",
           "pausedDuration": 0,
           "lastPausedAt": 1769481352393,
           "endTime": 1769481600000
@@ -37,7 +29,7 @@
           "title": "HTML영역 다크모드 적용 stage",
           "projectCode": "A25_07788",
           "category": "환경세팅",
-          "startTime": 1769485200000,
+          "startTime": 1769485520232.6238,
           "status": "COMPLETED",
           "pausedDuration": 0,
           "endTime": 1769487015403.65
@@ -48,7 +40,7 @@
           "projectCode": "A26_00413",
           "category": "개발",
           "startTime": 1769487015403.65,
-          "status": "PAUSED",
+          "status": "COMPLETED",
           "pausedDuration": 2.6910000000000003,
           "endTime": 1769490579617,
           "lastPausedAt": 1769489702526
@@ -76,14 +68,14 @@
         },
         {
           "id": "7c78cd40-1e4f-4e47-bd04-638ad0de1d0a",
-          "title": "HTML영역 다크모드 적용 TP.15009 stage 아이콘바 설정 > 업무지원 AI 아이콘이 보이지 않습니다.",
+          "title": "HTML영역 다크모드 적용 TP.15009 stage 아이콘바 설정 > 업무지원 AI 아이콘이 보이지 않습니다",
           "projectCode": "A25_07788",
           "category": "테스트오류수정",
-          "startTime": 1769490965717,
+          "startTime": 1769490960000,
           "status": "COMPLETED",
           "pausedDuration": 1690.23,
           "lastPausedAt": 1769493936856,
-          "endTime": 1769492422972.7
+          "endTime": 1769492400000
         },
         {
           "id": "eea7373f-6365-4b4d-8e95-ba8d71fc7e73",
@@ -102,7 +94,7 @@
           "projectCode": "A26_00413",
           "category": "개발",
           "startTime": 1769494798484,
-          "status": "PAUSED",
+          "status": "COMPLETED",
           "pausedDuration": 0,
           "endTime": 1769497581976.6194,
           "lastPausedAt": 1769498238285
@@ -134,10 +126,30 @@
           "projectCode": "A26_00413",
           "category": "개발",
           "startTime": 1769498527089,
-          "status": "PAUSED",
+          "status": "COMPLETED",
           "pausedDuration": 0,
           "lastPausedAt": 1769498534166,
           "endTime": 1769498534166
+        },
+        {
+          "id": "45d00841-f34f-44d0-8239-7dc10f6c6cfb",
+          "title": "개발.12577 3) Abort 구조 설계 및 적용",
+          "projectCode": "A26_00413",
+          "category": "개발",
+          "startTime": 1769498545946,
+          "status": "PAUSED",
+          "pausedDuration": 0,
+          "lastPausedAt": 1769498990672
+        },
+        {
+          "id": "d94214df-1701-43b5-8021-b4d3e0ce8a7f",
+          "title": "개발.12577 3) Abort 구조 설계 및 적용",
+          "projectCode": "A26_00413",
+          "category": "개발",
+          "startTime": 1769498996178,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1769499455099
         }
       ],
       "deleted_logs": [
@@ -581,9 +593,10 @@
         "개발.12577 3) Abort 구조 설계 및 적용": 2,
         "HTML영역 다크모드 적용 TP.15009 stage 아이콘바 설정 > 업무지원 AI 아이콘이 보이지 않습니다.": 3,
         "질의응답": 5,
-        "예나님 presentation impl 관련 질의에 응답": 6
+        "예나님 presentation impl 관련 질의에 응답": 6,
+        "HTML영역 다크모드 적용 TP.15009 stage 아이콘바 설정 > 업무지원 AI 아이콘이 보이지 않습니다": 8
       },
-      "nextColorIndex": 8
+      "nextColorIndex": 9
     },
     "version": 0
   },

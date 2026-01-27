@@ -1,0 +1,54 @@
+---
+version: 0.12.4
+date: 2026-01-27
+step: Step 12 (Patch)
+---
+
+# v0.12.4 릴리즈 노트
+
+## 주요 변경사항
+
+### 비정상 pausedDuration 데이터 처리 개선
+- `pausedDuration`이 전체 작업시간(`duration`)보다 클 경우 비정상 데이터로 간주하여 무시
+- 기존: `pausedDuration > duration`일 때 소요시간이 0분으로 표시됨
+- 수정: 비정상 데이터를 무시하고 전체 작업시간이 정상 표시됨
+
+## 버그 수정
+
+### 소요시간 0분 표시 문제 해결
+- **원인**: 일부 로그에서 `pausedDuration` 값이 비정상적으로 크게 저장됨
+- **증상**: 24분 작업인데 `pausedDuration`이 28분으로 저장되어 소요시간이 0분으로 표시
+- **해결**: `pausedDuration > durationSec`이면 `pausedDuration`을 0으로 처리
+
+```typescript
+// 수정 전
+const safePaused = Math.min(paused_duration, durationSec);
+// 결과: Math.min(1690, 1440) = 1440 → 1440 - 1440 = 0분
+
+// 수정 후
+const safePaused = paused_duration > durationSec ? 0 : paused_duration;
+// 결과: 1690 > 1440이므로 safePaused = 0 → 1440 - 0 = 24분
+```
+
+## 기술적 변경사항
+
+### 수정된 파일
+
+| 파일 | 수정 내용 |
+|------|-----------|
+| `src/utils/timeUtils.ts` | `getDurationSecondsExcludingLunch` 함수에 비정상 데이터 처리 로직 추가 |
+| `src/components/pages/WeeklySchedule.tsx` | 주간일정 소요시간 계산 로직 개선 |
+| `src/components/timer/ActiveTimer.tsx` | 활성 타이머 누적시간 계산 로직 개선 |
+
+### 테스트 케이스
+
+- `timeUtils.test.ts`: "pausedDuration이 전체 duration보다 크면 전체 duration을 반환한다" 테스트 추가
+- `WeeklySchedule.test.tsx`: UI 테스트 케이스 현행화
+
+## Breaking Changes
+- 없음
+
+## 다음 버전 예정
+- 주간 일정 개선
+- 통계/리포트 확장
+- 데이터 내보내기 기능
