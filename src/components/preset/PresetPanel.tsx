@@ -46,11 +46,6 @@ interface PresetItem {
 // LocalStorage 키
 const PRESETS_STORAGE_KEY = 'timekeeper-manual-presets';
 
-// 텍스트 자르기 헬퍼 함수
-const truncateText = (text: string, maxLength: number = 12): string => {
-  return text.length > maxLength ? text.slice(0, maxLength) + '...' : text;
-};
-
 const PresetPanel: React.FC = () => {
   const { startTimer, logs, themeConfig } = useTimerStore();
   const { projects, addProject, getProjectName } = useProjectStore();
@@ -400,7 +395,7 @@ const PresetPanel: React.FC = () => {
                 >
                   <ListItemButton
                     onClick={() => handleOpenEditModal(preset)}
-                    sx={{ py: 1.5, pr: 16 }}
+                    sx={{ py: 1.5, pr: '100px' }}
                   >
                     {/* 색상 인디케이터 */}
                     {preset.color && (
@@ -418,6 +413,8 @@ const PresetPanel: React.FC = () => {
                     <ListItemText
                       sx={{ 
                         overflow: 'hidden',
+                        minWidth: 0, // flex item에서 ellipsis가 동작하도록
+                        maxWidth: 'calc(100% - 55px)', // 아이콘바 너비(89px) + 여유분
                         '& .MuiListItemText-primary': { 
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
@@ -438,32 +435,44 @@ const PresetPanel: React.FC = () => {
                           }}
                           title={preset.title}
                         >
-                          {truncateText(preset.title, 18)}
+                          {preset.title}
                         </Typography>
                       }
                       secondary={
-                        <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5, overflow: 'hidden' }}>
+                        <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5, overflow: 'hidden', flexWrap: 'nowrap' }}>
                           {preset.projectCode && (
                             <Chip
-                              label={truncateText(getProjectName(preset.projectCode), 18)}
+                              label={getProjectName(preset.projectCode)}
                               size="small"
                               variant="outlined"
                               sx={{ 
                                 height: 18, 
                                 fontSize: '0.65rem',
+                                maxWidth: 120,
+                                '& .MuiChip-label': {
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                }
                               }}
                               title={`[${preset.projectCode}] ${getProjectName(preset.projectCode)}`}
                             />
                           )}
                           {preset.category && (
                             <Chip
-                              label={truncateText(preset.category, 8)}
+                              label={preset.category}
                               size="small"
                               sx={{
                                 height: 18,
                                 fontSize: '0.65rem',
                                 bgcolor: 'var(--bg-hover)',
                                 color: 'var(--text-secondary)',
+                                maxWidth: 80,
+                                '& .MuiChip-label': {
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                }
                               }}
                               title={preset.category}
                             />
