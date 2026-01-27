@@ -17,6 +17,8 @@ import {
   Snackbar,
   Chip,
 } from '@mui/material';
+import { LocalizationProvider, TimePicker } from '@mui/x-date-pickers';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import DeleteForeverIcon from '@mui/icons-material/DeleteForever';
 import WarningIcon from '@mui/icons-material/Warning';
 import PaletteIcon from '@mui/icons-material/Palette';
@@ -629,28 +631,50 @@ const SettingsPage: React.FC = () => {
         </Typography>
 
         <Grid container spacing={3}>
-          <Grid item xs={12} md={6}>
-            <TextField
-              fullWidth
-              size="small"
-              label="점심시간 시작"
-              type="time"
-              value={lunch_start}
-              onChange={(e) => setLunchStart(e.target.value)}
-              InputLabelProps={{ shrink: true }}
-            />
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <TextField
-              fullWidth
-              size="small"
-              label="점심시간 종료"
-              type="time"
-              value={lunch_end}
-              onChange={(e) => setLunchEnd(e.target.value)}
-              InputLabelProps={{ shrink: true }}
-            />
-          </Grid>
+          <LocalizationProvider dateAdapter={AdapterDateFns}>
+            <Grid item xs={12} md={6}>
+              <TimePicker
+                label="점심시간 시작"
+                value={(() => {
+                  const [h, m] = lunch_start.split(':').map(Number);
+                  const d = new Date();
+                  d.setHours(h, m, 0, 0);
+                  return d;
+                })()}
+                onChange={(newValue) => {
+                  if (newValue) {
+                    const h = String(newValue.getHours()).padStart(2, '0');
+                    const m = String(newValue.getMinutes()).padStart(2, '0');
+                    setLunchStart(`${h}:${m}`);
+                  }
+                }}
+                slotProps={{
+                  textField: { size: 'small', fullWidth: true }
+                }}
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TimePicker
+                label="점심시간 종료"
+                value={(() => {
+                  const [h, m] = lunch_end.split(':').map(Number);
+                  const d = new Date();
+                  d.setHours(h, m, 0, 0);
+                  return d;
+                })()}
+                onChange={(newValue) => {
+                  if (newValue) {
+                    const h = String(newValue.getHours()).padStart(2, '0');
+                    const m = String(newValue.getMinutes()).padStart(2, '0');
+                    setLunchEnd(`${h}:${m}`);
+                  }
+                }}
+                slotProps={{
+                  textField: { size: 'small', fullWidth: true }
+                }}
+              />
+            </Grid>
+          </LocalizationProvider>
           <Grid item xs={12}>
             <FormControlLabel
               control={
