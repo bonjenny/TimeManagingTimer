@@ -6,6 +6,11 @@ import { render, screen, waitFor } from '../../../test-utils';
 import userEvent from '@testing-library/user-event';
 import FeedbackBoard from '../../../components/pages/FeedbackBoard';
 
+// env 모듈 모킹
+jest.mock('../../../utils/env', () => ({
+  getAdminPassword: () => '0000',
+}));
+
 // feedbackService 모킹
 const mockFetchPosts = jest.fn();
 const mockCreatePost = jest.fn();
@@ -431,6 +436,156 @@ describe('FeedbackBoard (Firebase 연동)', () => {
       await waitFor(() => {
         expect(mockFetchPosts).toHaveBeenCalledTimes(2);
       });
+    });
+  });
+
+  describe('관리자 기능', () => {
+    const mockPost = {
+      id: 'admin-test-post',
+      nickname: '테스터',
+      title: '관리자 테스트 제목',
+      content: '내용',
+      password_hash: 'hash',
+      created_at: Date.now(),
+      updated_at: Date.now(),
+      category: 'idea' as const,
+      comments: [],
+    };
+
+    beforeEach(() => {
+      mockFetchPosts.mockResolvedValue([mockPost]);
+      mockUpdatePost.mockResolvedValue(true);
+    });
+
+    it('목록에서 게시글 우클릭 시 관리자 상태 변경 모달이 표시된다', async () => {
+      const user = userEvent.setup();
+      render(<FeedbackBoard />);
+
+      await waitFor(() => {
+        expect(screen.getByText('관리자 테스트 제목')).toBeInTheDocument();
+      });
+
+      // 목록에서 우클릭
+      await user.pointer({ keys: '[MouseRight]', target: screen.getByText('관리자 테스트 제목') });
+
+      expect(screen.getByText('관리자 상태 변경')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /검토중/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /반려/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /완료/i })).toBeInTheDocument();
+      expect(screen.getByLabelText(/관리자 비밀번호/i)).toBeInTheDocument();
+    });
+
+    it('관리자 모달에서 완료 선택 시 버전 입력 필드가 표시된다', async () => {
+      const user = userEvent.setup();
+      render(<FeedbackBoard />);
+
+      await waitFor(() => {
+        expect(screen.getByText('관리자 테스트 제목')).toBeInTheDocument();
+      });
+
+      // 목록에서 우클릭
+      await user.pointer({ keys: '[MouseRight]', target: screen.getByText('관리자 테스트 제목') });
+      
+      // 완료 버튼 클릭
+      await user.click(screen.getByRole('button', { name: /완료/i }));
+
+      expect(screen.getByLabelText(/적용 버전/i)).toBeInTheDocument();
+    });
+
+    it('관리자로 답글 스위치가 표시된다', async () => {
+      const user = userEvent.setup();
+      render(<FeedbackBoard />);
+
+      await waitFor(() => {
+        expect(screen.getByText('관리자 테스트 제목')).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByText('관리자 테스트 제목'));
+
+      expect(screen.getByText('관리자로 답글')).toBeInTheDocument();
+    });
+
+    it('관리자로 답글 스위치 클릭 시 비밀번호 인증 모달이 표시된다', async () => {
+      const user = userEvent.setup();
+      render(<FeedbackBoard />);
+
+      await waitFor(() => {
+        expect(screen.getByText('관리자 테스트 제목')).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByText('관리자 테스트 제목'));
+      
+      // 스위치 클릭
+      const switch_element = screen.getByRole('checkbox');
+      await user.click(switch_element);
+
+      // 관리자 인증 모달이 표시되어야 함
+      expect(screen.getByText('관리자 인증')).toBeInTheDocument();
+      expect(screen.getByText(/관리자로 답글을 작성하려면/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/관리자 비밀번호/i)).toBeInTheDocument();
+    });
+
+    it('관리자 상태 라벨이 목록에 표시된다', async () => {
+      mockFetchPosts.mockResolvedValue([
+        {
+          ...mockPost,
+          admin_status: 'reviewing',
+        },
+      ]);
+
+      render(<FeedbackBoard />);
+
+      await waitFor(() => {
+        expect(screen.getByText('검토중')).toBeInTheDocument();
+      });
+    });
+
+    it('완료 상태일 때 버전이 함께 표시된다', async () => {
+      mockFetchPosts.mockResolvedValue([
+        {
+          ...mockPost,
+          admin_status: 'completed',
+          completed_version: 'v2.0.4',
+        },
+      ]);
+
+      render(<FeedbackBoard />);
+
+      await waitFor(() => {
+        expect(screen.getByText('완료 v2.0.4')).toBeInTheDocument();
+      });
+    });
+
+    it('관리자 댓글은 관리자 라벨과 함께 표시된다', async () => {
+      mockFetchPosts.mockResolvedValue([
+        {
+          ...mockPost,
+          comments: [
+            {
+              id: 'admin-comment',
+              nickname: '관리자',
+              content: '관리자 답변입니다.',
+              password_hash: 'hash',
+              created_at: Date.now(),
+              is_admin: true,
+            },
+          ],
+        },
+      ]);
+
+      const user = userEvent.setup();
+      render(<FeedbackBoard />);
+
+      await waitFor(() => {
+        expect(screen.getByText('관리자 테스트 제목')).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByText('관리자 테스트 제목'));
+
+      // 관리자 라벨 Chip이 표시되는지 확인
+      const admin_chips = screen.getAllByText('관리자');
+      expect(admin_chips.length).toBeGreaterThanOrEqual(1);
+      expect(screen.getByText('관리자 답변입니다.')).toBeInTheDocument();
     });
   });
 });
