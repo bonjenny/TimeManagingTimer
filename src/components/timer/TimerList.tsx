@@ -980,7 +980,7 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                                   }}
                                 />
                               ) : (
-                                // PAUSED 상태: lastPausedAt을 종료 시간으로 표시
+                                // PAUSED 상태: lastPausedAt 또는 endTime을 종료 시간으로 표시 (기존 데이터 호환)
                                 <Typography 
                                   variant="body2" 
                                   sx={{ 
@@ -989,7 +989,7 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                                     fontWeight: 500
                                   }}
                                 >
-                                  {session.lastPausedAt ? formatTime(session.lastPausedAt) : '일시정지'}
+                                  {formatTime(session.lastPausedAt || session.endTime || session.startTime)}
                                 </Typography>
                               )}
                             </TableCell>
