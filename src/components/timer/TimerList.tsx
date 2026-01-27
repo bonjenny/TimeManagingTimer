@@ -962,10 +962,14 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                               <Box sx={{ display: 'flex', gap: 0.5 }}>
                                 {/* 완료된 세션에만 재진행 버튼 표시 */}
                                 {session.status === 'COMPLETED' && (
-                                  <Tooltip title="재진행 (완료 취소 후 다시 시작)">
+                                  <Tooltip title="새 세션으로 다시 시작 (현재 시간 기준)">
                                     <IconButton 
                                       size="small" 
-                                      onClick={() => reopenTimer(session.id)}
+                                      onClick={() => {
+                                        // 기존 activeTimer는 startTimer 내부에서 자동으로 logs로 이동됨
+                                        // 새 세션을 현재 시간으로 시작
+                                        startTimer(session.title, session.projectCode, session.category);
+                                      }}
                                       sx={{ p: 0.25, color: 'success.main' }}
                                       aria-label="재진행"
                                     >

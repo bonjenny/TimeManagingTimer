@@ -114,7 +114,17 @@ const StatusSelect: React.FC<StatusSelectProps> = ({
       
       <Divider />
       
-      <ListSubheader sx={{ lineHeight: 'normal', py: 1 }}>
+      <ListSubheader 
+        sx={{ lineHeight: 'normal', py: 1 }}
+        onMouseDown={(e) => {
+          e.stopPropagation();
+          e.preventDefault();
+        }}
+        onClick={(e) => {
+          e.stopPropagation();
+          e.preventDefault();
+        }}
+      >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
           <TextField
             size="small"
@@ -122,6 +132,7 @@ const StatusSelect: React.FC<StatusSelectProps> = ({
             value={newLabel}
             onChange={(e) => setNewLabel(e.target.value)}
             onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
             onKeyDown={(e) => {
               e.stopPropagation();
               if (e.key === 'Enter' && newLabel.trim()) {
@@ -137,12 +148,23 @@ const StatusSelect: React.FC<StatusSelectProps> = ({
           <IconButton 
             size="small" 
             onClick={handleAddStatus}
+            onMouseDown={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+            }}
             disabled={!newLabel.trim()}
             sx={{ p: 0.5 }}
           >
             <AddIcon fontSize="small" />
           </IconButton>
-          <Typography variant="caption" color="text.secondary">
+          <Typography 
+            variant="caption" 
+            color="text.secondary"
+            onMouseDown={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+            }}
+          >
             추가
           </Typography>
         </Box>
