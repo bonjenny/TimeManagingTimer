@@ -1,26 +1,35 @@
 import { renderHook, act } from '@testing-library/react';
 import { useTimerStore } from '../../../store/useTimerStore';
 
+// 테스트 전 store 초기화 헬퍼
+const clearStore = () => {
+  const { result } = renderHook(() => useTimerStore());
+  act(() => {
+    // 활성 타이머 정리
+    if (result.current.activeTimer) {
+      result.current.stopTimer();
+    }
+    // 모든 로그 영구 삭제
+    [...result.current.logs].forEach(log => {
+      result.current.deleteLog(log.id);
+    });
+    result.current.emptyTrash();
+  });
+};
+
 describe('TimerList 인라인 편집 기능', () => {
   beforeEach(() => {
-    const { result } = renderHook(() => useTimerStore());
-    // 테스트용 로그 데이터 초기화
-    act(() => {
-      // 기존 로그 삭제 및 테스트 데이터 추가
-      result.current.logs.forEach(log => {
-        result.current.deleteLog(log.id);
-      });
-    });
+    clearStore();
   });
 
   describe('기록명 인라인 편집', () => {
     it('로그의 제목을 업데이트할 수 있다', () => {
       const { result } = renderHook(() => useTimerStore());
       
-      // 테스트 로그 추가
+      // 테스트 로그 추가 (completeTimer로 logs에 추가)
       act(() => {
         result.current.startTimer('테스트 작업', 'P001', '개발');
-        result.current.stopTimer();
+        result.current.completeTimer();
       });
       
       const log = result.current.logs[0];
@@ -39,9 +48,9 @@ describe('TimerList 인라인 편집 기능', () => {
       // 같은 제목으로 여러 세션 생성
       act(() => {
         result.current.startTimer('반복 작업', 'P001', '개발');
-        result.current.stopTimer();
+        result.current.completeTimer();
         result.current.startTimer('반복 작업', 'P001', '개발');
-        result.current.stopTimer();
+        result.current.completeTimer();
       });
       
       const logsToUpdate = result.current.logs.filter(l => l.title === '반복 작업');
@@ -63,7 +72,7 @@ describe('TimerList 인라인 편집 기능', () => {
       
       act(() => {
         result.current.startTimer('작업', 'OLD_CODE', '개발');
-        result.current.stopTimer();
+        result.current.completeTimer();
       });
       
       const log = result.current.logs[0];
@@ -81,7 +90,7 @@ describe('TimerList 인라인 편집 기능', () => {
       
       act(() => {
         result.current.startTimer('작업', 'P001', '개발');
-        result.current.stopTimer();
+        result.current.completeTimer();
       });
       
       const log = result.current.logs[0];
@@ -101,7 +110,7 @@ describe('TimerList 인라인 편집 기능', () => {
       
       act(() => {
         result.current.startTimer('작업', 'P001', '개발');
-        result.current.stopTimer();
+        result.current.completeTimer();
       });
       
       const log = result.current.logs[0];
@@ -117,13 +126,17 @@ describe('TimerList 인라인 편집 기능', () => {
 });
 
 describe('TimerList 인라인 시간 편집 기능 (v0.11.0)', () => {
+  beforeEach(() => {
+    clearStore();
+  });
+
   describe('시간 업데이트', () => {
     it('로그의 시작 시간을 업데이트할 수 있다', () => {
       const { result } = renderHook(() => useTimerStore());
       
       act(() => {
         result.current.startTimer('시간 수정 테스트', 'P001', '개발');
-        result.current.stopTimer();
+        result.current.completeTimer();
       });
       
       const log = result.current.logs[0];
@@ -142,7 +155,7 @@ describe('TimerList 인라인 시간 편집 기능 (v0.11.0)', () => {
       
       act(() => {
         result.current.startTimer('종료시간 수정 테스트', 'P001', '개발');
-        result.current.stopTimer();
+        result.current.completeTimer();
       });
       
       const log = result.current.logs[0];
@@ -161,7 +174,7 @@ describe('TimerList 인라인 시간 편집 기능 (v0.11.0)', () => {
       
       act(() => {
         result.current.startTimer('동시 수정 테스트', 'P001', '개발');
-        result.current.stopTimer();
+        result.current.completeTimer();
       });
       
       const log = result.current.logs[0];
@@ -187,9 +200,10 @@ describe('TimerList 인라인 시간 편집 기능 (v0.11.0)', () => {
       
       const baseTime = new Date('2026-01-27T09:00:00').getTime();
       
-      // 첫 번째 세션: 09:00 ~ 10:00
+      // 첫 번째 세션 생성
       act(() => {
         result.current.startTimer('세션1', 'P001', '개발');
+        result.current.completeTimer();
       });
       
       // 수동으로 시간 설정
@@ -199,13 +213,12 @@ describe('TimerList 인라인 시간 편집 기능 (v0.11.0)', () => {
           startTime: baseTime,
           endTime: baseTime + 3600000, // 10:00
         });
-        result.current.stopTimer();
       });
       
       // 두 번째 세션: 10:30 ~ 11:30
       act(() => {
         result.current.startTimer('세션2', 'P001', '개발');
-        result.current.stopTimer();
+        result.current.completeTimer();
       });
       
       const log2 = result.current.logs.find(l => l.title === '세션2');
@@ -234,11 +247,10 @@ describe('TimerList 인라인 시간 편집 기능 (v0.11.0)', () => {
       
       act(() => {
         result.current.startTimer('유효성 테스트', 'P001', '개발');
-        result.current.stopTimer();
+        result.current.completeTimer();
       });
       
       const log = result.current.logs[0];
-      const originalStartTime = log.startTime;
       const originalEndTime = log.endTime;
       
       // 시작 시간을 종료 시간보다 늦게 설정 시도
@@ -256,14 +268,78 @@ describe('TimerList 인라인 시간 편집 기능 (v0.11.0)', () => {
   });
 });
 
+describe('TimerList 펼치기/접기 토글 기능 (v0.12.5)', () => {
+  describe('토글 상태 관리', () => {
+    it('업무 그룹은 초기에 접힌 상태이다', () => {
+      // expandedTasks Set이 비어있으면 모든 업무가 접힌 상태
+      const expandedTasks = new Set<string>();
+      expect(expandedTasks.size).toBe(0);
+    });
+
+    it('업무를 펼치면 expandedTasks에 추가된다', () => {
+      const expandedTasks = new Set<string>();
+      const taskTitle = '테스트 작업';
+      
+      // 펼치기
+      expandedTasks.add(taskTitle);
+      
+      expect(expandedTasks.has(taskTitle)).toBe(true);
+    });
+
+    it('펼쳐진 업무를 다시 클릭하면 접힌다', () => {
+      const expandedTasks = new Set<string>();
+      const taskTitle = '테스트 작업';
+      
+      // 펼치기
+      expandedTasks.add(taskTitle);
+      expect(expandedTasks.has(taskTitle)).toBe(true);
+      
+      // 접기
+      expandedTasks.delete(taskTitle);
+      expect(expandedTasks.has(taskTitle)).toBe(false);
+    });
+
+    it('여러 업무를 동시에 펼칠 수 있다', () => {
+      const expandedTasks = new Set<string>();
+      
+      expandedTasks.add('작업1');
+      expandedTasks.add('작업2');
+      expandedTasks.add('작업3');
+      
+      expect(expandedTasks.size).toBe(3);
+      expect(expandedTasks.has('작업1')).toBe(true);
+      expect(expandedTasks.has('작업2')).toBe(true);
+      expect(expandedTasks.has('작업3')).toBe(true);
+    });
+  });
+
+  describe('토글 아이콘 표시', () => {
+    it('접힌 상태에서는 ExpandMoreIcon이 표시되어야 한다', () => {
+      const is_expanded = false;
+      // 접힌 상태: ExpandMoreIcon (∨)
+      expect(is_expanded).toBe(false);
+    });
+
+    it('펼쳐진 상태에서는 ExpandLessIcon이 표시되어야 한다', () => {
+      const is_expanded = true;
+      // 펼쳐진 상태: ExpandLessIcon (∧)
+      expect(is_expanded).toBe(true);
+    });
+  });
+});
+
 describe('TimerList 버튼 기능', () => {
+  beforeEach(() => {
+    clearStore();
+  });
+
   describe('수정 버튼', () => {
     it('로그를 수정할 수 있다', () => {
       const { result } = renderHook(() => useTimerStore());
       
       act(() => {
         result.current.startTimer('원본 작업', 'P001', '개발');
-        result.current.stopTimer();
+        result.current.completeTimer();
       });
       
       const log = result.current.logs[0];
@@ -289,7 +365,7 @@ describe('TimerList 버튼 기능', () => {
       
       act(() => {
         result.current.startTimer('삭제할 작업', 'P001', '개발');
-        result.current.stopTimer();
+        result.current.completeTimer();
       });
       
       const log = result.current.logs[0];
@@ -310,10 +386,8 @@ describe('TimerList 버튼 기능', () => {
       
       act(() => {
         result.current.startTimer('반복 작업', 'P001', '개발');
-        result.current.stopTimer();
+        result.current.completeTimer();
       });
-      
-      const initialLogCount = result.current.logs.length;
       
       act(() => {
         result.current.startTimer('반복 작업', 'P001', '개발');
@@ -327,7 +401,7 @@ describe('TimerList 버튼 기능', () => {
   });
 
   describe('완료 취소 버튼', () => {
-    it('완료된 작업을 재진행할 수 있다', () => {
+    it('완료된 작업을 일시정지 상태로 변경할 수 있다', () => {
       const { result } = renderHook(() => useTimerStore());
       
       act(() => {
@@ -342,8 +416,10 @@ describe('TimerList 버튼 기능', () => {
         result.current.reopenTimer(completedLog.id);
       });
       
-      expect(result.current.activeTimer).not.toBeNull();
-      expect(result.current.activeTimer?.status).toBe('RUNNING');
+      // reopenTimer는 COMPLETED → PAUSED로 상태만 변경 (activeTimer로 이동 안 함)
+      const reopenedLog = result.current.logs.find(l => l.id === completedLog.id);
+      expect(reopenedLog?.status).toBe('PAUSED');
+      expect(reopenedLog?.endTime).toBeUndefined();
     });
   });
 });

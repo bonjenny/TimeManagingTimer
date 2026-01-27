@@ -33,6 +33,8 @@ import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import EditIcon from '@mui/icons-material/Edit';
 import RestoreIcon from '@mui/icons-material/Restore';
 import RestoreFromTrashIcon from '@mui/icons-material/RestoreFromTrash';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import { useTimerStore, TimerLog, DeletedLog } from '../../store/useTimerStore';
 import { useProjectStore } from '../../store/useProjectStore';
 import { formatDuration, getDurationSecondsExcludingLunch } from '../../utils/timeUtils';
@@ -600,8 +602,23 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                   }
                 }}
               >
-                {/* 좌측: 완료상태 토글 버튼 + 시작/재시작 버튼 */}
+                {/* 좌측: 펼치기 토글 + 완료상태 토글 버튼 + 시작/재시작 버튼 */}
                 <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 0.25 }}>
+                  {/* 펼치기/접기 토글 아이콘 */}
+                  <Box 
+                    sx={{ 
+                      display: 'flex', 
+                      alignItems: 'center',
+                      color: 'text.secondary',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {is_expanded ? (
+                      <ExpandLessIcon sx={{ fontSize: 16 }} />
+                    ) : (
+                      <ExpandMoreIcon sx={{ fontSize: 16 }} />
+                    )}
+                  </Box>
                   {/* 완료 상태 토글 버튼 */}
                   <Tooltip title={all_completed ? "완료 취소" : "완료"}>
                     <span>

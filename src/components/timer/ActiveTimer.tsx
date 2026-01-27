@@ -41,7 +41,8 @@ const ActiveTimer: React.FC = () => {
         // endTime도 lastPausedAt도 없으면 startTime을 사용 (0초)
         const end = log.endTime || log.lastPausedAt || log.startTime;
         const rawDurationSec = (end - log.startTime) / 1000;
-        const safePaused = Math.min(log.pausedDuration, rawDurationSec);
+        // pausedDuration이 전체 duration보다 크면 비정상 데이터로 무시
+        const safePaused = log.pausedDuration > rawDurationSec ? 0 : log.pausedDuration;
         const duration = Math.floor(rawDurationSec - safePaused);
         return sum + Math.max(0, duration);
       }, 0);
