@@ -808,7 +808,7 @@ const SettingsPage: React.FC = () => {
           {statuses.map((status) => (
             <Chip
               key={status.value}
-              label={`${status.label} (${status.value})`}
+              label={status.label}
               onDelete={statuses.length > 1 ? () => removeStatus(status.value) : undefined}
               variant="outlined"
               sx={{ fontSize: '0.85rem' }}
