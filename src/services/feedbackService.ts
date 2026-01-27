@@ -5,6 +5,7 @@ import {
   addDoc,
   updateDoc,
   deleteDoc,
+  deleteField,
   query,
   orderBy,
   Timestamp,
@@ -100,6 +101,33 @@ export const updatePost = async (
     return true;
   } catch (error) {
     console.error('Error updating post:', error);
+    return false;
+  }
+};
+
+// 게시글 수정 (필드 삭제 지원)
+export const updatePostWithFieldDelete = async (
+  postId: string,
+  updates: Partial<Omit<FeedbackPost, 'id' | 'password_hash' | 'created_at'>>,
+  fieldsToDelete: string[] = []
+): Promise<boolean> => {
+  try {
+    const docRef = doc(db, COLLECTION_NAME, postId);
+    
+    // 삭제할 필드들을 deleteField()로 설정
+    const deleteFields = fieldsToDelete.reduce((acc, field) => {
+      acc[field] = deleteField();
+      return acc;
+    }, {} as Record<string, ReturnType<typeof deleteField>>);
+    
+    await updateDoc(docRef, {
+      ...updates,
+      ...deleteFields,
+      updated_at: Timestamp.now().toMillis(),
+    });
+    return true;
+  } catch (error) {
+    console.error('Error updating post with field delete:', error);
     return false;
   }
 };

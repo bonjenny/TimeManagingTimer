@@ -35,6 +35,7 @@ import {
   fetchPosts,
   createPost,
   updatePost,
+  updatePostWithFieldDelete,
   deletePost,
   addComment,
   deleteComment,
@@ -105,7 +106,7 @@ const FeedbackBoard: React.FC = () => {
   // 관리자 상태 변경 모달
   const [admin_modal_open, setAdminModalOpen] = useState(false);
   const [admin_password, setAdminPassword] = useState('');
-  const [admin_status_to_set, setAdminStatusToSet] = useState<AdminStatus | null>(null);
+  const [admin_status_to_set, setAdminStatusToSet] = useState<AdminStatus | 'clear' | null>(null);
   const [completed_version, setCompletedVersion] = useState('');
   const [admin_password_error, setAdminPasswordError] = useState(false);
 
@@ -424,18 +425,40 @@ const FeedbackBoard: React.FC = () => {
 
     setSaving(true);
 
-    const success = await updatePost(selected_post.id, {
-      admin_status: admin_status_to_set,
-      completed_version: admin_status_to_set === 'completed' ? completed_version : undefined,
-    } as Partial<FeedbackPost>);
+    let success: boolean;
+
+    if (admin_status_to_set === 'clear') {
+      // 상태 삭제: admin_status와 completed_version 필드 모두 삭제
+      success = await updatePostWithFieldDelete(
+        selected_post.id,
+        {},
+        ['admin_status', 'completed_version']
+      );
+    } else {
+      // 상태 변경
+      const updateData: Partial<FeedbackPost> = {
+        admin_status: admin_status_to_set,
+      };
+
+      let fieldsToDelete: string[] = [];
+
+      if (admin_status_to_set === 'completed') {
+        updateData.completed_version = completed_version;
+      } else {
+        // 검토중/반려 시 completed_version 필드 삭제
+        fieldsToDelete = ['completed_version'];
+      }
+
+      success = await updatePostWithFieldDelete(selected_post.id, updateData, fieldsToDelete);
+    }
 
     if (success) {
-      showSnackbar('상태가 변경되었습니다.');
+      showSnackbar(admin_status_to_set === 'clear' ? '상태가 삭제되었습니다.' : '상태가 변경되었습니다.');
       await loadPosts();
       // 로컬 상태 업데이트
       setSelectedPost({
         ...selected_post,
-        admin_status: admin_status_to_set,
+        admin_status: admin_status_to_set === 'clear' ? undefined : admin_status_to_set,
         completed_version: admin_status_to_set === 'completed' ? completed_version : undefined,
       });
     } else {
@@ -1027,6 +1050,20 @@ const FeedbackBoard: React.FC = () => {
             >
               완료
             </Button>
+            <Button
+              size="small"
+              variant={admin_status_to_set === 'clear' ? 'contained' : 'outlined'}
+              onClick={() => setAdminStatusToSet('clear')}
+              sx={{
+                flex: 1,
+                color: admin_status_to_set === 'clear' ? '#fff' : '#6b7280',
+                borderColor: '#6b7280',
+                bgcolor: admin_status_to_set === 'clear' ? '#6b7280' : 'transparent',
+                '&:hover': { bgcolor: '#6b7280', color: '#fff' },
+              }}
+            >
+              상태 삭제
+            </Button>
           </Box>
 
           {admin_status_to_set === 'completed' && (
@@ -1069,6 +1106,8 @@ const FeedbackBoard: React.FC = () => {
                   ? '#ef4444'
                   : admin_status_to_set === 'completed'
                   ? '#10b981'
+                  : admin_status_to_set === 'clear'
+                  ? '#6b7280'
                   : 'grey.500',
               '&:hover': {
                 bgcolor:
@@ -1078,6 +1117,8 @@ const FeedbackBoard: React.FC = () => {
                     ? '#dc2626'
                     : admin_status_to_set === 'completed'
                     ? '#059669'
+                    : admin_status_to_set === 'clear'
+                    ? '#4b5563'
                     : 'grey.600',
               },
             }}
@@ -1090,6 +1131,8 @@ const FeedbackBoard: React.FC = () => {
               '반려로 변경'
             ) : admin_status_to_set === 'completed' ? (
               '완료로 변경'
+            ) : admin_status_to_set === 'clear' ? (
+              '상태 삭제'
             ) : (
               '상태 선택 필요'
             )}
