@@ -147,8 +147,8 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, onPageChange }) 
           }
         }}
       >
-        <Typography variant="caption" sx={{ fontSize: '0.6rem', color: 'text.disabled', maxWidth: 500 }}>
-          모든 기록은 내 컴퓨터(브라우저)에 저장되며, 서버로 전송되지 않습니다.<br />저장 공간이 부족할 경우 오래된 데이터부터 자동 삭제될 수 있습니다.
+        <Typography variant="caption" sx={{ fontSize: '0.6rem', color: 'text.disabled', maxWidth: 800, px: 2 }}>
+          모든 기록은 내 컴퓨터(브라우저)에 저장되며, 서버로 전송되지 않습니다. 저장 공간이 부족할 경우 오래된 데이터부터 자동 삭제될 수 있습니다.
         </Typography>
         <Typography variant="caption" sx={{ fontSize: '0.65rem' }}>
           © {new Date().getFullYear()} TimeKeeper. Jihee Eom All rights reserved.
