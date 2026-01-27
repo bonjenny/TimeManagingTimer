@@ -414,7 +414,7 @@ const PresetPanel: React.FC = () => {
                       sx={{ 
                         overflow: 'hidden',
                         minWidth: 0, // flex item에서 ellipsis가 동작하도록
-                        maxWidth: 'calc(100% - 65px)', // 아이콘바 너비(89px) + 여유분
+                        maxWidth: 'calc(100% - 55px)', // 아이콘바 너비(89px) + 여유분
                         '& .MuiListItemText-primary': { 
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',

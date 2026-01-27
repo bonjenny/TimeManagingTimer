@@ -15,6 +15,7 @@ jest.mock('../../../utils/env', () => ({
 const mockFetchPosts = jest.fn();
 const mockCreatePost = jest.fn();
 const mockUpdatePost = jest.fn();
+const mockUpdatePostWithFieldDelete = jest.fn();
 const mockDeletePost = jest.fn();
 const mockAddComment = jest.fn();
 const mockDeleteComment = jest.fn();
@@ -23,6 +24,8 @@ jest.mock('../../../services/feedbackService', () => ({
   fetchPosts: () => mockFetchPosts(),
   createPost: (post: unknown) => mockCreatePost(post),
   updatePost: (id: string, updates: unknown) => mockUpdatePost(id, updates),
+  updatePostWithFieldDelete: (id: string, updates: unknown, fieldsToDelete: string[]) => 
+    mockUpdatePostWithFieldDelete(id, updates, fieldsToDelete),
   deletePost: (id: string) => mockDeletePost(id),
   addComment: (postId: string, comments: unknown[], comment: unknown) => 
     mockAddComment(postId, comments, comment),
@@ -455,6 +458,7 @@ describe('FeedbackBoard (Firebase 연동)', () => {
     beforeEach(() => {
       mockFetchPosts.mockResolvedValue([mockPost]);
       mockUpdatePost.mockResolvedValue(true);
+      mockUpdatePostWithFieldDelete.mockResolvedValue(true);
     });
 
     it('목록에서 게시글 우클릭 시 관리자 상태 변경 모달이 표시된다', async () => {
@@ -490,6 +494,82 @@ describe('FeedbackBoard (Firebase 연동)', () => {
       await user.click(screen.getByRole('button', { name: /완료/i }));
 
       expect(screen.getByLabelText(/적용 버전/i)).toBeInTheDocument();
+    });
+
+    it('관리자 모달에 상태 삭제 버튼이 표시된다', async () => {
+      const user = userEvent.setup();
+      render(<FeedbackBoard />);
+
+      await waitFor(() => {
+        expect(screen.getByText('관리자 테스트 제목')).toBeInTheDocument();
+      });
+
+      // 목록에서 우클릭
+      await user.pointer({ keys: '[MouseRight]', target: screen.getByText('관리자 테스트 제목') });
+
+      expect(screen.getByRole('button', { name: /상태 삭제/i })).toBeInTheDocument();
+    });
+
+    it('상태 삭제 선택 시 updatePostWithFieldDelete가 호출된다', async () => {
+      const user = userEvent.setup();
+      render(<FeedbackBoard />);
+
+      await waitFor(() => {
+        expect(screen.getByText('관리자 테스트 제목')).toBeInTheDocument();
+      });
+
+      // 목록에서 우클릭
+      await user.pointer({ keys: '[MouseRight]', target: screen.getByText('관리자 테스트 제목') });
+
+      // 상태 삭제 버튼 클릭 (모달 내 상태 선택 버튼)
+      const status_buttons = screen.getAllByRole('button', { name: /상태 삭제/i });
+      // 첫 번째 버튼이 상태 선택 버튼 (outlined)
+      await user.click(status_buttons[0]);
+
+      // 관리자 비밀번호 입력
+      await user.type(screen.getByLabelText(/관리자 비밀번호/i), '0000');
+
+      // 확인 버튼 클릭 (contained 버튼 - 두 번째 버튼)
+      const confirm_buttons = screen.getAllByRole('button', { name: /상태 삭제/i });
+      // 상태 선택 후 두 번째 버튼이 확인 버튼
+      await user.click(confirm_buttons[1]);
+
+      await waitFor(() => {
+        expect(mockUpdatePostWithFieldDelete).toHaveBeenCalledWith(
+          'admin-test-post',
+          {},
+          ['admin_status', 'completed_version']
+        );
+      });
+    });
+
+    it('검토중 상태 변경 시 completed_version 필드가 삭제된다', async () => {
+      const user = userEvent.setup();
+      render(<FeedbackBoard />);
+
+      await waitFor(() => {
+        expect(screen.getByText('관리자 테스트 제목')).toBeInTheDocument();
+      });
+
+      // 목록에서 우클릭
+      await user.pointer({ keys: '[MouseRight]', target: screen.getByText('관리자 테스트 제목') });
+
+      // 검토중 버튼 클릭
+      await user.click(screen.getByRole('button', { name: /검토중/i }));
+
+      // 관리자 비밀번호 입력
+      await user.type(screen.getByLabelText(/관리자 비밀번호/i), '0000');
+
+      // 확인 버튼 클릭
+      await user.click(screen.getByRole('button', { name: /검토중으로 변경/i }));
+
+      await waitFor(() => {
+        expect(mockUpdatePostWithFieldDelete).toHaveBeenCalledWith(
+          'admin-test-post',
+          { admin_status: 'reviewing' },
+          ['completed_version']
+        );
+      });
     });
 
     it('관리자로 답글 스위치가 표시된다', async () => {

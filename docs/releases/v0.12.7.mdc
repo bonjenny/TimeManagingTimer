@@ -1,0 +1,64 @@
+---
+version: 0.12.7
+date: 2026-01-27
+step: Step 12 (Patch)
+---
+
+# v0.12.7 릴리즈 노트
+
+## 주요 변경사항
+
+### 건의사항 관리자 상태 변경 버그 수정
+- **검토중/반려 상태 변경 오류 수정**: Firestore에 `undefined` 값 전달로 인한 오류 해결
+- **상태 삭제 기능 추가**: 관리자가 설정한 상태를 완전히 삭제할 수 있는 버튼 추가
+
+## 버그 수정
+
+### Firestore undefined 값 처리
+- **문제**: 검토중/반려 상태로 변경 시 `completed_version: undefined`를 Firestore에 전달하여 에러 발생
+- **해결**: 조건부 객체 구성으로 `undefined` 값 전달 방지 및 `deleteField()` 사용
+
+### 상태별 처리 로직
+
+| 상태 | 처리 방식 |
+|------|-----------|
+| 완료 | `admin_status` + `completed_version` 설정 |
+| 검토중/반려 | `admin_status` 설정 + `completed_version` 필드 삭제 |
+| 상태 삭제 | `admin_status` + `completed_version` 필드 모두 삭제 |
+
+## 새로운 기능
+
+### 관리자 상태 삭제
+- 관리자 상태 변경 모달에 "상태 삭제" 버튼 추가 (회색)
+- 게시글에 설정된 관리자 상태를 완전히 제거 가능
+- 삭제 후 "상태가 삭제되었습니다." 토스트 알림 표시
+
+## 기술적 변경사항
+
+### 수정된 파일
+
+| 파일 | 수정 내용 |
+|------|-----------|
+| `src/services/feedbackService.ts` | `deleteField` import 추가, `updatePostWithFieldDelete` 함수 추가 |
+| `src/components/pages/FeedbackBoard.tsx` | `admin_status_to_set` 타입에 'clear' 옵션 추가 |
+| `src/components/pages/FeedbackBoard.tsx` | 상태 삭제 버튼 UI 추가 |
+| `src/components/pages/FeedbackBoard.tsx` | `handleAdminStatusConfirm` 함수 수정 (필드 삭제 처리) |
+
+### 새로운 API
+
+```typescript
+// feedbackService.ts
+export const updatePostWithFieldDelete = async (
+  postId: string,
+  updates: Partial<FeedbackPost>,
+  fieldsToDelete: string[] = []
+): Promise<boolean>
+```
+
+## Breaking Changes
+- 없음
+
+## 다음 버전 예정
+- 완료된 업무 취소선 스타일 적용
+- 주간 일정 개선
+- 통계/리포트 확장
