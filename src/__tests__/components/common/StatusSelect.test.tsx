@@ -55,13 +55,13 @@ describe('StatusSelect 컴포넌트', () => {
 
       // 새 상태 입력
       const textField = screen.getByPlaceholderText('새 상태');
-      await userEvent.type(textField, '테스트상태');
+      fireEvent.change(textField, { target: { value: '테스트상태' } });
 
       // 추가 버튼 클릭 (AddIcon을 가진 버튼 찾기)
-      const addButtons = screen.getAllByRole('button');
-      const addIconButton = addButtons.find(btn => btn.querySelector('svg[data-testid="AddIcon"]'));
+      const allButtons = document.querySelectorAll('button');
+      const addIconButton = Array.from(allButtons).find(btn => btn.querySelector('svg[data-testid="AddIcon"]'));
       
-      expect(addIconButton).toBeDefined();
+      expect(addIconButton).toBeTruthy();
       if (addIconButton) {
         fireEvent.mouseDown(addIconButton);
         fireEvent.click(addIconButton);
@@ -88,11 +88,14 @@ describe('StatusSelect 컴포넌트', () => {
 
       // 새 상태 입력
       const textField = screen.getByPlaceholderText('새 상태');
-      await userEvent.type(textField, '신규상태{enter}');
+      fireEvent.change(textField, { target: { value: '신규상태' } });
+      fireEvent.keyDown(textField, { key: 'Enter', code: 'Enter' });
 
       // 상태가 추가되었는지 store 확인
-      const { result } = renderHook(() => useStatusStore());
-      expect(result.current.statuses.some(s => s.label === '신규상태')).toBe(true);
+      await waitFor(() => {
+        const { result } = renderHook(() => useStatusStore());
+        expect(result.current.statuses.some(s => s.label === '신규상태')).toBe(true);
+      });
     });
   });
 });

@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
-import { Box, Typography, Button, Paper, Chip, IconButton, TextField } from '@mui/material';
+import { Box, Typography, Button, Paper, Chip, IconButton, TextField, Autocomplete, ClickAwayListener } from '@mui/material';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import PauseIcon from '@mui/icons-material/Pause';
 import CheckIcon from '@mui/icons-material/Check';
@@ -7,16 +7,26 @@ import { useTimerStore } from '../../store/useTimerStore';
 import { useProjectStore } from '../../store/useProjectStore';
 import { useTimerLogic } from '../../hooks/useTimerLogic';
 import { formatTimeDisplay, formatDuration } from '../../utils/timeUtils';
+import CategoryAutocomplete from '../common/CategoryAutocomplete';
 
 const ActiveTimer: React.FC = () => {
   const { activeTimer, elapsedSeconds, showSeconds } = useTimerLogic();
   const { logs, resumeTimer, completeTimer, updateActiveTimer, pauseAndMoveToLogs } = useTimerStore();
-  const { getProjectName } = useProjectStore();
+  const { projects, getProjectName } = useProjectStore();
   
   // 제목 편집 상태
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editTitle, setEditTitle] = useState('');
   const titleInputRef = useRef<HTMLInputElement>(null);
+  
+  // 카테고리 편집 상태
+  const [isEditingCategory, setIsEditingCategory] = useState(false);
+  
+  // 프로젝트 편집 상태
+  const [isEditingProject, setIsEditingProject] = useState(false);
+  
+  // 프로젝트 옵션 (코드 + 이름 형태로 표시)
+  const projectOptions = projects.map(p => ({ code: p.code, label: `[${p.code}] ${p.name}` }));
 
   // 같은 제목의 모든 로그 누적 시간 계산 (현재 세션 포함)
   const totalAccumulatedSeconds = useMemo(() => {
@@ -102,27 +112,91 @@ const ActiveTimer: React.FC = () => {
       <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: { md: 'center' }, gap: 2 }}>
         {/* 타이머 정보 */}
         <Box sx={{ flexGrow: 1 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, flexWrap: 'wrap' }}>
             <Chip 
               label={isRunning ? "진행 중" : "일시정지"} 
               color={isRunning ? "primary" : "default"} 
               size="small" 
               variant="outlined"
             />
-            {activeTimer.category && (
+            {/* 카테고리 편집 */}
+            {isEditingCategory ? (
+              <ClickAwayListener onClickAway={() => setIsEditingCategory(false)}>
+                <Box sx={{ minWidth: 120 }}>
+                  <CategoryAutocomplete
+                    value={activeTimer.category || null}
+                    onChange={(newValue) => {
+                      updateActiveTimer({ category: newValue || undefined });
+                      setIsEditingCategory(false);
+                    }}
+                    size="small"
+                    variant="standard"
+                    placeholder="카테고리"
+                    autoFocus
+                  />
+                </Box>
+              </ClickAwayListener>
+            ) : (
               <Chip 
-                label={activeTimer.category} 
+                label={activeTimer.category || '카테고리 추가'} 
                 size="small" 
-                sx={{ bgcolor: 'var(--bg-hover)', color: 'var(--text-secondary)' }} 
+                onClick={() => setIsEditingCategory(true)}
+                sx={{ 
+                  bgcolor: activeTimer.category ? 'var(--bg-hover)' : 'transparent',
+                  color: activeTimer.category ? 'var(--text-secondary)' : 'var(--text-disabled)',
+                  cursor: 'pointer',
+                  border: activeTimer.category ? 'none' : '1px dashed var(--border-color)',
+                  '&:hover': { bgcolor: 'var(--bg-hover)' }
+                }} 
               />
             )}
-            {activeTimer.projectCode && (
+            {/* 프로젝트 편집 */}
+            {isEditingProject ? (
+              <ClickAwayListener onClickAway={() => setIsEditingProject(false)}>
+                <Box sx={{ minWidth: 150 }}>
+                  <Autocomplete
+                    size="small"
+                    options={projectOptions}
+                    getOptionLabel={(option) => typeof option === 'string' ? option : option.label}
+                    value={projectOptions.find(p => p.code === activeTimer.projectCode) || null}
+                    onChange={(_e, newValue) => {
+                      if (newValue && typeof newValue !== 'string') {
+                        updateActiveTimer({ projectCode: newValue.code });
+                      } else {
+                        updateActiveTimer({ projectCode: undefined });
+                      }
+                      setIsEditingProject(false);
+                    }}
+                    renderInput={(params) => (
+                      <TextField 
+                        {...params} 
+                        variant="standard"
+                        placeholder="프로젝트"
+                        autoFocus
+                        sx={{ '& .MuiInput-root': { fontSize: '0.75rem' } }}
+                      />
+                    )}
+                    freeSolo
+                    autoHighlight
+                    openOnFocus
+                  />
+                </Box>
+              </ClickAwayListener>
+            ) : (
               <Chip 
-                label={getProjectName(activeTimer.projectCode)} 
+                label={activeTimer.projectCode ? getProjectName(activeTimer.projectCode) : '프로젝트 추가'} 
                 size="small" 
                 variant="outlined"
-                sx={{ height: 20, fontSize: '0.65rem' }}
-                title={`[${activeTimer.projectCode}]`}
+                onClick={() => setIsEditingProject(true)}
+                sx={{ 
+                  height: 20, 
+                  fontSize: '0.65rem',
+                  cursor: 'pointer',
+                  borderStyle: activeTimer.projectCode ? 'solid' : 'dashed',
+                  color: activeTimer.projectCode ? 'inherit' : 'var(--text-disabled)',
+                  '&:hover': { bgcolor: 'var(--bg-hover)' }
+                }}
+                title={activeTimer.projectCode ? `[${activeTimer.projectCode}]` : '클릭하여 프로젝트 추가'}
               />
             )}
           </Box>
