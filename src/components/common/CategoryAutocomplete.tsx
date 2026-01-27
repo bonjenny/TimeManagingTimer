@@ -34,7 +34,9 @@ const CustomPaper: React.FC<{
   inputRef: React.RefObject<HTMLInputElement | null>;
   onInputFocus: () => void;
   onInputBlur: () => void;
-}> = ({ children, newCategory, setNewCategory, onAddCategory, inputRef, onInputFocus, onInputBlur }) => {
+  onCompositionStart: () => void;
+  onCompositionEnd: () => void;
+}> = ({ children, newCategory, setNewCategory, onAddCategory, inputRef, onInputFocus, onInputBlur, onCompositionStart, onCompositionEnd }) => {
   return (
     <Paper elevation={8} sx={{ overflow: 'hidden', minWidth: 200 }}>
       {children}
@@ -72,6 +74,8 @@ const CustomPaper: React.FC<{
           }}
           onFocus={onInputFocus}
           onBlur={onInputBlur}
+          onCompositionStart={onCompositionStart}
+          onCompositionEnd={onCompositionEnd}
           inputRef={inputRef}
           sx={{ 
             flex: 1,
@@ -131,6 +135,7 @@ const CategoryAutocomplete: React.FC<CategoryAutocompleteProps> = ({
   const [open, setOpen] = useState(false);
   const isAddInputFocused = useRef(false);
   const addInputRef = useRef<HTMLInputElement | null>(null);
+  const isComposing = useRef(false); // IME composition 상태 추적
 
   const handleAddCategory = useCallback(() => {
     if (newCategory.trim()) {
@@ -169,11 +174,20 @@ const CategoryAutocomplete: React.FC<CategoryAutocompleteProps> = ({
   }, []);
 
   // newCategory 상태 변경으로 리렌더링 후에도 포커스 유지
+  // 단, IME composition 중에는 포커스를 다시 설정하지 않음 (한글 입력 깨짐 방지)
   React.useEffect(() => {
-    if (isAddInputFocused.current && addInputRef.current) {
+    if (isAddInputFocused.current && addInputRef.current && !isComposing.current) {
       addInputRef.current.focus();
     }
   }, [newCategory]);
+
+  const handleCompositionStart = useCallback(() => {
+    isComposing.current = true;
+  }, []);
+
+  const handleCompositionEnd = useCallback(() => {
+    isComposing.current = false;
+  }, []);
 
   const handleClose = useCallback((_event: React.SyntheticEvent, reason: string) => {
     // 새 카테고리 입력 필드에 포커스가 있으면 닫지 않음
@@ -231,6 +245,8 @@ const CategoryAutocomplete: React.FC<CategoryAutocompleteProps> = ({
           inputRef={addInputRef}
           onInputFocus={handleInputFocus}
           onInputBlur={handleInputBlur}
+          onCompositionStart={handleCompositionStart}
+          onCompositionEnd={handleCompositionEnd}
         />
       )}
       renderOption={(props, option) => {

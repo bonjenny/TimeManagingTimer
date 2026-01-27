@@ -170,8 +170,9 @@ describe('CategoryAutocomplete 관련 기능', () => {
       const newCategoryInput = screen.getByPlaceholderText('새 카테고리');
       await userEvent.type(newCategoryInput, '테스트카테고리');
 
-      // 추가 버튼 클릭
-      const addButton = screen.getByRole('button', { name: '' }); // AddIcon 버튼
+      // 추가 버튼 클릭 (AddIcon의 data-testid로 찾기)
+      const addIcon = screen.getByTestId('AddIcon');
+      const addButton = addIcon.closest('button')!;
       fireEvent.mouseDown(addButton);
       fireEvent.click(addButton);
 
