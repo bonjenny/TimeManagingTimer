@@ -313,6 +313,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
 
   // --- 스냅 및 중복 검사 로직 ---
   const SNAP_THRESHOLD_MS = 15 * 60 * 1000; // 15분
+  const MIN_SESSION_MS = 5 * 60 * 1000; // 최소 세션 길이 5분
 
   const getSnappedTime = useCallback((targetTime: number, excludeId?: string | null) => {
     let closestTime = targetTime;
@@ -339,6 +340,75 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
     });
 
     return closestTime;
+  }, [todayLogs]);
+
+  // 특정 행(작업명)의 세션 경계에 스냅하는 함수
+  const getSnappedTimeForRow = useCallback((targetTime: number, rowTitle: string) => {
+    let closestTime = targetTime;
+    let minDiff = SNAP_THRESHOLD_MS;
+
+    // 해당 행의 세션들만 필터링
+    const rowSessions = todayLogs.filter(log => log.title === rowTitle);
+
+    rowSessions.forEach(log => {
+      // 시작 시간과 비교
+      const startDiff = Math.abs(log.startTime - targetTime);
+      if (startDiff < minDiff) {
+        minDiff = startDiff;
+        closestTime = log.startTime;
+      }
+      
+      // 종료 시간과 비교
+      if (log.endTime) {
+        const endDiff = Math.abs(log.endTime - targetTime);
+        if (endDiff < minDiff) {
+          minDiff = endDiff;
+          closestTime = log.endTime;
+        }
+      }
+    });
+
+    return closestTime;
+  }, [todayLogs]);
+
+  // 충돌 시 자동 조정 함수 (동시에 여러 작업 세션 불가 전제)
+  const adjustForOverlap = useCallback((start: number, end: number, excludeId?: string | null): { adjustedStart: number; adjustedEnd: number; wasAdjusted: boolean } => {
+    let adjustedStart = start;
+    let adjustedEnd = end;
+    let wasAdjusted = false;
+
+    // 시간순으로 정렬된 로그들
+    const sortedLogs = [...todayLogs]
+      .filter(log => log.id !== excludeId)
+      .sort((a, b) => a.startTime - b.startTime);
+
+    // 충돌하는 세션들 찾기
+    sortedLogs.forEach(log => {
+      const logEnd = log.endTime || currentTimeRef.current;
+      
+      // 교차 검사 (맞닿음은 겹침 아님)
+      if (adjustedStart < logEnd && adjustedEnd > log.startTime) {
+        // 충돌 발생!
+        
+        // Case 1: 새 세션의 시작이 기존 세션 내부에 있음 → 시작을 기존 종료로 밀기
+        if (adjustedStart >= log.startTime && adjustedStart < logEnd) {
+          adjustedStart = logEnd;
+          wasAdjusted = true;
+        }
+        // Case 2: 새 세션의 종료가 기존 세션 내부에 있음 → 종료를 기존 시작으로 당기기
+        else if (adjustedEnd > log.startTime && adjustedEnd <= logEnd) {
+          adjustedEnd = log.startTime;
+          wasAdjusted = true;
+        }
+        // Case 3: 새 세션이 기존 세션을 완전히 포함 → 새 세션을 기존 세션 앞으로 축소
+        else if (adjustedStart < log.startTime && adjustedEnd > logEnd) {
+          adjustedEnd = log.startTime;
+          wasAdjusted = true;
+        }
+      }
+    });
+
+    return { adjustedStart, adjustedEnd, wasAdjusted };
   }, [todayLogs]);
 
   const checkOverlap = useCallback((start: number, end: number, excludeId?: string | null) => {
@@ -617,8 +687,8 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
     base.setHours(timelineStartHour, 0, 0, 0);
     const base_time = base.getTime();
 
-    const start_time = base_time + start_minutes * 60 * 1000;
-    const end_time = base_time + end_minutes * 60 * 1000;
+    let start_time = base_time + start_minutes * 60 * 1000;
+    let end_time = base_time + end_minutes * 60 * 1000;
 
     // 하루 범위 제한 (06:00 ~ 익일 06:00)
     const dayStart = getBaseTime();
@@ -628,70 +698,41 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
     let clamped_start = Math.max(dayStart, Math.min(dayEnd, start_time));
     let clamped_end = Math.max(dayStart, Math.min(dayEnd, end_time));
 
-    // 스냅 적용
-    clamped_start = getSnappedTime(clamped_start, null);
-    clamped_end = getSnappedTime(clamped_end, null);
+    // 기존 작업 행에서 드래그한 경우: 해당 행의 세션 경계에 스냅 적용
+    if (dragRowIndex !== null && dragRowIndex < uniqueRows.length) {
+      const rowTitle = uniqueRows[dragRowIndex].title;
+      clamped_start = getSnappedTimeForRow(clamped_start, rowTitle);
+      clamped_end = getSnappedTimeForRow(clamped_end, rowTitle);
+    } else {
+      // 새 작업 생성: 전체 세션 경계에 스냅 적용
+      clamped_start = getSnappedTime(clamped_start, null);
+      clamped_end = getSnappedTime(clamped_end, null);
+    }
 
-    // --- 스마트 중복 처리 로직 ---
-    const MINOR_OVERLAP_MS = 5 * 60 * 1000; // 5분
+    // --- 충돌 자동 조정 로직 (동시에 여러 작업 세션 불가) ---
+    const { adjustedStart, adjustedEnd, wasAdjusted } = adjustForOverlap(clamped_start, clamped_end, null);
+    clamped_start = adjustedStart;
+    clamped_end = adjustedEnd;
 
-    // 겹치는 작업 찾기
-    const overlappingLogs = todayLogs.filter(log => {
-      const logEnd = log.endTime || currentTimeRef.current;
-      // 교차 검사 (맞닿음은 겹침 아님)
-      return clamped_start < logEnd && clamped_end > log.startTime;
-    });
+    // 조정 후 유효한 시간 범위 확인 (최소 5분)
+    if (clamped_end - clamped_start < MIN_SESSION_MS) {
+      setSnackbar({
+        open: true,
+        message: '유효한 시간 범위가 없습니다. 다른 시간대를 선택해주세요.',
+        severity: 'warning'
+      });
+      setDragStartPercent(null);
+      setDragCurrentPercent(null);
+      setDragRowIndex(null);
+      return;
+    }
 
-    if (overlappingLogs.length > 0) {
-      let shouldConfirm = true;
-      let autoAdjusted = false;
-
-      // 겹치는 작업이 1개이고, 경미한 겹침인 경우 자동 조정 시도
-      if (overlappingLogs.length === 1) {
-        const target = overlappingLogs[0];
-        const targetEnd = target.endTime || currentTimeRef.current;
-
-        // 겹침 시간 계산
-        const overlapStart = Math.max(clamped_start, target.startTime);
-        const overlapEnd = Math.min(clamped_end, targetEnd);
-        const overlapDuration = overlapEnd - overlapStart;
-
-        // 포함 관계 확인 (새 작업이 기존 작업을 완전히 감싸거나, 그 반대인 경우)
-        const isContaining = (clamped_start <= target.startTime && clamped_end >= targetEnd);
-        const isContained = (clamped_start >= target.startTime && clamped_end <= targetEnd);
-
-        // 조건: 5분 이내 겹침 && 포함 관계 아님
-        if (overlapDuration > 0 && overlapDuration <= MINOR_OVERLAP_MS && !isContaining && !isContained) {
-          // 조정 방향 결정
-          // Case 1: 앞쪽이 겹침 (기존 작업의 뒷부분과 새 작업의 앞부분)
-          if (clamped_start < targetEnd && clamped_end > targetEnd) {
-            clamped_start = targetEnd; // 시작 시간을 기존 작업 끝으로 미룸
-            autoAdjusted = true;
-          }
-          // Case 2: 뒤쪽이 겹침 (새 작업의 뒷부분과 기존 작업의 앞부분)
-          else if (clamped_start < target.startTime && clamped_end > target.startTime) {
-            clamped_end = target.startTime; // 종료 시간을 기존 작업 시작으로 당김
-            autoAdjusted = true;
-          }
-        }
-      }
-
-      if (autoAdjusted) {
-        // 자동 조정 성공 시
-        setSnackbar({
-          open: true,
-          message: '시간 충돌로 인해 자동 조정되었습니다.',
-          severity: 'info'
-        });
-        shouldConfirm = false;
-      } else {
-        // 자동 조정 불가하거나 심각한 겹침 시 - 겹침 허용하고 알림만 표시
-        setSnackbar({
-          open: true,
-          message: '시간이 겹치는 작업이 있습니다.',
-          severity: 'warning'
-        });
-      }
+    if (wasAdjusted) {
+      setSnackbar({
+        open: true,
+        message: '시간 충돌로 인해 자동 조정되었습니다.',
+        severity: 'info'
+      });
     }
     // ---------------------------
 
@@ -907,63 +948,33 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
 
         // 시간이 변경되었을 때만 업데이트
         if (new_start !== resizeOriginalStart || new_end !== resizeOriginalEnd) {
-          // --- 스마트 중복 처리 로직 (리사이즈) ---
-          const MINOR_OVERLAP_MS = 5 * 60 * 1000; // 5분
-          
-          // 겹치는 작업 찾기
-          const overlappingLogs = todayLogs.filter(log => {
-            if (log.id === resizeLogId) return false;
-            const logEnd = log.endTime || currentTimeRef.current;
-            return new_start < logEnd && new_end > log.startTime;
-          });
+          // --- 충돌 자동 조정 로직 (동시에 여러 작업 세션 불가) ---
+          const { adjustedStart, adjustedEnd, wasAdjusted } = adjustForOverlap(new_start, new_end, resizeLogId);
+          new_start = adjustedStart;
+          new_end = adjustedEnd;
 
-          if (overlappingLogs.length > 0) {
-            let autoAdjusted = false;
+          // 조정 후 유효한 시간 범위 확인 (최소 5분)
+          if (new_end - new_start < MIN_SESSION_MS) {
+            setSnackbar({
+              open: true,
+              message: '유효한 시간 범위가 없습니다. 리사이즈가 취소되었습니다.',
+              severity: 'warning'
+            });
+            // 리사이즈 취소 - 상태 초기화만 하고 업데이트하지 않음
+            setIsResizing(false);
+            setResizeLogId(null);
+            setResizeType(null);
+            setResizeStartPercent(null);
+            setResizeCurrentPercent(null);
+            return;
+          }
 
-            // 겹치는 작업이 1개이고, 경미한 겹침인 경우 자동 조정 시도
-            if (overlappingLogs.length === 1) {
-              const target = overlappingLogs[0];
-              const targetEnd = target.endTime || currentTimeRef.current;
-              
-              const overlapStart = Math.max(new_start, target.startTime);
-              const overlapEnd = Math.min(new_end, targetEnd);
-              const overlapDuration = overlapEnd - overlapStart;
-              
-              const isContaining = (new_start <= target.startTime && new_end >= targetEnd);
-              const isContained = (new_start >= target.startTime && new_end <= targetEnd);
-
-              if (overlapDuration > 0 && overlapDuration <= MINOR_OVERLAP_MS && !isContaining && !isContained) {
-                // 리사이즈 방향에 따라 조정
-                if (effectiveResizeType === 'start') {
-                  // 시작 시간을 당기다가 앞 작업의 끝과 겹친 경우 -> 앞 작업 끝으로 조정
-                  if (new_start < targetEnd) {
-                    new_start = targetEnd;
-                    autoAdjusted = true;
-                  }
-                } else {
-                  // 종료 시간을 늘리다가 뒷 작업의 시작과 겹친 경우 -> 뒷 작업 시작으로 조정
-                  if (new_end > target.startTime) {
-                    new_end = target.startTime;
-                    autoAdjusted = true;
-                  }
-                }
-              }
-            }
-
-            if (autoAdjusted) {
-              setSnackbar({
-                open: true,
-                message: '시간 충돌로 인해 자동 조정되었습니다.',
-                severity: 'info'
-              });
-            } else {
-              // 겹침 허용하고 알림만 표시
-              setSnackbar({
-                open: true,
-                message: '시간이 겹치는 작업이 있습니다.',
-                severity: 'warning'
-              });
-            }
+          if (wasAdjusted) {
+            setSnackbar({
+              open: true,
+              message: '시간 충돌로 인해 자동 조정되었습니다.',
+              severity: 'info'
+            });
           }
           // ---------------------------
 
