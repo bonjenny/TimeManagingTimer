@@ -279,6 +279,10 @@ const PresetPanel: React.FC = () => {
         flexDirection: 'column',
         bgcolor: 'transparent', // 배경색 제거 (투명)
         borderColor: 'var(--border-color)',
+        resize: 'horizontal',  // 가로 리사이즈 가능
+        overflow: 'auto',      // resize가 작동하려면 필요
+        minWidth: 200,         // 최소 너비
+        maxWidth: 450,         // 최대 너비
       }}
     >
       {/* 헤더 */}
@@ -391,7 +395,7 @@ const PresetPanel: React.FC = () => {
                 >
                   <ListItemButton
                     onClick={() => handleOpenEditModal(preset)}
-                    sx={{ py: 1.5, pr: 14 }}
+                    sx={{ py: 1.5, pr: 16 }}
                   >
                     {/* 색상 인디케이터 */}
                     {preset.color && (
@@ -422,14 +426,23 @@ const PresetPanel: React.FC = () => {
                         </Typography>
                       }
                       secondary={
-                        <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5 }}>
+                        <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5, overflow: 'hidden' }}>
                           {preset.projectCode && (
                             <Chip
                               label={getProjectName(preset.projectCode)}
                               size="small"
                               variant="outlined"
-                              sx={{ height: 18, fontSize: '0.65rem' }}
-                              title={`[${preset.projectCode}]`}
+                              sx={{ 
+                                height: 18, 
+                                fontSize: '0.65rem',
+                                maxWidth: 120,
+                                '& .MuiChip-label': {
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                }
+                              }}
+                              title={`[${preset.projectCode}] ${getProjectName(preset.projectCode)}`}
                             />
                           )}
                           {preset.category && (
@@ -441,7 +454,14 @@ const PresetPanel: React.FC = () => {
                                 fontSize: '0.65rem',
                                 bgcolor: 'var(--bg-hover)',
                                 color: 'var(--text-secondary)',
+                                maxWidth: 120,
+                                '& .MuiChip-label': {
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                }
                               }}
+                              title={preset.category}
                             />
                           )}
                         </Box>

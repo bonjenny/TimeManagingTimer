@@ -535,7 +535,9 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
         {/* 업무 목록 */}
         {groupedTasks.map((task) => {
           const is_expanded = expandedTasks.has(task.title);
-          const all_completed = task.sessions.every(s => s.status === 'COMPLETED');
+          // activeTimer가 같은 제목이면 진행 중이므로 완료가 아님
+          const is_active_task = activeTimer?.title === task.title;
+          const all_completed = !is_active_task && task.sessions.every(s => s.status === 'COMPLETED');
           
           return (
             <Box key={task.title}>
@@ -592,7 +594,6 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                   
                   {/* 시작/재시작/일시정지 버튼 */}
                   {(() => {
-                    const is_active_task = activeTimer?.title === task.title;
                     const tooltip_text = is_active_task 
                       ? "일시정지 후 기록으로 이동" 
                       : all_completed 
