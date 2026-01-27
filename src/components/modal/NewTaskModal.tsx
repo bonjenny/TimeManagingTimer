@@ -14,8 +14,7 @@ import {
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import KeyboardIcon from '@mui/icons-material/Keyboard';
 import { useTimerStore } from '../../store/useTimerStore';
-
-const CATEGORIES = ['분석', '개발', '개발자테스트', '테스트오류수정', '센터오류수정', '환경세팅', '회의', '기타'];
+import CategoryAutocomplete from '../common/CategoryAutocomplete';
 
 interface NewTaskModalProps {
   open: boolean;
@@ -142,18 +141,13 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ open, onClose }) => {
               onKeyDown={handleKeyDown}
               sx={{ flex: 1 }}
             />
-            <Autocomplete
-              options={CATEGORIES}
+            <CategoryAutocomplete
               value={category}
-              onChange={(_e, newValue) => setCategory(newValue)}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  label="카테고리"
-                  placeholder="선택"
-                  onKeyDown={handleKeyDown}
-                />
-              )}
+              onChange={(newValue) => setCategory(newValue)}
+              label="카테고리"
+              placeholder="선택"
+              variant="outlined"
+              onKeyDown={handleKeyDown}
               sx={{ flex: 1 }}
             />
           </Box>

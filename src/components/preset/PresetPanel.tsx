@@ -29,26 +29,26 @@ import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import HistoryIcon from '@mui/icons-material/History';
 import { useTimerStore } from '../../store/useTimerStore';
+import { useProjectStore } from '../../store/useProjectStore';
 import { getPalette, loadPaletteSettings } from '../../utils/colorPalette';
+import CategoryAutocomplete from '../common/CategoryAutocomplete';
 
 // 프리셋 데이터 타입
 interface PresetItem {
   id: string;
   title: string;
-  boardNo?: string;
+  projectCode?: string;  // boardNo에서 변경
   category?: string;
   color?: string;
   is_favorite: boolean;
 }
-
-// 카테고리 목록
-const CATEGORIES = ['분석', '개발', '개발자테스트', '테스트오류수정', '센터오류수정', '환경세팅', '회의', '기타'];
 
 // LocalStorage 키
 const PRESETS_STORAGE_KEY = 'timekeeper-manual-presets';
 
 const PresetPanel: React.FC = () => {
   const { startTimer, logs } = useTimerStore();
+  const { projects, addProject, getProjectName } = useProjectStore();
 
   // 컬러 팔레트 로드
   const [colorPalette, setColorPalette] = useState<string[]>(() => {
@@ -89,9 +89,13 @@ const PresetPanel: React.FC = () => {
   const [is_modal_open, setIsModalOpen] = useState(false);
   const [edit_preset, setEditPreset] = useState<PresetItem | null>(null);
   const [modal_title, setModalTitle] = useState('');
-  const [modal_board_no, setModalBoardNo] = useState('');
+  const [modal_project_code, setModalProjectCode] = useState('');
+  const [modal_project_name, setModalProjectName] = useState('');  // 새 프로젝트명 입력용
   const [modal_category, setModalCategory] = useState<string | null>(null);
   const [modal_color, setModalColor] = useState<string | undefined>(undefined);
+  
+  // 프로젝트 옵션 (코드 + 이름 형태로 표시)
+  const projectOptions = projects.map(p => `[${p.code}] ${p.name}`);
 
   // 추가 메뉴 상태 (최근 작업 선택)
   const [add_menu_anchor, setAddMenuAnchor] = useState<null | HTMLElement>(null);
@@ -105,7 +109,7 @@ const PresetPanel: React.FC = () => {
   const getRecentTasks = () => {
     const seen_titles = new Set<string>();
     const preset_titles = new Set(presets.map(p => p.title));
-    const recent: { title: string; boardNo?: string; category?: string }[] = [];
+    const recent: { title: string; projectCode?: string; category?: string }[] = [];
 
     // 최신 로그부터 순회
     const sorted_logs = [...logs].sort((a, b) => b.startTime - a.startTime);
@@ -115,7 +119,7 @@ const PresetPanel: React.FC = () => {
         seen_titles.add(log.title);
         recent.push({
           title: log.title,
-          boardNo: log.boardNo,
+          projectCode: log.projectCode,
           category: log.category,
         });
         if (recent.length >= 5) break;
@@ -134,7 +138,7 @@ const PresetPanel: React.FC = () => {
 
   const handleStartPreset = (preset: PresetItem, e: React.MouseEvent) => {
     e.stopPropagation();
-    startTimer(preset.title, preset.boardNo, preset.category);
+    startTimer(preset.title, preset.projectCode, preset.category);
   };
 
   const handleToggleFavorite = (preset_id: string, e: React.MouseEvent) => {
@@ -160,18 +164,20 @@ const PresetPanel: React.FC = () => {
     handleCloseAddMenu();
     setEditPreset(null);
     setModalTitle('');
-    setModalBoardNo('');
+    setModalProjectCode('');
+    setModalProjectName('');
     setModalCategory(null);
     setModalColor(undefined);
     setIsModalOpen(true);
   };
 
   // 최근 작업에서 프리셋 추가
-  const handleAddFromRecent = (task: { title: string; boardNo?: string; category?: string }) => {
+  const handleAddFromRecent = (task: { title: string; projectCode?: string; category?: string }) => {
     handleCloseAddMenu();
     setEditPreset(null);
     setModalTitle(task.title);
-    setModalBoardNo(task.boardNo || '');
+    setModalProjectCode(task.projectCode || '');
+    setModalProjectName(task.projectCode ? getProjectName(task.projectCode) : '');
     setModalCategory(task.category || null);
     setModalColor(undefined);
     setIsModalOpen(true);
@@ -181,7 +187,8 @@ const PresetPanel: React.FC = () => {
   const handleOpenEditModal = (preset: PresetItem) => {
     setEditPreset(preset);
     setModalTitle(preset.title);
-    setModalBoardNo(preset.boardNo || '');
+    setModalProjectCode(preset.projectCode || '');
+    setModalProjectName(preset.projectCode ? getProjectName(preset.projectCode) : '');
     setModalCategory(preset.category || null);
     setModalColor(preset.color);
     setIsModalOpen(true);
@@ -192,15 +199,46 @@ const PresetPanel: React.FC = () => {
     setIsModalOpen(false);
     setEditPreset(null);
   };
+  
+  // 프로젝트 코드 입력 처리 (자동완성 선택 또는 직접 입력)
+  const handleProjectCodeChange = (value: string) => {
+    // [코드] 이름 형태에서 코드와 이름 추출
+    const match = value.match(/^\[([^\]]+)\]\s*(.*)$/);
+    if (match) {
+      setModalProjectCode(match[1]);
+      setModalProjectName(match[2] || getProjectName(match[1]));
+    } else {
+      setModalProjectCode(value);
+      // 기존 프로젝트에서 이름 찾기
+      const existingProject = projects.find(p => p.code === value);
+      if (existingProject) {
+        setModalProjectName(existingProject.name);
+      }
+    }
+  };
+  
+  // 프로젝트 코드에서 표시용 문자열 생성
+  const getProjectDisplayValue = () => {
+    if (!modal_project_code) return '';
+    if (modal_project_name && modal_project_name !== modal_project_code) {
+      return `[${modal_project_code}] ${modal_project_name}`;
+    }
+    return modal_project_code;
+  };
 
   // 프리셋 저장
   const handleSavePreset = () => {
     if (!modal_title.trim()) return;
+    
+    // 새 프로젝트 코드-명 매핑 저장
+    if (modal_project_code && modal_project_name) {
+      addProject({ code: modal_project_code, name: modal_project_name });
+    }
 
     const new_preset: PresetItem = {
       id: edit_preset?.id || crypto.randomUUID(),
       title: modal_title.trim(),
-      boardNo: modal_board_no || undefined,
+      projectCode: modal_project_code || undefined,
       category: modal_category || undefined,
       color: modal_color,
       is_favorite: edit_preset?.is_favorite || false,
@@ -286,7 +324,7 @@ const PresetPanel: React.FC = () => {
             </ListItemIcon>
             <ListItemText
               primary={task.title}
-              secondary={task.boardNo ? `#${task.boardNo}` : undefined}
+              secondary={task.projectCode ? getProjectName(task.projectCode) : undefined}
               primaryTypographyProps={{ variant: 'body2', noWrap: true, sx: { maxWidth: 180 } }}
               secondaryTypographyProps={{ variant: 'caption' }}
             />
@@ -382,12 +420,13 @@ const PresetPanel: React.FC = () => {
                       }
                       secondary={
                         <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5 }}>
-                          {preset.boardNo && (
+                          {preset.projectCode && (
                             <Chip
-                              label={`#${preset.boardNo}`}
+                              label={getProjectName(preset.projectCode)}
                               size="small"
                               variant="outlined"
                               sx={{ height: 18, fontSize: '0.65rem' }}
+                              title={`[${preset.projectCode}]`}
                             />
                           )}
                           {preset.category && (
@@ -442,35 +481,62 @@ const PresetPanel: React.FC = () => {
         <DialogTitle>{edit_preset ? '프리셋 수정' : '새 프리셋 추가'}</DialogTitle>
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, mt: 1 }}>
-            {/* 작업 제목 */}
-            <TextField
-              label="작업 제목"
-              placeholder="예: 주간 회의"
-              value={modal_title}
-              onChange={(e) => setModalTitle(e.target.value)}
+            {/* 프로젝트 코드 (자동완성 + 직접입력) */}
+            <Autocomplete
+              freeSolo
+              options={projectOptions}
+              value={getProjectDisplayValue()}
+              onInputChange={(_e, newValue) => handleProjectCodeChange(newValue)}
+              renderInput={(params) => (
+                <TextField 
+                  {...params} 
+                  label="프로젝트 코드" 
+                  placeholder="예: A25_01846 (미입력 시 A00_00000)"
+                  helperText="기존 프로젝트를 선택하거나 새 코드를 입력하세요"
+                />
+              )}
               fullWidth
               autoFocus
             />
+            
+            {/* 프로젝트명 (새 코드 입력 시 or 기존 코드명 수정) */}
+            {modal_project_code && (
+              <TextField
+                label="프로젝트명"
+                placeholder="예: 5.6 프레임워크 FE"
+                value={modal_project_name}
+                onChange={(e) => setModalProjectName(e.target.value)}
+                fullWidth
+                helperText="프로젝트 코드와 매핑되는 이름입니다"
+              />
+            )}
 
-            {/* 게시판 번호 & 카테고리 */}
+            {/* 업무명 & 카테고리명 */}
             <Box sx={{ display: 'flex', gap: 2 }}>
               <TextField
-                label="게시판 번호"
-                placeholder="예: 12345"
-                value={modal_board_no}
-                onChange={(e) => setModalBoardNo(e.target.value)}
-                sx={{ flex: 1 }}
+                label="업무명"
+                placeholder="예: 5.6 테스트 케이스 확인 및 이슈 처리"
+                value={modal_title}
+                onChange={(e) => setModalTitle(e.target.value)}
+                sx={{ flex: 2 }}
               />
-              <Autocomplete
-                options={CATEGORIES}
+              <CategoryAutocomplete
                 value={modal_category}
-                onChange={(_e, newValue) => setModalCategory(newValue)}
-                renderInput={(params) => (
-                  <TextField {...params} label="카테고리" placeholder="선택" />
-                )}
+                onChange={(newValue) => setModalCategory(newValue)}
+                label="카테고리명"
+                placeholder="카테고리 선택"
+                variant="outlined"
                 sx={{ flex: 1 }}
               />
             </Box>
+            
+            {/* 비고 */}
+            <TextField
+              label="비고"
+              placeholder="추가 메모"
+              multiline
+              rows={2}
+            />
 
             {/* 색상 선택 */}
             <Box>

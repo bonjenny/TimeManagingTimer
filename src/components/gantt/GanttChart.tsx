@@ -16,12 +16,23 @@ import {
   MenuItem,
   ListItemIcon,
   ListItemText,
+  Snackbar,
+  Alert,
+  Slide,
 } from '@mui/material';
+import type { SlideProps } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { useTimerStore, TimerLog } from '../../store/useTimerStore';
+import { useProjectStore } from '../../store/useProjectStore';
 import { formatTimeRange, formatDuration } from '../../utils/timeUtils';
+import CategoryAutocomplete from '../common/CategoryAutocomplete';
 import { getPalette, getColorForTask, loadPaletteSettings } from '../../utils/colorPalette';
+
+// Snackbar 슬라이드 트랜지션 (위에서 아래로 나타남, 위로 사라짐)
+const SlideTransition = (props: SlideProps) => {
+  return <Slide {...props} direction="down" />;
+};
 
 interface GanttChartProps {
   selectedDate: Date;
@@ -44,13 +55,21 @@ const ROW_HEIGHT = 32;
 const ROW_GAP = 4;
 // 헤더 높이 (시간축 라벨)
 const HEADER_HEIGHT = 24;
-// 왼쪽 라벨 너비 (기록이 있을 때만 사용)
-const LABEL_WIDTH_WITH_DATA = 180;
-
-const CATEGORIES = ['분석', '개발', '개발자테스트', '테스트오류수정', '센터오류수정', '환경세팅', '회의', '기타'];
+// 왼쪽 라벨 너비 기본값
+const DEFAULT_LABEL_WIDTH = 180;
+const MIN_LABEL_WIDTH = 100;
+const MAX_LABEL_WIDTH = 400;
+// 라벨 너비 저장 키
+const LABEL_WIDTH_STORAGE_KEY = 'timekeeper-gantt-label-width';
 
 const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
-  const { logs, activeTimer, addLog, updateLog, deleteLog } = useTimerStore();
+  const { logs, activeTimer, addLog, updateLog, deleteLog, themeConfig } = useTimerStore();
+  const { getProjectName, projects } = useProjectStore();
+  
+  // 프로젝트 옵션 (코드 + 이름 형태로 표시)
+  const projectOptions = useMemo(() => {
+    return projects.map(p => `[${p.code}] ${p.name}`);
+  }, [projects]);
 
   // 컬러 팔레트 설정 로드
   const [paletteSettings, setPaletteSettings] = useState(() => loadPaletteSettings());
@@ -150,7 +169,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
   // 리사이즈 상태 관리
   const [isResizing, setIsResizing] = useState(false);
   const [resizeLogId, setResizeLogId] = useState<string | null>(null);
-  const [resizeType, setResizeType] = useState<'start' | 'end' | null>(null);
+  const [resizeType, setResizeType] = useState<'start' | 'end' | 'smart' | null>(null);
   const [resizeStartPercent, setResizeStartPercent] = useState<number | null>(null);
   const [resizeCurrentPercent, setResizeCurrentPercent] = useState<number | null>(null);
   const [resizeOriginalStart, setResizeOriginalStart] = useState<number>(0);
@@ -161,7 +180,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
   const [newLogStart, setNewLogStart] = useState<number>(0);
   const [newLogEnd, setNewLogEnd] = useState<number>(0);
   const [newTitle, setNewTitle] = useState('');
-  const [newBoardNo, setNewBoardNo] = useState('');
+  const [newProjectCode, setNewProjectCode] = useState('');
   const [newCategory, setNewCategory] = useState<string | null>(null);
   const [isAddingSession, setIsAddingSession] = useState(false); // 기존 작업에 세션 추가 여부
   const [isHoveringBar, setIsHoveringBar] = useState(false); // 작업 막대 hover 상태
@@ -175,8 +194,93 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
 
   const [editingLog, setEditingLog] = useState<TimerLog | null>(null);
   const [editTitle, setEditTitle] = useState('');
-  const [editBoardNo, setEditBoardNo] = useState('');
+  const [editProjectCode, setEditProjectCode] = useState('');
   const [editCategory, setEditCategory] = useState<string | null>(null);
+  
+  // 충돌 알림 상태
+  const [snackbar, setSnackbar] = useState<{
+    open: boolean;
+    message: string;
+    severity: 'info' | 'warning';
+  }>({ open: false, message: '', severity: 'info' });
+  
+  // 라벨 너비 상태 (localStorage에서 로드)
+  const [labelWidth, setLabelWidth] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem(LABEL_WIDTH_STORAGE_KEY);
+      if (saved) {
+        const value = parseInt(saved, 10);
+        if (!isNaN(value) && value >= MIN_LABEL_WIDTH && value <= MAX_LABEL_WIDTH) {
+          return value;
+        }
+      }
+    } catch {
+      // 무시
+    }
+    return DEFAULT_LABEL_WIDTH;
+  });
+  
+  // 라벨 리사이저 드래그 상태
+  const [isResizingLabel, setIsResizingLabel] = useState(false);
+  const labelResizeStartX = useRef<number>(0);
+  const labelResizeStartWidth = useRef<number>(DEFAULT_LABEL_WIDTH);
+  
+  // 라벨 너비 변경 시 localStorage에 저장
+  useEffect(() => {
+    localStorage.setItem(LABEL_WIDTH_STORAGE_KEY, String(labelWidth));
+  }, [labelWidth]);
+  
+  // 라벨 리사이저 드래그 핸들러
+  const handleLabelResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsResizingLabel(true);
+    labelResizeStartX.current = e.clientX;
+    labelResizeStartWidth.current = labelWidth;
+  }, [labelWidth]);
+  
+  // 라벨 리사이저 마우스 이동/해제 핸들러
+  useEffect(() => {
+    if (!isResizingLabel) return;
+    
+    const handleMouseMove = (e: MouseEvent) => {
+      const delta = e.clientX - labelResizeStartX.current;
+      const newWidth = Math.min(MAX_LABEL_WIDTH, Math.max(MIN_LABEL_WIDTH, labelResizeStartWidth.current + delta));
+      setLabelWidth(newWidth);
+    };
+    
+    const handleMouseUp = () => {
+      setIsResizingLabel(false);
+    };
+    
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizingLabel]);
+  
+  // 프로젝트 코드 입력 처리 함수
+  const handleProjectCodeChange = (value: string, setter: (value: string) => void) => {
+    const match = value.match(/^\[([^\]]+)\]/);
+    if (match) {
+      setter(match[1]);
+    } else {
+      setter(value);
+    }
+  };
+  
+  // 프로젝트 코드에서 표시용 문자열 생성
+  const getProjectDisplayValue = (code: string) => {
+    if (!code) return '';
+    const name = getProjectName(code);
+    if (name && name !== code) {
+      return `[${code}] ${name}`;
+    }
+    return code;
+  };
 
   // 선택된 날짜의 06:00 기준 시작 시간
   const getBaseTime = useCallback((date?: Date) => {
@@ -312,7 +416,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
   const { chartItems, uniqueRows } = useMemo(() => {
     // 1. 제목별로 그룹화하고 row_index 할당
     const title_to_row_index = new Map<string, number>();
-    const rows: { title: string; boardNo?: string; category?: string; color: string }[] = [];
+    const rows: { title: string; projectCode?: string; category?: string; color: string }[] = [];
 
     todayLogs.forEach(log => {
       if (!title_to_row_index.has(log.title)) {
@@ -322,7 +426,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
         const color = getColorForTask(log.title, colorPalette);
         rows.push({
           title: log.title,
-          boardNo: log.boardNo,
+          projectCode: log.projectCode,
           category: log.category,
           color
         });
@@ -361,10 +465,10 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
   // 시간축 라벨 생성 (동적 범위에 맞게)
   const timeLabels = useMemo(() => {
     const labels = [];
-    // 시작 시간을 짝수로 맞춤
-    const start = timelineStartHour % 2 === 0 ? timelineStartHour : timelineStartHour - 1;
+    // 시작 시간 (정시 기준)
+    const start = timelineStartHour;
     
-    for (let hour = start; hour <= timelineEndHour; hour += 2) {
+    for (let hour = start; hour <= timelineEndHour; hour += 1) {
       if (hour < timelineStartHour) continue;
       const display_hour = hour >= 24 ? hour - 24 : hour;
       const offset_minutes = (hour - timelineStartHour) * 60;
@@ -377,7 +481,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
   }, [timelineStartHour, timelineEndHour, totalMinutes]);
 
   // 기록이 있을 때만 좌측 라벨 영역 표시
-  const LABEL_WIDTH = uniqueRows.length > 0 ? LABEL_WIDTH_WITH_DATA : 0;
+  const LABEL_WIDTH = uniqueRows.length > 0 ? labelWidth : 0;
 
   // 전체 차트 높이 계산 (고유 행 수 기준 + 드래그 여유 공간)
   const chart_height = Math.max(
@@ -477,17 +581,29 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
 
     setIsDragging(false);
 
-    // 드래그 거리가 너무 짧으면 무시 (단순 클릭 방지)
+    // 드래그 거리가 너무 짧으면 무시 (단순 클릭 처리)
+    let start_p = Math.min(dragStartPercent, dragCurrentPercent);
+    let end_p = Math.max(dragStartPercent, dragCurrentPercent);
+    
+    // 단순 클릭인 경우 (드래그 거리 1% 미만)
     if (Math.abs(dragCurrentPercent - dragStartPercent) < 1) {
-      setDragStartPercent(null);
-      setDragCurrentPercent(null);
-      setDragRowIndex(null);
-      return;
+      // 1. 기본 길이 설정 (1시간)
+      // 전체 분(totalMinutes) 중 60분이 차지하는 비율(%) 계산
+      const defaultDurationPercent = (60 / totalMinutes) * 100;
+      
+      // 2. 클릭한 위치를 시작점으로 설정
+      start_p = dragStartPercent;
+      
+      // 3. 종료점은 시작점 + 1시간 (최대 100%를 넘지 않도록)
+      end_p = Math.min(dragStartPercent + defaultDurationPercent, 100);
+      
+      // 4. 만약 종료점이 100%를 넘어서 잘렸다면, 시작점을 앞으로 당김 (길이 유지 노력)
+      if (end_p === 100) {
+        start_p = Math.max(0, 100 - defaultDurationPercent);
+      }
     }
 
     // 시간 변환 로직
-    const start_p = Math.min(dragStartPercent, dragCurrentPercent);
-    const end_p = Math.max(dragStartPercent, dragCurrentPercent);
 
     // 퍼센트 -> 분 (동적 범위 기준)
     const start_minutes = (start_p / 100) * totalMinutes;
@@ -559,18 +675,19 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
 
       if (autoAdjusted) {
         // 자동 조정 성공 시
-        alert("기존 작업과 시간이 겹쳐 자동으로 조정되었습니다.");
+        setSnackbar({
+          open: true,
+          message: '시간 충돌로 인해 자동 조정되었습니다.',
+          severity: 'info'
+        });
         shouldConfirm = false;
       } else {
-        // 자동 조정 불가하거나 심각한 겹침 시 사용자 확인
-        if (!window.confirm("입력하신 시간이 기존 작업과 겹칩니다.\n\n확인: 겹침을 허용하고 등록\n취소: 등록 취소")) {
-          setIsDragging(false);
-          setDragStartPercent(null);
-          setDragCurrentPercent(null);
-          setDragRowIndex(null);
-          return;
-        }
-        // 확인 시 shouldConfirm 통과 -> 겹침 허용 등록
+        // 자동 조정 불가하거나 심각한 겹침 시 - 겹침 허용하고 알림만 표시
+        setSnackbar({
+          open: true,
+          message: '시간이 겹치는 작업이 있습니다.',
+          severity: 'warning'
+        });
       }
     }
     // ---------------------------
@@ -582,13 +699,13 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
     if (dragRowIndex !== null && dragRowIndex < uniqueRows.length) {
       const existing_row = uniqueRows[dragRowIndex];
       setNewTitle(existing_row.title);
-      setNewBoardNo(existing_row.boardNo || '');
+      setNewProjectCode(existing_row.projectCode || '');
       setNewCategory(existing_row.category || null);
       setIsAddingSession(true);
     } else {
       // 새 작업 생성
       setNewTitle('');
-      setNewBoardNo('');
+      setNewProjectCode('');
       setNewCategory(null);
       setIsAddingSession(false);
     }
@@ -607,7 +724,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
     const new_log: TimerLog = {
       id: crypto.randomUUID(),
       title: newTitle,
-      boardNo: newBoardNo,
+      projectCode: newProjectCode || undefined,
       category: newCategory || undefined,
       startTime: newLogStart,
       endTime: newLogEnd,
@@ -639,6 +756,35 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
     const minutes = (percent / 100) * totalMinutes;
     return base.getTime() + minutes * 60 * 1000;
   }, [selectedDate, timelineStartHour, totalMinutes]);
+
+  // 스마트 리사이즈 시작 핸들러 (작은 작업용)
+  const handleSmartResizeStart = useCallback((e: React.MouseEvent, item: TimerLog) => {
+    e.stopPropagation();
+    // 우클릭 등은 무시
+    if (e.button !== 0) return;
+
+    // 작업의 시각적 너비 확인
+    const rect = e.currentTarget.getBoundingClientRect();
+    const width_px = rect.width;
+    
+    // 24px 미만(약 3% 너비)일 때만 스마트 리사이즈 활성화
+    // 또는 duration이 매우 짧은 경우 (예: 15분 미만)
+    const duration_minutes = (item.endTime ? item.endTime - item.startTime : currentTime - item.startTime) / 1000 / 60;
+    const is_visually_small = width_px < 24;
+    const is_short_duration = duration_minutes < 15;
+
+    if (is_visually_small || is_short_duration) {
+      const percent = getPercentFromEvent(e);
+      
+      setIsResizing(true);
+      setResizeLogId(item.id);
+      setResizeType('smart'); // 방향 미정 상태
+      setResizeStartPercent(percent);
+      setResizeCurrentPercent(percent);
+      setResizeOriginalStart(item.startTime);
+      setResizeOriginalEnd(item.endTime || currentTime);
+    }
+  }, [currentTime]);
 
   // 리사이즈 시작
   const handleResizeStart = useCallback((
@@ -673,6 +819,24 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
       const width = rect.width - LABEL_WIDTH - 32; // 양쪽 패딩 32px 고려
       const percent = Math.min(Math.max((x / width) * 100, 0), 100);
       setResizeCurrentPercent(percent);
+
+      // 스마트 리사이즈 방향 결정
+      if (resizeType === 'smart' && resizeStartPercent !== null) {
+        const delta = percent - resizeStartPercent;
+        // 일정 거리 이상 움직였을 때 방향 결정 (약 0.5%)
+        if (Math.abs(delta) > 0.5) {
+          // 현재 리사이즈 중인 작업이 진행 중인지 확인
+          const resizingLog = todayLogs.find(log => log.id === resizeLogId);
+          const isRunningOrPaused = resizingLog && (resizingLog.status === 'RUNNING' || resizingLog.status === 'PAUSED');
+          
+          if (delta < 0) {
+            setResizeType('start'); // 왼쪽으로 움직이면 시작 시간 조정
+          } else {
+            // 진행 중인 작업은 종료 시간 조정 불가 → 시작 시간 조정으로 대체
+            setResizeType(isRunningOrPaused ? 'start' : 'end');
+          }
+        }
+      }
     };
 
     const handleMouseUp = () => {
@@ -682,6 +846,27 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
 
         let new_start = resizeOriginalStart;
         let new_end = resizeOriginalEnd;
+        
+        // smart 상태에서 mouseup된 경우, 최종 delta 방향으로 결정
+        let effectiveResizeType = resizeType;
+        if (resizeType === 'smart') {
+          const resizingLog = todayLogs.find(log => log.id === resizeLogId);
+          const isRunningOrPaused = resizingLog && (resizingLog.status === 'RUNNING' || resizingLog.status === 'PAUSED');
+          
+          if (delta_percent < 0) {
+            effectiveResizeType = 'start';
+          } else if (delta_percent > 0) {
+            effectiveResizeType = isRunningOrPaused ? 'start' : 'end';
+          } else {
+            // 움직임이 없으면 리사이즈 취소
+            setIsResizing(false);
+            setResizeLogId(null);
+            setResizeType(null);
+            setResizeStartPercent(null);
+            setResizeCurrentPercent(null);
+            return;
+          }
+        }
 
         // 하루 범위 계산 (06:00 ~ 익일 06:00)
         // 주의: useEffect 내부이므로 getBaseTime을 직접 호출하기보다 selectedDate 의존성을 활용
@@ -689,7 +874,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
         const dayStart = getBaseTime();
         const dayEnd = dayStart + 24 * 60 * 60 * 1000;
 
-        if (resizeType === 'start') {
+        if (effectiveResizeType === 'start') {
           new_start = resizeOriginalStart + delta_ms;
           
           // 1. 하루 범위 벗어나지 않도록 제한
@@ -746,7 +931,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
 
               if (overlapDuration > 0 && overlapDuration <= MINOR_OVERLAP_MS && !isContaining && !isContained) {
                 // 리사이즈 방향에 따라 조정
-                if (resizeType === 'start') {
+                if (effectiveResizeType === 'start') {
                   // 시작 시간을 당기다가 앞 작업의 끝과 겹친 경우 -> 앞 작업 끝으로 조정
                   if (new_start < targetEnd) {
                     new_start = targetEnd;
@@ -763,16 +948,18 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
             }
 
             if (autoAdjusted) {
-              alert("기존 작업과 시간이 겹쳐 자동으로 조정되었습니다.");
+              setSnackbar({
+                open: true,
+                message: '시간 충돌로 인해 자동 조정되었습니다.',
+                severity: 'info'
+              });
             } else {
-              if (!window.confirm("입력하신 시간이 기존 작업과 겹칩니다.\n\n확인: 겹침을 허용하고 변경\n취소: 변경 취소")) {
-                setIsResizing(false);
-                setResizeLogId(null);
-                setResizeType(null);
-                setResizeStartPercent(null);
-                setResizeCurrentPercent(null);
-                return;
-              }
+              // 겹침 허용하고 알림만 표시
+              setSnackbar({
+                open: true,
+                message: '시간이 겹치는 작업이 있습니다.',
+                severity: 'warning'
+              });
             }
           }
           // ---------------------------
@@ -824,7 +1011,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
       }
       
       return { left_percent: new_left, width_percent: new_width };
-    } else {
+    } else if (resizeType === 'end') {
       let new_width = item.width_percent + delta_percent;
       
       // 최소 너비 유지
@@ -838,6 +1025,9 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
       
       return { left_percent: item.left_percent, width_percent: new_width };
     }
+    
+    // smart 상태이거나 기타 상태일 때는 변경 없음
+    return { left_percent: item.left_percent, width_percent: item.width_percent };
   }, [isResizing, resizeLogId, resizeStartPercent, resizeCurrentPercent, resizeType, chartItems]);
 
   // 컨텍스트 메뉴 핸들러
@@ -879,7 +1069,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
   const openEditModal = (log: TimerLog) => {
     setEditingLog(log);
     setEditTitle(log.title);
-    setEditBoardNo(log.boardNo || '');
+    setEditProjectCode(log.projectCode || '');
     setEditCategory(log.category || null);
   };
 
@@ -887,7 +1077,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
     if (editingLog && editTitle.trim()) {
       updateLog(editingLog.id, {
         title: editTitle,
-        boardNo: editBoardNo,
+        projectCode: editProjectCode || undefined,
         category: editCategory || undefined
       });
       handleEditClose();
@@ -897,11 +1087,12 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
   const handleEditClose = () => {
     setEditingLog(null);
     setEditTitle('');
-    setEditBoardNo('');
+    setEditProjectCode('');
     setEditCategory(null);
   };
 
   return (
+    <>
     <Paper variant="outlined" sx={{ p: 2, overflowX: 'auto', userSelect: 'none', bgcolor: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
       {/* 툴팁 제거: Box로 대체 */}
       <Box
@@ -922,6 +1113,41 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
           px: 2 // 좌우 패딩 추가 (라벨 잘림 방지)
         }}
       >
+        {/* 라벨 영역 리사이저 핸들 */}
+        {uniqueRows.length > 0 && (
+          <Box
+            onMouseDown={handleLabelResizeStart}
+            sx={{
+              position: 'absolute',
+              left: LABEL_WIDTH + 16 - 4, // 라벨 영역 오른쪽 경계
+              top: 0,
+              bottom: 0,
+              width: 8,
+              cursor: 'col-resize',
+              zIndex: 10,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              '&:hover': {
+                bgcolor: 'rgba(var(--primary-rgb), 0.1)',
+              },
+              '&:hover::after': {
+                opacity: 1,
+              },
+              '&::after': {
+                content: '""',
+                position: 'absolute',
+                width: 2,
+                top: 0,
+                bottom: 0,
+                bgcolor: isResizingLabel ? 'var(--primary-color)' : 'var(--border-color)',
+                opacity: isResizingLabel ? 1 : 0,
+                transition: 'opacity 0.15s',
+              }
+            }}
+          />
+        )}
+
         {/* 시간축 헤더 */}
         <Box sx={{
           position: 'absolute',
@@ -929,13 +1155,14 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
           left: LABEL_WIDTH + 16, // 패딩(16px) 고려
           right: 16, // 패딩(16px) 고려
           height: HEADER_HEIGHT,
-          borderBottom: '1px solid var(--border-color)'
+          borderBottom: '1px solid var(--border-color)',
+          overflow: 'hidden' // 라벨 영역 침범 방지
         }}>
           {timeLabels.map((item, index) => {
             // 라벨 위치에 따라 정렬 조정 (양끝 잘림 방지)
             let transform = 'translateX(-50%)';
-            if (item.left_percent < 2) transform = 'translateX(0)'; // 왼쪽 끝
-            else if (item.left_percent > 98) transform = 'translateX(-100%)'; // 오른쪽 끝
+            if (item.left_percent < 5) transform = 'translateX(0)'; // 왼쪽 끝 (임계값 증가)
+            else if (item.left_percent > 95) transform = 'translateX(-100%)'; // 오른쪽 끝
 
             return (
               <Typography
@@ -1038,27 +1265,38 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
                 gap: 0.5,
                 overflow: 'hidden'
               }}>
-                {row.boardNo && (
+                {row.projectCode && (
                   <Chip
-                    label={`#${row.boardNo}`}
+                    label={getProjectName(row.projectCode)}
                     size="small"
+                    title={`[${row.projectCode}] ${getProjectName(row.projectCode)}`}
                     sx={{
+                      flexShrink: 0,
                       height: 18,
+                      maxWidth: 80,
                       fontSize: '0.6rem',
                       bgcolor: row.color,
                       color: '#fff', // 칩 텍스트는 항상 흰색 유지 (배경색이 진한 편이므로)
-                      '& .MuiChip-label': { px: 0.5 }
+                      '& .MuiChip-label': { 
+                        px: 0.5,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }
                     }}
                   />
                 )}
                 <Typography
                   variant="caption"
+                  component="span"
                   sx={{
+                    flex: 1,
+                    minWidth: 0,
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
                     whiteSpace: 'nowrap',
                     fontWeight: has_running ? 600 : 400,
-                    color: has_running ? 'var(--primary-color)' : 'var(--text-primary)'
+                    color: has_running ? 'var(--primary-color)' : 'var(--text-primary) !important'
                   }}
                   title={row.title}
                 >
@@ -1084,7 +1322,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
                     <Tooltip
                       key={item.id}
                       title={
-                        is_context_menu_open ? "" : (
+                        (is_context_menu_open || is_resizing_this) ? "" : (
                         <Box sx={{ textAlign: 'center' }}>
                           <Typography variant="subtitle2" sx={{ color: '#fff' }}>{item.title}</Typography>
                           {item.category && (
@@ -1100,20 +1338,20 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
                           </Typography>
                           <Typography variant="caption" display="block" sx={{ mt: 0.5, color: 'rgba(255,255,255,0.6)' }}>
                             우클릭: 메뉴 / 더블클릭: 수정
-                            {is_completed && ' / 양끝: 크기 조절'}
+                            {is_completed ? ' / 양끝: 크기 조절' : ' / 왼쪽: 시작 시간 조절'}
                           </Typography>
                         </Box>
                         )
                       }
                       arrow
-                      // 컨텍스트 메뉴가 열려있으면 강제로 닫음 (false), 그 외엔 호버 동작 (undefined)
-                      open={is_context_menu_open ? false : undefined}
+                      // 리사이즈 중이거나 컨텍스트 메뉴가 열려있으면 강제로 닫음
+                      open={(is_resizing_this || is_context_menu_open) ? false : undefined}
                       disableHoverListener={is_resizing_this || is_context_menu_open}
                     >
                       <Box
                         onMouseDown={(e) => {
-                          e.stopPropagation();
-                          // 우클릭은 onContextMenu에서 처리
+                          // 모든 작업에 대해 스마트 리사이즈 시도
+                          handleSmartResizeStart(e, item);
                         }}
                         onContextMenu={(e) => handleContextMenu(e, item)}
                         onDoubleClick={(e) => {
@@ -1142,39 +1380,39 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
                           }
                         }}
                       >
-                        {/* 완료된 작업에만 리사이즈 핸들 표시 */}
-                        {is_completed && (
-                          <>
-                            {/* 왼쪽 리사이즈 핸들 (시작 시간) */}
-                            <Box
-                              onMouseDown={(e) => handleResizeStart(e, item.id, 'start', item.startTime, item.endTime)}
-                              sx={{
+                        {/* 리사이즈 핸들 표시 */}
+                        <>
+                          {/* 왼쪽 리사이즈 핸들 (시작 시간) - 모든 작업에 표시 */}
+                          <Box
+                            onMouseDown={(e) => handleResizeStart(e, item.id, 'start', item.startTime, item.endTime)}
+                            sx={{
+                              position: 'absolute',
+                              left: 0,
+                              top: 0,
+                              bottom: 0,
+                              width: RESIZE_HANDLE_WIDTH,
+                              cursor: 'ew-resize',
+                              borderRadius: '4px 0 0 4px',
+                              bgcolor: 'transparent',
+                              transition: 'background-color 0.15s',
+                              '&:hover': {
+                                bgcolor: 'rgba(255,255,255,0.3)',
+                              },
+                              '&::after': {
+                                content: '""',
                                 position: 'absolute',
-                                left: 0,
-                                top: 0,
-                                bottom: 0,
-                                width: RESIZE_HANDLE_WIDTH,
-                                cursor: 'ew-resize',
-                                borderRadius: '4px 0 0 4px',
-                                bgcolor: 'transparent',
-                                transition: 'background-color 0.15s',
-                                '&:hover': {
-                                  bgcolor: 'rgba(255,255,255,0.3)',
-                                },
-                                '&::after': {
-                                  content: '""',
-                                  position: 'absolute',
-                                  left: 2,
-                                  top: '50%',
-                                  transform: 'translateY(-50%)',
-                                  width: 2,
-                                  height: 12,
-                                  bgcolor: 'rgba(255,255,255,0.5)',
-                                  borderRadius: 1,
-                                }
-                              }}
-                            />
-                            {/* 오른쪽 리사이즈 핸들 (종료 시간) */}
+                                left: 2,
+                                top: '50%',
+                                transform: 'translateY(-50%)',
+                                width: 2,
+                                height: 12,
+                                bgcolor: 'rgba(255,255,255,0.5)',
+                                borderRadius: 1,
+                              }
+                            }}
+                          />
+                          {/* 오른쪽 리사이즈 핸들 (종료 시간) - 완료된 작업에만 표시 */}
+                          {is_completed && (
                             <Box
                               onMouseDown={(e) => handleResizeStart(e, item.id, 'end', item.startTime, item.endTime)}
                               sx={{
@@ -1203,8 +1441,8 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
                                 }
                               }}
                             />
-                          </>
-                        )}
+                          )}
+                        </>
                       </Box>
                     </Tooltip>
                   );
@@ -1324,7 +1562,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
                     onClick={() => {
                       setIsAddingSession(false);
                       setNewTitle('');
-                      setNewBoardNo('');
+                      setNewProjectCode('');
                       setNewCategory(null);
                     }}
                     sx={{ fontSize: '0.75rem', minWidth: 'auto' }}
@@ -1332,10 +1570,10 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
                     다른 작업으로 변경
                   </Button>
                 </Box>
-                {(newBoardNo || newCategory) && (
+                {(newProjectCode || newCategory) && (
                   <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
-                    {newBoardNo && (
-                      <Chip label={`#${newBoardNo}`} size="small" variant="outlined" />
+                    {newProjectCode && (
+                      <Chip label={getProjectName(newProjectCode)} size="small" variant="outlined" title={`[${newProjectCode}]`} />
                     )}
                     {newCategory && (
                       <Chip label={newCategory} size="small" sx={{ bgcolor: 'var(--bg-secondary)' }} />
@@ -1354,17 +1592,19 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
                   autoFocus
                 />
                 <Box sx={{ display: 'flex', gap: 2 }}>
-                  <TextField
-                    label="게시판 번호"
-                    value={newBoardNo}
-                    onChange={(e) => setNewBoardNo(e.target.value)}
+                  <Autocomplete
+                    freeSolo
+                    options={projectOptions}
+                    value={getProjectDisplayValue(newProjectCode)}
+                    onInputChange={(_e, newValue) => handleProjectCodeChange(newValue, setNewProjectCode)}
+                    renderInput={(params) => <TextField {...params} label="프로젝트 코드" />}
                     sx={{ flex: 1 }}
                   />
-                  <Autocomplete
-                    options={CATEGORIES}
+                  <CategoryAutocomplete
                     value={newCategory}
-                    onChange={(_e, newValue) => setNewCategory(newValue)}
-                    renderInput={(params) => <TextField {...params} label="카테고리" />}
+                    onChange={(newValue) => setNewCategory(newValue)}
+                    label="카테고리"
+                    variant="outlined"
                     sx={{ flex: 1 }}
                   />
                 </Box>
@@ -1404,17 +1644,19 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
               autoFocus
             />
             <Box sx={{ display: 'flex', gap: 2 }}>
-              <TextField
-                label="게시판 번호"
-                value={editBoardNo}
-                onChange={(e) => setEditBoardNo(e.target.value)}
+              <Autocomplete
+                freeSolo
+                options={projectOptions}
+                value={getProjectDisplayValue(editProjectCode)}
+                onInputChange={(_e, newValue) => handleProjectCodeChange(newValue, setEditProjectCode)}
+                renderInput={(params) => <TextField {...params} label="프로젝트 코드" />}
                 sx={{ flex: 1 }}
               />
-              <Autocomplete
-                options={CATEGORIES}
+              <CategoryAutocomplete
                 value={editCategory}
-                onChange={(_e, newValue) => setEditCategory(newValue)}
-                renderInput={(params) => <TextField {...params} label="카테고리" />}
+                onChange={(newValue) => setEditCategory(newValue)}
+                label="카테고리"
+                variant="outlined"
                 sx={{ flex: 1 }}
               />
             </Box>
@@ -1425,7 +1667,42 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
           <Button onClick={handleEditSave} variant="contained" color="primary">저장(Enter)</Button>
         </DialogActions>
       </Dialog>
+      
     </Paper>
+    
+    {/* 충돌 알림 - Portal로 body에 렌더링 */}
+    <Snackbar
+      open={snackbar.open}
+      autoHideDuration={3000}
+      onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
+      anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      TransitionComponent={SlideTransition}
+      sx={{ position: 'fixed', top: '24px !important' }}
+    >
+      <Box
+        sx={{ 
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          backgroundColor: snackbar.severity === 'warning' 
+            ? 'rgba(255, 152, 0, 0.25)' 
+            : 'rgba(33, 150, 243, 0.25)',
+          border: snackbar.severity === 'warning'
+            ? '1px solid rgba(255, 152, 0, 0.6)'
+            : '1px solid rgba(33, 150, 243, 0.6)',
+          borderRadius: '8px',
+          padding: '8px 16px',
+          color: snackbar.severity === 'warning' 
+            ? (themeConfig.isDark ? '#ffb74d' : '#e65100')
+            : (themeConfig.isDark ? '#64b5f6' : '#1565c0'),
+          fontWeight: 500,
+          fontSize: '0.875rem',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+        }}
+      >
+        {snackbar.message}
+      </Box>
+    </Snackbar>
+    </>
   );
 };
 

@@ -132,38 +132,51 @@ export const applyThemeColors = (colors: ThemeColors): void => {
   const light_highlight = hexToRgba(colors.primary, 0.1);
   root.style.setProperty('--highlight-light', light_highlight);
 
-  // 다크 모드 색상 반전
+  // 다크 모드 색상 (사용자 정의 색상 기준)
   if (colors.isDark) {
-    root.style.setProperty('--text-primary', '#ffffff');
-    root.style.setProperty('--text-secondary', '#b0b0b0');
-    root.style.setProperty('--text-disabled', '#666666');
-    root.style.setProperty('--text-inverse', '#000000');
-
+    // 배경 색상 (가장 어두운 #121212, 카드 #1E1E1E)
     root.style.setProperty('--bg-primary', '#121212');
-    root.style.setProperty('--bg-secondary', '#1e1e1e');
-    root.style.setProperty('--bg-tertiary', '#2d2d2d');
-    root.style.setProperty('--bg-hover', '#333333');
-    root.style.setProperty('--bg-selected', '#444444');
+    root.style.setProperty('--bg-secondary', '#1E1E1E');
+    root.style.setProperty('--bg-tertiary', '#252525');
+    root.style.setProperty('--bg-hover', '#2A2A2A');
+    root.style.setProperty('--bg-selected', '#333333');
+    root.style.setProperty('--header-bg', '#1E1E1E');
+    root.style.setProperty('--card-bg', '#1E1E1E');
+    
+    // 텍스트 색상 (기본 #E0E0E0, 보조 #9E9E9E)
+    root.style.setProperty('--text-primary', '#E0E0E0');
+    root.style.setProperty('--text-secondary', '#9E9E9E');
+    root.style.setProperty('--text-disabled', '#666666');
+    root.style.setProperty('--text-inverse', '#121212');
 
+    // 테두리 색상
     root.style.setProperty('--border-color', '#333333');
-    root.style.setProperty('--border-hover', '#555555');
-    root.style.setProperty('--border-focus', '#ffffff');
+    root.style.setProperty('--border-hover', '#444444');
+    root.style.setProperty('--border-focus', '#E0E0E0');
+    
+    // data-theme 속성 설정
+    root.setAttribute('data-theme', 'dark');
   } else {
     // 라이트 모드 (기본값)
-    root.style.setProperty('--text-primary', '#000000');
-    root.style.setProperty('--text-secondary', '#666666');
-    root.style.setProperty('--text-disabled', '#999999');
-    root.style.setProperty('--text-inverse', '#ffffff');
-
     root.style.setProperty('--bg-primary', '#fafafa');
     root.style.setProperty('--bg-secondary', '#ffffff');
     root.style.setProperty('--bg-tertiary', '#f5f5f5');
     root.style.setProperty('--bg-hover', '#f0f0f0');
     root.style.setProperty('--bg-selected', '#e8e8e8');
+    root.style.setProperty('--header-bg', '#ffffff');
+    root.style.setProperty('--card-bg', '#ffffff');
+    
+    root.style.setProperty('--text-primary', '#000000');
+    root.style.setProperty('--text-secondary', '#666666');
+    root.style.setProperty('--text-disabled', '#999999');
+    root.style.setProperty('--text-inverse', '#ffffff');
 
     root.style.setProperty('--border-color', '#eaeaea');
     root.style.setProperty('--border-hover', '#cccccc');
     root.style.setProperty('--border-focus', '#000000');
+    
+    // data-theme 속성 제거
+    root.removeAttribute('data-theme');
   }
 };
 

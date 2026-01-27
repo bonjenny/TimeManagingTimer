@@ -8,13 +8,13 @@ import TimerList from './components/timer/TimerList';
 import GanttChart from './components/gantt/GanttChart';
 import PresetPanel from './components/preset/PresetPanel';
 import WeeklySchedule from './components/pages/WeeklySchedule';
-import FeedbackBoard from './components/pages/FeedbackBoard';
 import SettingsPage from './components/pages/SettingsPage';
 import NewTaskModal from './components/modal/NewTaskModal';
 import { Box, Typography, IconButton, Tooltip, useMediaQuery } from '@mui/material';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import TodayIcon from '@mui/icons-material/Today';
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import { useTimerStore } from './store/useTimerStore';
 import { applyThemeColors, applyPaletteHighlight } from './styles/tokens';
 import { loadPaletteSettings, getPalette } from './utils/colorPalette';
@@ -39,6 +39,7 @@ function App() {
   const resumeTimer = useTimerStore((state) => state.resumeTimer);
   const { themeConfig, setThemeConfig } = useTimerStore();
   const timer_input_ref = useRef<HTMLInputElement>(null);
+  const date_input_ref = useRef<HTMLInputElement>(null);
 
   // 선택된 날짜 상태 (기본값: 오늘)
   const [selectedDate, setSelectedDate] = useState<Date>(() => {
@@ -229,7 +230,7 @@ function App() {
       sx={{
         display: 'grid',
         gridTemplateColumns: is_mobile ? '1fr' : '280px 1fr',
-        gridTemplateRows: 'auto auto auto auto',
+        gridTemplateRows: is_mobile ? 'auto auto auto auto auto' : 'auto auto auto auto',
         gap: 2,
         minHeight: 'calc(100vh - 180px)',
       }}
@@ -237,9 +238,8 @@ function App() {
       {/* 왼쪽: 작업 프리셋 패널 */}
       <Box
         sx={{
-          gridColumn: is_mobile ? '1' : '1',
-          gridRow: is_mobile ? '1' : '1 / 5',
-          order: is_mobile ? 4 : 0,
+          gridColumn: '1',
+          gridRow: is_mobile ? '5' : '1 / 5',
         }}
       >
         <PresetPanel />
@@ -282,6 +282,7 @@ function App() {
         >
           {/* 숨겨진 날짜 선택 input */}
           <input
+            ref={date_input_ref}
             type="date"
             value={getFormattedDateValue()}
             onChange={handleDateChange}
@@ -307,9 +308,20 @@ function App() {
           </IconButton>
         </Tooltip>
         
+        {/* 캘린더 아이콘 - 날짜 선택기 열기 */}
+        <Tooltip title="날짜 선택">
+          <IconButton 
+            size="small" 
+            onClick={() => date_input_ref.current?.showPicker?.()}
+            sx={{ ml: 0.5 }}
+          >
+            <CalendarMonthIcon />
+          </IconButton>
+        </Tooltip>
+        
         {!isToday && (
           <Tooltip title="오늘로 이동">
-            <IconButton size="small" onClick={handleToday} sx={{ ml: 1 }}>
+            <IconButton size="small" onClick={handleToday}>
               <TodayIcon />
             </IconButton>
           </Tooltip>
@@ -362,8 +374,6 @@ function App() {
         return renderDailyPage();
       case 'weekly':
         return <WeeklySchedule />;
-      case 'feedback':
-        return <FeedbackBoard />;
       case 'settings':
         return <SettingsPage />;
       default:

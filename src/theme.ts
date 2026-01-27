@@ -1,25 +1,27 @@
 import { createTheme } from '@mui/material/styles';
 
 // CSS 변수를 사용하는 동적 테마 생성 함수
+// 다크모드 색상 기준: 배경 #121212/#1E1E1E, 텍스트 #E0E0E0/#9E9E9E
 export const createAppTheme = (primaryColor?: string, accentColor?: string, isDark: boolean = false) => {
   
   return createTheme({
     palette: {
       mode: isDark ? 'dark' : 'light',
       primary: {
-        main: primaryColor || (isDark ? '#e0e0e0' : '#000000'),
+        main: primaryColor || (isDark ? '#E0E0E0' : '#000000'),
       },
       secondary: {
-        main: accentColor || (isDark ? '#a0a0a0' : '#666666'),
+        main: accentColor || (isDark ? '#9E9E9E' : '#666666'),
       },
-      // 배경색은 CSS 변수로 제어하므로 MUI Palette에서 최소한으로 설정
+      // 배경색 - 사용자 정의 색상 기준
       background: {
-        default: isDark ? '#121212' : '#fafafa', // fallback
-        paper: isDark ? '#1e1e1e' : '#ffffff',   // fallback
+        default: isDark ? '#121212' : '#fafafa',
+        paper: isDark ? '#1E1E1E' : '#ffffff',
       },
+      // 텍스트 색상 - 사용자 정의 색상 기준
       text: {
-        primary: isDark ? '#f3f4f6' : '#000000',
-        secondary: isDark ? '#9ca3af' : '#666666',
+        primary: isDark ? '#E0E0E0' : '#000000',
+        secondary: isDark ? '#9E9E9E' : '#666666',
       },
       divider: isDark ? '#333333' : '#eaeaea',
     },
@@ -85,9 +87,13 @@ export const createAppTheme = (primaryColor?: string, accentColor?: string, isDa
           },
           contained: {
             backgroundColor: 'var(--primary-color)',
-            color: isDark ? '#000000' : '#ffffff', // 대비를 위해 반전
+            color: 'var(--text-inverse)', // CSS 변수 사용
             '&:hover': {
               backgroundColor: 'var(--accent-color)',
+            },
+            '&.Mui-disabled': {
+              backgroundColor: 'var(--bg-tertiary)',
+              color: 'var(--text-disabled)',
             },
           },
           outlined: {
@@ -105,11 +111,21 @@ export const createAppTheme = (primaryColor?: string, accentColor?: string, isDa
           root: {
             borderBottom: '1px solid var(--border-color)',
             color: 'var(--text-primary)',
+            backgroundColor: 'transparent',
           },
           head: {
             color: 'var(--text-primary)',
             fontWeight: 600,
-            backgroundColor: 'var(--bg-secondary)',
+            backgroundColor: 'var(--bg-tertiary)',
+          },
+        },
+      },
+      MuiTableRow: {
+        styleOverrides: {
+          root: {
+            '&:hover': {
+              backgroundColor: 'var(--bg-hover)',
+            },
           },
         },
       },
@@ -198,13 +214,30 @@ export const createAppTheme = (primaryColor?: string, accentColor?: string, isDa
             borderColor: 'var(--border-color)',
           },
           root: {
-            backgroundColor: 'var(--bg-hover)',
+            backgroundColor: 'var(--bg-secondary)',
             '&:hover .MuiOutlinedInput-notchedOutline': {
-              borderColor: 'var(--text-secondary)',
+              borderColor: 'var(--border-hover)',
             },
             '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-              borderColor: 'var(--primary-color)',
+              borderColor: 'var(--highlight-color)',
             }
+          }
+        }
+      },
+      MuiInputLabel: {
+        styleOverrides: {
+          root: {
+            color: 'var(--text-secondary)',
+            '&.Mui-focused': {
+              color: 'var(--highlight-color)',
+            }
+          }
+        }
+      },
+      MuiSelect: {
+        styleOverrides: {
+          icon: {
+            color: 'var(--text-secondary)',
           }
         }
       },

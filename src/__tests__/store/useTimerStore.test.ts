@@ -406,4 +406,87 @@ describe('useTimerStore', () => {
       expect(useTimerStore.getState().deleted_logs.length).toBe(0);
     });
   });
+
+  /**
+   * v0.10.4: 자동완성 제외 기능
+   */
+  describe('excludedTitles (자동완성 제외)', () => {
+    beforeEach(() => {
+      useTimerStore.setState({ 
+        logs: [], 
+        deleted_logs: [], 
+        activeTimer: null,
+        excludedTitles: []
+      });
+    });
+
+    it('removeRecentTitle로 제목을 자동완성에서 제외할 수 있다', () => {
+      const { removeRecentTitle } = useTimerStore.getState();
+
+      act(() => {
+        removeRecentTitle('제외할 제목');
+      });
+
+      const { excludedTitles } = useTimerStore.getState();
+      expect(excludedTitles).toContain('제외할 제목');
+    });
+
+    it('이미 제외된 제목은 중복 추가되지 않는다', () => {
+      const { removeRecentTitle } = useTimerStore.getState();
+
+      act(() => {
+        removeRecentTitle('중복 제목');
+        removeRecentTitle('중복 제목');
+      });
+
+      const { excludedTitles } = useTimerStore.getState();
+      const count = excludedTitles.filter(t => t === '중복 제목').length;
+      expect(count).toBe(1);
+    });
+
+    it('getRecentTitles에서 excludedTitles가 필터링된다', () => {
+      const { startTimer, stopTimer, removeRecentTitle, getRecentTitles } = useTimerStore.getState();
+
+      // 로그 생성
+      act(() => {
+        startTimer('포함될 제목', 'P001', '개발');
+      });
+      act(() => {
+        stopTimer();
+      });
+      act(() => {
+        startTimer('제외될 제목', 'P002', '개발');
+      });
+      act(() => {
+        stopTimer();
+      });
+
+      // 제외 처리
+      act(() => {
+        removeRecentTitle('제외될 제목');
+      });
+
+      const recentTitles = getRecentTitles();
+      expect(recentTitles).toContain('포함될 제목');
+      expect(recentTitles).not.toContain('제외될 제목');
+    });
+
+    it('제외된 제목의 로그 데이터는 유지된다', () => {
+      const { startTimer, stopTimer, removeRecentTitle } = useTimerStore.getState();
+
+      act(() => {
+        startTimer('제외할 제목', 'P001', '개발');
+      });
+      act(() => {
+        stopTimer();
+      });
+      act(() => {
+        removeRecentTitle('제외할 제목');
+      });
+
+      const { logs } = useTimerStore.getState();
+      const log = logs.find(l => l.title === '제외할 제목');
+      expect(log).toBeDefined(); // 로그 데이터는 유지됨
+    });
+  });
 });

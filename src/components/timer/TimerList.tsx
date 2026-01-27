@@ -26,13 +26,17 @@ import {
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import DeleteForeverIcon from '@mui/icons-material/DeleteForever';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutline';
+import PauseIcon from '@mui/icons-material/Pause';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import EditIcon from '@mui/icons-material/Edit';
 import RestoreIcon from '@mui/icons-material/Restore';
 import RestoreFromTrashIcon from '@mui/icons-material/RestoreFromTrash';
 import { useTimerStore, TimerLog, DeletedLog } from '../../store/useTimerStore';
+import { useProjectStore } from '../../store/useProjectStore';
 import { formatDuration, getDurationSecondsExcludingLunch } from '../../utils/timeUtils';
-
-const CATEGORIES = ['분석', '개발', '개발자테스트', '테스트오류수정', '센터오류수정', '환경세팅', '회의', '기타'];
+import CategoryAutocomplete from '../common/CategoryAutocomplete';
 
 // 하루 시작 기준 (06:00)
 const DAY_START_HOUR = 6;
@@ -68,7 +72,7 @@ const formatDate = (timestamp: number) => {
 // 그룹화된 업무 타입
 interface TaskGroup {
   title: string;
-  boardNo?: string;
+  projectCode?: string;
   category?: string;
   sessions: TimerLog[];
   total_duration: number; // 초 단위
@@ -78,15 +82,29 @@ interface TaskGroup {
 }
 
 const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
-  const { logs, deleteLog, startTimer, updateLog, deleted_logs, restoreLog, permanentlyDeleteLog, emptyTrash } = useTimerStore();
+  const { logs, deleteLog, startTimer, updateLog, deleted_logs, restoreLog, permanentlyDeleteLog, emptyTrash, reopenTimer, activeTimer } = useTimerStore();
+  const { getProjectName, projects } = useProjectStore();
   const [showCompleted, setShowCompleted] = useState(true);
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
   
   // 수정 모달 상태
   const [editingLog, setEditingLog] = useState<TimerLog | null>(null);
   const [editTitle, setEditTitle] = useState('');
-  const [editBoardNo, setEditBoardNo] = useState('');
+  const [editProjectCode, setEditProjectCode] = useState('');
   const [editCategory, setEditCategory] = useState<string | null>(null);
+  const [editStartTime, setEditStartTime] = useState('');
+  const [editEndTime, setEditEndTime] = useState('');
+  
+  // 인라인 편집 상태
+  const [editingInlineTitle, setEditingInlineTitle] = useState<string | null>(null); // 편집 중인 task.title
+  const [inlineTitle, setInlineTitle] = useState('');
+  const [editingInlineProject, setEditingInlineProject] = useState<string | null>(null); // 편집 중인 task.title
+  const [inlineProjectCode, setInlineProjectCode] = useState('');
+  
+  // 프로젝트 옵션 (코드 + 이름 형태로 표시)
+  const projectOptions = useMemo(() => {
+    return projects.map(p => `[${p.code}] ${p.name}`);
+  }, [projects]);
 
   // 휴지통 모달 상태
   const [trash_modal_open, setTrashModalOpen] = useState(false);
@@ -128,13 +146,13 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
           existing.has_running = true;
           existing.last_end = undefined;
         }
-        // 최신 boardNo, category로 업데이트
-        if (log.boardNo) existing.boardNo = log.boardNo;
+        // 최신 projectCode, category로 업데이트
+        if (log.projectCode) existing.projectCode = log.projectCode;
         if (log.category) existing.category = log.category;
       } else {
         groups.set(log.title, {
           title: log.title,
-          boardNo: log.boardNo,
+          projectCode: log.projectCode,
           category: log.category,
           sessions: [log],
           total_duration: get_duration(log),
@@ -150,9 +168,31 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
       group.sessions.sort((a, b) => a.startTime - b.startTime);
     });
 
-    // 그룹을 최신 first_start 기준으로 정렬
-    return Array.from(groups.values()).sort((a, b) => b.first_start - a.first_start);
+    // 정렬: 미완료 우선 → 프로젝트 코드 오름차순 → 작업명 오름차순
+    return Array.from(groups.values()).sort((a, b) => {
+      // 1. 완료 여부 (미완료 우선)
+      const a_all_completed = a.sessions.every(s => s.status === 'COMPLETED');
+      const b_all_completed = b.sessions.every(s => s.status === 'COMPLETED');
+      
+      if (!a_all_completed && b_all_completed) return -1; // a가 미완료, b가 완료 → a 우선
+      if (a_all_completed && !b_all_completed) return 1;  // a가 완료, b가 미완료 → b 우선
+      
+      // 2. 프로젝트 코드 오름차순 (없는 것은 맨 뒤로)
+      const a_code = a.projectCode || '';
+      const b_code = b.projectCode || '';
+      if (a_code && !b_code) return -1; // a만 있으면 a 우선
+      if (!a_code && b_code) return 1;  // b만 있으면 b 우선
+      if (a_code !== b_code) return a_code.localeCompare(b_code);
+      
+      // 3. 작업명 오름차순
+      return a.title.localeCompare(b.title);
+    });
   }, [logs, showCompleted, selectedDate]);
+
+  // 총 시간 합계 계산
+  const totalDurationSeconds = useMemo(() => {
+    return groupedTasks.reduce((sum, task) => sum + task.total_duration, 0);
+  }, [groupedTasks]);
 
   const toggleExpand = (title: string) => {
     setExpandedTasks(prev => {
@@ -166,8 +206,8 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
     });
   };
 
-  const handleRestart = (title: string, boardNo?: string, category?: string) => {
-    startTimer(title, boardNo, category);
+  const handleRestart = (title: string, projectCode?: string, category?: string) => {
+    startTimer(title, projectCode, category);
   };
 
   const getDuration = (log: TimerLog) => {
@@ -175,20 +215,59 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
     return getDurationSecondsExcludingLunch(log.startTime, log.endTime, log.pausedDuration);
   };
 
+  // timestamp를 datetime-local 형식으로 변환
+  const timestampToDatetimeLocal = (timestamp: number | undefined): string => {
+    if (!timestamp) return '';
+    const date = new Date(timestamp);
+    // 로컬 시간대 기준으로 YYYY-MM-DDTHH:MM 형식 생성
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
+  // datetime-local 값을 timestamp로 변환
+  const datetimeLocalToTimestamp = (value: string): number | undefined => {
+    if (!value) return undefined;
+    const date = new Date(value);
+    return date.getTime();
+  };
+
   // 수정 핸들러
   const handleEditClick = (log: TimerLog) => {
     setEditingLog(log);
     setEditTitle(log.title);
-    setEditBoardNo(log.boardNo || '');
+    setEditProjectCode(log.projectCode || '');
     setEditCategory(log.category || null);
+    setEditStartTime(timestampToDatetimeLocal(log.startTime));
+    setEditEndTime(timestampToDatetimeLocal(log.endTime));
   };
 
   const handleEditSave = () => {
     if (editingLog && editTitle.trim()) {
+      const newStartTime = datetimeLocalToTimestamp(editStartTime);
+      const newEndTime = datetimeLocalToTimestamp(editEndTime);
+      
+      // 시작시간 유효성 검사
+      if (!newStartTime) {
+        alert('시작 시간을 입력해주세요.');
+        return;
+      }
+      
+      // 종료시간이 있는 경우 시작시간보다 뒤인지 확인
+      if (newEndTime && newEndTime <= newStartTime) {
+        alert('종료 시간은 시작 시간보다 뒤여야 합니다.');
+        return;
+      }
+      
       updateLog(editingLog.id, {
         title: editTitle,
-        boardNo: editBoardNo,
-        category: editCategory || undefined
+        projectCode: editProjectCode || undefined,
+        category: editCategory || undefined,
+        startTime: newStartTime,
+        endTime: newEndTime
       });
       handleEditClose();
     }
@@ -197,8 +276,83 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
   const handleEditClose = () => {
     setEditingLog(null);
     setEditTitle('');
-    setEditBoardNo('');
+    setEditProjectCode('');
     setEditCategory(null);
+    setEditStartTime('');
+    setEditEndTime('');
+  };
+
+  // 인라인 제목 편집 시작
+  const startInlineTitleEdit = (task: TaskGroup) => {
+    setEditingInlineTitle(task.title);
+    setInlineTitle(task.title);
+  };
+
+  // 인라인 제목 저장
+  const saveInlineTitle = (task: TaskGroup) => {
+    if (inlineTitle.trim() && inlineTitle !== task.title) {
+      // 모든 세션의 제목 업데이트
+      task.sessions.forEach(session => {
+        updateLog(session.id, { title: inlineTitle.trim() });
+      });
+    }
+    setEditingInlineTitle(null);
+    setInlineTitle('');
+  };
+
+  // 인라인 제목 편집 취소
+  const cancelInlineTitleEdit = () => {
+    setEditingInlineTitle(null);
+    setInlineTitle('');
+  };
+
+  // 인라인 프로젝트 코드 편집 시작
+  const startInlineProjectEdit = (task: TaskGroup) => {
+    setEditingInlineProject(task.title);
+    setInlineProjectCode(task.projectCode || '');
+  };
+
+  // 인라인 프로젝트 코드 저장
+  const saveInlineProject = (task: TaskGroup, newCode: string) => {
+    // [코드] 이름 형태에서 코드 추출
+    const match = newCode.match(/^\[([^\]]+)\]/);
+    const code = match ? match[1] : newCode;
+    
+    if (code !== task.projectCode) {
+      // 모든 세션의 프로젝트 코드 업데이트
+      task.sessions.forEach(session => {
+        updateLog(session.id, { projectCode: code || undefined });
+      });
+    }
+    setEditingInlineProject(null);
+    setInlineProjectCode('');
+  };
+
+  // 인라인 프로젝트 편집 취소
+  const cancelInlineProjectEdit = () => {
+    setEditingInlineProject(null);
+    setInlineProjectCode('');
+  };
+  
+  // 프로젝트 코드 입력 처리 (자동완성 선택 또는 직접 입력)
+  const handleProjectCodeChange = (value: string) => {
+    // [코드] 이름 형태에서 코드 추출
+    const match = value.match(/^\[([^\]]+)\]/);
+    if (match) {
+      setEditProjectCode(match[1]);
+    } else {
+      setEditProjectCode(value);
+    }
+  };
+  
+  // 프로젝트 코드에서 표시용 문자열 생성
+  const getProjectDisplayValue = (code: string) => {
+    if (!code) return '';
+    const name = getProjectName(code);
+    if (name && name !== code) {
+      return `[${code}] ${name}`;
+    }
+    return code;
   };
 
   // 선택된 날짜 로그 확인
@@ -231,7 +385,20 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
   return (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography variant="h6">최근 업무 기록</Typography>
+        <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 2 }}>
+          <Typography variant="h6">최근 업무 기록</Typography>
+          {totalDurationSeconds > 0 && (
+            <Typography 
+              variant="body2" 
+              sx={{ 
+                color: 'var(--text-secondary)',
+                fontWeight: 500,
+              }}
+            >
+              총 {formatDuration(totalDurationSeconds)}
+            </Typography>
+          )}
+        </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <FormControlLabel
             control={
@@ -261,11 +428,11 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
         {/* 헤더 */}
         <Box sx={{ 
           display: 'grid', 
-          gridTemplateColumns: '40px 1fr 90px 140px 120px 60px',
+          gridTemplateColumns: '56px 140px 1fr 90px 130px 120px 60px 60px',
           gap: 1,
           px: 2,
           py: 1,
-          bgcolor: 'var(--bg-secondary)', // action.hover 대신 background.paper 사용
+          bgcolor: 'var(--bg-secondary)',
           borderBottom: 1,
           borderColor: 'var(--border-color)',
           fontSize: '0.75rem',
@@ -273,11 +440,13 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
           color: 'var(--text-secondary)'
         }}>
           <Box></Box>
-          <Box>업무명</Box>
+          <Box>프로젝트 코드</Box>
+          <Box>기록명</Box>
           <Box>카테고리</Box>
           <Box>시간</Box>
           <Box>시작-종료</Box>
           <Box>세션</Box>
+          <Box></Box>
         </Box>
 
         {/* 업무 목록 */}
@@ -292,14 +461,14 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                 onClick={() => toggleExpand(task.title)}
                 sx={{ 
                   display: 'grid', 
-                  gridTemplateColumns: '40px 1fr 90px 140px 120px 60px',
+                  gridTemplateColumns: '56px 140px 1fr 90px 130px 120px 60px 60px',
                   gap: 1,
                   px: 2,
                   py: 1.5,
                   alignItems: 'center',
                   borderBottom: 1,
                   borderColor: 'var(--border-color)',
-                  bgcolor: task.has_running ? 'var(--highlight-light)' : 'var(--card-bg)',
+                  bgcolor: activeTimer?.title === task.title ? 'var(--highlight-light)' : 'var(--card-bg)',
                   cursor: 'pointer',
                   transition: 'background-color 0.2s',
                   '&:hover': {
@@ -307,61 +476,173 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                   }
                 }}
               >
-                {/* 좌측: 재시작/복원 버튼 */}
-                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                  {all_completed ? (
-                    <Tooltip title="이 업무 다시 시작">
+                {/* 좌측: 완료상태 토글 버튼 + 시작/재시작 버튼 */}
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 0.25 }}>
+                  {/* 완료 상태 토글 버튼 */}
+                  <Tooltip title={all_completed ? "완료 취소 (마지막 세션 재진행)" : "모든 세션 완료됨"}>
+                    <span>
                       <IconButton 
                         size="small" 
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleRestart(task.title, task.boardNo, task.category);
+                          if (all_completed && task.sessions.length > 0) {
+                            // 마지막 세션을 재진행
+                            const lastSession = task.sessions[task.sessions.length - 1];
+                            reopenTimer(lastSession.id);
+                          }
                         }}
-                        sx={{ p: 0.5, color: 'text.secondary', '&:hover': { color: 'primary.main' } }}
+                        disabled={!all_completed}
+                        sx={{ 
+                          p: 0.25, 
+                          color: all_completed ? 'success.main' : 'text.disabled',
+                          '&:hover': { color: all_completed ? 'warning.main' : 'text.disabled' }
+                        }}
                       >
-                        <RestoreIcon fontSize="small" />
+                        {all_completed ? (
+                          <CheckCircleIcon sx={{ fontSize: 18 }} />
+                        ) : (
+                          <CheckCircleOutlineIcon sx={{ fontSize: 18 }} />
+                        )}
                       </IconButton>
-                    </Tooltip>
+                    </span>
+                  </Tooltip>
+                  
+                  {/* 시작/재시작 버튼 */}
+                  {(() => {
+                    const is_active_task = activeTimer?.title === task.title;
+                    return (
+                      <Tooltip title={is_active_task ? "현재 진행 중인 작업" : "이 업무로 새 타이머 시작"}>
+                        <span>
+                          <IconButton 
+                            size="small" 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (!is_active_task) {
+                                handleRestart(task.title, task.projectCode, task.category);
+                              }
+                            }}
+                            disabled={is_active_task}
+                            sx={{ 
+                              p: 0.25, 
+                              color: is_active_task ? 'primary.main' : 'text.secondary',
+                              '&:hover': { color: 'primary.main' },
+                              '&.Mui-disabled': { color: 'primary.main' }
+                            }}
+                          >
+                            {is_active_task ? (
+                              <PauseIcon sx={{ fontSize: 18 }} />
+                            ) : (
+                              <PlayArrowIcon sx={{ fontSize: 18 }} />
+                            )}
+                          </IconButton>
+                        </span>
+                      </Tooltip>
+                    );
+                  })()}
+                </Box>
+
+                {/* 프로젝트 코드 */}
+                <Box sx={{ overflow: 'hidden' }} onClick={(e) => e.stopPropagation()}>
+                  {editingInlineProject === task.title ? (
+                    <Autocomplete
+                      freeSolo
+                      size="small"
+                      options={projectOptions}
+                      value={getProjectDisplayValue(inlineProjectCode)}
+                      onInputChange={(_e, newValue) => setInlineProjectCode(newValue)}
+                      onChange={(_e, newValue) => {
+                        saveInlineProject(task, newValue || '');
+                      }}
+                      onBlur={() => saveInlineProject(task, inlineProjectCode)}
+                      renderInput={(params) => (
+                        <TextField 
+                          {...params} 
+                          variant="standard"
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              saveInlineProject(task, inlineProjectCode);
+                            } else if (e.key === 'Escape') {
+                              cancelInlineProjectEdit();
+                            }
+                          }}
+                          InputProps={{ ...params.InputProps, disableUnderline: true }}
+                          sx={{ '& .MuiInputBase-input': { fontSize: '0.7rem', p: 0 } }}
+                        />
+                      )}
+                      sx={{ width: '100%' }}
+                    />
                   ) : (
-                    <Tooltip title="이 업무 재시작">
-                      <IconButton 
-                        size="small" 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleRestart(task.title, task.boardNo, task.category);
-                        }}
-                        sx={{ p: 0.5 }}
-                      >
-                        <PlayArrowIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
+                    <Chip 
+                      label={task.projectCode ? getProjectName(task.projectCode) : '-'} 
+                      size="small" 
+                      color={task.projectCode ? "primary" : "default"}
+                      variant="outlined"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        startInlineProjectEdit(task);
+                      }}
+                      sx={{ 
+                        height: 22, 
+                        fontSize: '0.7rem',
+                        maxWidth: '100%',
+                        cursor: 'pointer',
+                        '& .MuiChip-label': {
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                        }
+                      }} 
+                      title={task.projectCode ? `[${task.projectCode}] ${getProjectName(task.projectCode)} - 클릭하여 변경` : '클릭하여 프로젝트 설정'}
+                    />
                   )}
                 </Box>
 
-                {/* 업무명 */}
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, overflow: 'hidden' }}>
-                  {task.boardNo && (
-                    <Chip 
-                      label={`#${task.boardNo}`} 
-                      size="small" 
-                      variant="outlined" 
-                      sx={{ height: 20, fontSize: '0.7rem', flexShrink: 0 }} 
+                {/* 기록명 */}
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, overflow: 'hidden' }} onClick={(e) => e.stopPropagation()}>
+                  {editingInlineTitle === task.title ? (
+                    <TextField
+                      size="small"
+                      variant="standard"
+                      value={inlineTitle}
+                      onChange={(e) => setInlineTitle(e.target.value)}
+                      onBlur={() => saveInlineTitle(task)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          saveInlineTitle(task);
+                        } else if (e.key === 'Escape') {
+                          cancelInlineTitleEdit();
+                        }
+                      }}
+                      autoFocus
+                      fullWidth
+                      InputProps={{ disableUnderline: true }}
+                      sx={{ 
+                        '& .MuiInputBase-input': { 
+                          fontSize: '0.875rem',
+                          fontWeight: activeTimer?.title === task.title ? 600 : 500,
+                          p: 0
+                        }
+                      }}
                     />
+                  ) : (
+                    <Typography 
+                      variant="body2" 
+                      onClick={() => startInlineTitleEdit(task)}
+                      sx={{ 
+                        fontWeight: activeTimer?.title === task.title ? 600 : 500, 
+                        overflow: 'hidden', 
+                        textOverflow: 'ellipsis', 
+                        whiteSpace: 'nowrap',
+                        color: all_completed ? 'text.secondary' : 'text.primary',
+                        textDecoration: all_completed ? 'line-through' : 'none',
+                        cursor: 'text',
+                        '&:hover': { bgcolor: 'action.hover', borderRadius: 0.5 }
+                      }}
+                      title={`${task.title} - 클릭하여 편집`}
+                    >
+                      {task.title}
+                    </Typography>
                   )}
-                  <Typography 
-                    variant="body2" 
-                    sx={{ 
-                      fontWeight: 500, 
-                      overflow: 'hidden', 
-                      textOverflow: 'ellipsis', 
-                      whiteSpace: 'nowrap',
-                      color: task.has_running ? 'primary.main' : all_completed ? 'text.secondary' : 'text.primary',
-                      textDecoration: all_completed ? 'line-through' : 'none'
-                    }}
-                    title={task.title}
-                  >
-                    {task.title}
-                  </Typography>
                 </Box>
 
                 {/* 카테고리 */}
@@ -393,6 +674,53 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                 <Typography variant="body2" color="text.secondary">
                   {task.sessions.length}회
                 </Typography>
+
+                {/* 수정/삭제 버튼 */}
+                <Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.25 }}>
+                  <Tooltip title="상세 수정">
+                    <IconButton
+                      size="small"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (task.sessions.length > 0) {
+                          handleEditClick(task.sessions[0]);
+                        }
+                      }}
+                      sx={{ 
+                        p: 0.25, 
+                        color: 'text.secondary',
+                        '&:hover': { color: 'primary.main' }
+                      }}
+                    >
+                      <EditIcon sx={{ fontSize: 16 }} />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="이 업무의 모든 세션 삭제">
+                    <IconButton
+                      size="small"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        // 활성 타이머가 이 작업이면 삭제 불가
+                        if (activeTimer?.title === task.title) {
+                          return;
+                        }
+                        // 모든 세션 삭제
+                        task.sessions.forEach(session => {
+                          deleteLog(session.id);
+                        });
+                      }}
+                      disabled={activeTimer?.title === task.title}
+                      sx={{ 
+                        p: 0.25, 
+                        color: 'text.secondary',
+                        '&:hover': { color: 'error.main' },
+                        '&.Mui-disabled': { color: 'text.disabled' }
+                      }}
+                    >
+                      <DeleteOutlineIcon sx={{ fontSize: 16 }} />
+                    </IconButton>
+                  </Tooltip>
+                </Box>
               </Box>
 
               {/* 세션 상세 (펼침) */}
@@ -425,7 +753,11 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                                   label={session.status === 'RUNNING' ? '진행 중' : '일시정지'} 
                                   size="small" 
                                   color={session.status === 'RUNNING' ? 'primary' : 'warning'}
-                                  sx={{ height: 18, fontSize: '0.65rem' }}
+                                  sx={{ 
+                                    height: 18, 
+                                    fontSize: '0.65rem',
+                                    color: 'white' // 텍스트 색상 흰색 고정
+                                  }}
                                 />
                               )}
                             </TableCell>
@@ -434,6 +766,19 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                             </TableCell>
                             <TableCell sx={{ py: 0.5 }}>
                               <Box sx={{ display: 'flex', gap: 0.5 }}>
+                                {/* 완료된 세션에만 재진행 버튼 표시 */}
+                                {session.status === 'COMPLETED' && (
+                                  <Tooltip title="재진행 (완료 취소 후 다시 시작)">
+                                    <IconButton 
+                                      size="small" 
+                                      onClick={() => reopenTimer(session.id)}
+                                      sx={{ p: 0.25, color: 'success.main' }}
+                                      aria-label="재진행"
+                                    >
+                                      <PlayCircleOutlineIcon sx={{ fontSize: 16 }} />
+                                    </IconButton>
+                                  </Tooltip>
+                                )}
                                 <Tooltip title="수정">
                                   <IconButton 
                                     size="small" 
@@ -501,18 +846,39 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
               autoFocus
             />
             <Box sx={{ display: 'flex', gap: 2 }}>
-              <TextField
-                label="게시판 번호"
-                value={editBoardNo}
-                onChange={(e) => setEditBoardNo(e.target.value)}
+              <Autocomplete
+                freeSolo
+                options={projectOptions}
+                value={getProjectDisplayValue(editProjectCode)}
+                onInputChange={(_e, newValue) => handleProjectCodeChange(newValue)}
+                renderInput={(params) => <TextField {...params} label="프로젝트 코드" />}
                 sx={{ flex: 1 }}
               />
-              <Autocomplete
-                options={CATEGORIES}
+              <CategoryAutocomplete
                 value={editCategory}
-                onChange={(_e, newValue) => setEditCategory(newValue)}
-                renderInput={(params) => <TextField {...params} label="카테고리" />}
+                onChange={(newValue) => setEditCategory(newValue)}
+                label="카테고리"
+                variant="outlined"
                 sx={{ flex: 1 }}
+              />
+            </Box>
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <TextField
+                label="시작 시간"
+                type="datetime-local"
+                value={editStartTime}
+                onChange={(e) => setEditStartTime(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+                sx={{ flex: 1 }}
+              />
+              <TextField
+                label="종료 시간"
+                type="datetime-local"
+                value={editEndTime}
+                onChange={(e) => setEditEndTime(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+                sx={{ flex: 1 }}
+                helperText={editingLog?.status !== 'COMPLETED' ? '진행 중인 작업은 종료 시간이 없습니다' : ''}
               />
             </Box>
           </Box>
@@ -563,13 +929,13 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                 </TableHead>
                 <TableBody>
                   {deleted_logs
-                    .sort((a, b) => b.deleted_at - a.deleted_at)
+                    .sort((a, b) => (b.deletedAt || 0) - (a.deletedAt || 0))
                     .map((log) => (
                     <TableRow key={log.id} hover>
                       <TableCell>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          {log.boardNo && (
-                            <Chip label={`#${log.boardNo}`} size="small" variant="outlined" sx={{ height: 18, fontSize: '0.65rem' }} />
+                          {log.projectCode && (
+                            <Chip label={getProjectName(log.projectCode)} size="small" variant="outlined" sx={{ height: 18, fontSize: '0.65rem' }} />
                           )}
                           <Typography variant="body2">{log.title}</Typography>
                         </Box>
@@ -581,7 +947,7 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                       </TableCell>
                       <TableCell>
                         <Typography variant="body2" color="text.secondary">
-                          {new Date(log.deleted_at).toLocaleString('ko-KR')}
+                          {log.deletedAt ? new Date(log.deletedAt).toLocaleString('ko-KR') : '-'}
                         </Typography>
                       </TableCell>
                       <TableCell>

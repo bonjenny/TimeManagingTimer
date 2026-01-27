@@ -24,6 +24,8 @@ import EditIcon from '@mui/icons-material/Edit';
 import AddIcon from '@mui/icons-material/Add';
 import RestoreIcon from '@mui/icons-material/Restore';
 import { useTimerStore } from '../../store/useTimerStore';
+import { useCategoryStore, DEFAULT_CATEGORIES } from '../../store/useCategoryStore';
+import { useStatusStore, DEFAULT_STATUSES, Status } from '../../store/useStatusStore';
 import {
   PaletteType,
   PaletteSettings,
@@ -50,6 +52,15 @@ const DEFAULT_SETTINGS = {
 
 const SettingsPage: React.FC = () => {
   const { setThemeConfig } = useTimerStore();
+  const { categories, addCategory, removeCategory, resetToDefault: resetCategories } = useCategoryStore();
+  const { statuses, addStatus, removeStatus, resetToDefault: resetStatuses } = useStatusStore();
+  
+  // 카테고리 관리 상태
+  const [newCategory, setNewCategory] = useState('');
+  
+  // 진행상태 관리 상태
+  const [newStatusLabel, setNewStatusLabel] = useState('');
+  const [newStatusValue, setNewStatusValue] = useState('');
   
   // 설정 상태
   const [lunch_start, setLunchStart] = useState(DEFAULT_SETTINGS.lunchStart);
@@ -713,6 +724,151 @@ const SettingsPage: React.FC = () => {
         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2 }}>
           💡 커스텀 단축키 설정 기능은 향후 업데이트에서 제공될 예정입니다.
         </Typography>
+      </Paper>
+
+      {/* 카테고리 관리 */}
+      <Paper variant="outlined" sx={{ p: 3, mb: 3 }}>
+        <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
+          카테고리 관리
+        </Typography>
+        
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          업무 기록에 사용할 카테고리를 관리합니다.
+        </Typography>
+        
+        {/* 카테고리 목록 */}
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 3 }}>
+          {categories.map((category) => (
+            <Chip
+              key={category}
+              label={category}
+              onDelete={() => removeCategory(category)}
+              variant="outlined"
+              sx={{ fontSize: '0.85rem' }}
+            />
+          ))}
+        </Box>
+        
+        {/* 새 카테고리 추가 */}
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mb: 2 }}>
+          <TextField
+            size="small"
+            placeholder="새 카테고리"
+            value={newCategory}
+            onChange={(e) => setNewCategory(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && newCategory.trim()) {
+                addCategory(newCategory.trim());
+                setNewCategory('');
+              }
+            }}
+            sx={{ width: 200 }}
+          />
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<AddIcon />}
+            onClick={() => {
+              if (newCategory.trim()) {
+                addCategory(newCategory.trim());
+                setNewCategory('');
+              }
+            }}
+            disabled={!newCategory.trim()}
+          >
+            추가
+          </Button>
+        </Box>
+        
+        <Divider sx={{ my: 2 }} />
+        
+        <Button
+          variant="text"
+          size="small"
+          startIcon={<RestoreIcon />}
+          onClick={resetCategories}
+          color="warning"
+        >
+          기본값으로 초기화
+        </Button>
+      </Paper>
+
+      {/* 진행상태 관리 */}
+      <Paper variant="outlined" sx={{ p: 3, mb: 3 }}>
+        <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
+          진행상태 관리
+        </Typography>
+        
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          주간일정에서 사용할 진행상태를 관리합니다.
+        </Typography>
+        
+        {/* 진행상태 목록 */}
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 3 }}>
+          {statuses.map((status) => (
+            <Chip
+              key={status.value}
+              label={`${status.label} (${status.value})`}
+              onDelete={statuses.length > 1 ? () => removeStatus(status.value) : undefined}
+              variant="outlined"
+              sx={{ fontSize: '0.85rem' }}
+            />
+          ))}
+        </Box>
+        
+        {/* 새 진행상태 추가 */}
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mb: 2 }}>
+          <TextField
+            size="small"
+            placeholder="표시명 (예: 검토중)"
+            value={newStatusLabel}
+            onChange={(e) => setNewStatusLabel(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && newStatusLabel.trim()) {
+                const statusValue = newStatusValue.trim() || newStatusLabel.trim().toLowerCase().replace(/\s+/g, '_');
+                addStatus({ value: statusValue, label: newStatusLabel.trim() });
+                setNewStatusLabel('');
+                setNewStatusValue('');
+              }
+            }}
+            sx={{ width: 150 }}
+          />
+          <TextField
+            size="small"
+            placeholder="값 (자동생성)"
+            value={newStatusValue}
+            onChange={(e) => setNewStatusValue(e.target.value)}
+            sx={{ width: 150 }}
+          />
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<AddIcon />}
+            onClick={() => {
+              if (newStatusLabel.trim()) {
+                const statusValue = newStatusValue.trim() || newStatusLabel.trim().toLowerCase().replace(/\s+/g, '_');
+                addStatus({ value: statusValue, label: newStatusLabel.trim() });
+                setNewStatusLabel('');
+                setNewStatusValue('');
+              }
+            }}
+            disabled={!newStatusLabel.trim()}
+          >
+            추가
+          </Button>
+        </Box>
+        
+        <Divider sx={{ my: 2 }} />
+        
+        <Button
+          variant="text"
+          size="small"
+          startIcon={<RestoreIcon />}
+          onClick={resetStatuses}
+          color="warning"
+        >
+          기본값으로 초기화
+        </Button>
       </Paper>
 
       {/* 데이터 관리 */}
