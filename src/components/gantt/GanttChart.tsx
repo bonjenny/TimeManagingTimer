@@ -294,11 +294,17 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
   }, [selectedDate]);
 
   // 선택된 날짜의 로그만 필터링 (06:00 ~ 익일 06:00)
+  // 미완료 상태(PAUSED, RUNNING)는 오늘일 때 항상 표시
   const todayLogs = useMemo(() => {
     const base_time = getBaseTime();
     const end_time = base_time + 24 * 60 * 60 * 1000; // 24시간
 
     let filtered_logs = logs.filter(log => {
+      // 미완료 상태는 오늘일 때 항상 표시
+      const is_incomplete = log.status === 'PAUSED' || log.status === 'RUNNING';
+      if (isToday && is_incomplete) {
+        return true;
+      }
       return log.startTime >= base_time && log.startTime < end_time;
     });
 

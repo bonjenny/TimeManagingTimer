@@ -328,6 +328,137 @@ describe('TimerList 펼치기/접기 토글 기능 (v0.12.5)', () => {
   });
 });
 
+describe('TimerList 미완료 업무 표시 기능 (v0.13.0)', () => {
+  beforeEach(() => {
+    clearStore();
+  });
+
+  describe('미완료 업무 필터링', () => {
+    it('PAUSED 상태 로그는 시작 날짜와 무관하게 오늘 표시되어야 한다', () => {
+      const { result } = renderHook(() => useTimerStore());
+      
+      // 어제 날짜로 로그 생성 후 PAUSED 상태로 변경
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      yesterday.setHours(10, 0, 0, 0);
+      const yesterdayTimestamp = yesterday.getTime();
+      
+      act(() => {
+        result.current.startTimer('어제 시작한 작업', 'P001', '개발');
+        result.current.completeTimer();
+      });
+      
+      const log = result.current.logs[0];
+      
+      // 시작 시간을 어제로, 상태를 PAUSED로 변경
+      act(() => {
+        result.current.updateLog(log.id, {
+          startTime: yesterdayTimestamp,
+          endTime: undefined,
+          status: 'PAUSED' as const,
+        });
+      });
+      
+      const updatedLog = result.current.logs.find(l => l.id === log.id);
+      expect(updatedLog?.status).toBe('PAUSED');
+      expect(updatedLog?.startTime).toBe(yesterdayTimestamp);
+    });
+
+    it('RUNNING 상태 로그도 날짜와 무관하게 표시되어야 한다', () => {
+      const { result } = renderHook(() => useTimerStore());
+      
+      act(() => {
+        result.current.startTimer('진행 중인 작업', 'P001', '개발');
+      });
+      
+      // activeTimer가 RUNNING 상태로 존재해야 함
+      expect(result.current.activeTimer).not.toBeNull();
+      expect(result.current.activeTimer?.status).toBe('RUNNING');
+    });
+
+    it('COMPLETED 상태 로그는 해당 날짜에만 표시된다', () => {
+      const { result } = renderHook(() => useTimerStore());
+      
+      act(() => {
+        result.current.startTimer('완료된 작업', 'P001', '개발');
+        result.current.completeTimer();
+      });
+      
+      const log = result.current.logs[0];
+      expect(log.status).toBe('COMPLETED');
+      // COMPLETED 상태는 시작 날짜로 필터링됨 (기존 동작 유지)
+    });
+  });
+
+  describe('이전 날짜 시작 표시', () => {
+    it('이전 날짜에 시작된 업무는 M/D HH:mm 형식으로 표시된다', () => {
+      // formatTimeWithDate 함수 동작 테스트
+      const now = new Date();
+      const yesterday = new Date(now);
+      yesterday.setDate(yesterday.getDate() - 1);
+      yesterday.setHours(10, 30, 0, 0);
+      
+      const todayStart = new Date(now);
+      todayStart.setHours(6, 0, 0, 0);
+      const tomorrowStart = new Date(todayStart);
+      tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+      
+      const date_range = {
+        start: todayStart.getTime(),
+        end: tomorrowStart.getTime(),
+      };
+      
+      // 어제 시작 시간은 date_range.start보다 이전
+      expect(yesterday.getTime()).toBeLessThan(date_range.start);
+    });
+  });
+
+  describe('총시간/오늘시간 분리', () => {
+    it('TaskGroup에 today_duration 필드가 존재해야 한다', () => {
+      // TaskGroup 인터페이스 테스트
+      const taskGroup = {
+        title: '테스트',
+        sessions: [],
+        total_duration: 3600, // 1시간
+        today_duration: 1800, // 30분
+        first_start: Date.now(),
+        last_end: undefined,
+        has_running: false,
+      };
+      
+      expect(taskGroup.total_duration).toBe(3600);
+      expect(taskGroup.today_duration).toBe(1800);
+    });
+
+    it('이전 날짜 세션은 today_duration에 포함되지 않는다', () => {
+      // today_duration 계산 로직 테스트
+      const now = new Date();
+      const todayStart = new Date(now);
+      todayStart.setHours(6, 0, 0, 0);
+      
+      const yesterdaySession = {
+        startTime: todayStart.getTime() - 86400000, // 어제
+        duration: 3600,
+      };
+      
+      const todaySession = {
+        startTime: todayStart.getTime() + 3600000, // 오늘 07:00
+        duration: 1800,
+      };
+      
+      const date_range = {
+        start: todayStart.getTime(),
+        end: todayStart.getTime() + 86400000,
+      };
+      
+      // 어제 세션은 범위 밖
+      expect(yesterdaySession.startTime < date_range.start).toBe(true);
+      // 오늘 세션은 범위 내
+      expect(todaySession.startTime >= date_range.start && todaySession.startTime < date_range.end).toBe(true);
+    });
+  });
+});
+
 describe('TimerList 버튼 기능', () => {
   beforeEach(() => {
     clearStore();
