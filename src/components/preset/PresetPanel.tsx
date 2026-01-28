@@ -55,6 +55,7 @@ interface PresetItem {
   title: string;
   projectCode?: string;  // boardNo에서 변경
   category?: string;
+  note?: string;         // 비고
   color?: string;
 }
 
@@ -330,6 +331,7 @@ const PresetPanel: React.FC = () => {
   const [modal_project_code, setModalProjectCode] = useState('');
   const [modal_project_name, setModalProjectName] = useState('');
   const [modal_category, setModalCategory] = useState<string | null>(null);
+  const [modal_note, setModalNote] = useState('');
   const [modal_color, setModalColor] = useState<string | undefined>(undefined);
   
   const projectOptions = projects.map(p => `[${p.code}] ${p.name}`);
@@ -373,7 +375,7 @@ const PresetPanel: React.FC = () => {
   const getRecentTasks = () => {
     const seen_titles = new Set<string>();
     const preset_titles = new Set(presets.map(p => p.title));
-    const recent: { title: string; projectCode?: string; category?: string }[] = [];
+    const recent: { title: string; projectCode?: string; category?: string; note?: string }[] = [];
 
     const sorted_logs = [...logs].sort((a, b) => b.startTime - a.startTime);
     
@@ -384,6 +386,7 @@ const PresetPanel: React.FC = () => {
           title: log.title,
           projectCode: log.projectCode,
           category: log.category,
+          note: log.note,
         });
         if (recent.length >= 5) break;
       }
@@ -394,7 +397,7 @@ const PresetPanel: React.FC = () => {
 
   const handleStartPreset = useCallback((preset: PresetItem, e: React.MouseEvent) => {
     e.stopPropagation();
-    startTimer(preset.title, preset.projectCode, preset.category);
+    startTimer(preset.title, preset.projectCode, preset.category, preset.note);
   }, [startTimer]);
 
   const handleOpenAddMenu = (event: React.MouseEvent<HTMLElement>) => {
@@ -412,17 +415,19 @@ const PresetPanel: React.FC = () => {
     setModalProjectCode('');
     setModalProjectName('');
     setModalCategory(null);
+    setModalNote('');
     setModalColor(undefined);
     setIsModalOpen(true);
   };
 
-  const handleAddFromRecent = (task: { title: string; projectCode?: string; category?: string }) => {
+  const handleAddFromRecent = (task: { title: string; projectCode?: string; category?: string; note?: string }) => {
     handleCloseAddMenu();
     setEditPreset(null);
     setModalTitle(task.title);
     setModalProjectCode(task.projectCode || '');
     setModalProjectName(task.projectCode ? getProjectName(task.projectCode) : '');
     setModalCategory(task.category || null);
+    setModalNote(task.note || '');
     setModalColor(undefined);
     setIsModalOpen(true);
   };
@@ -433,6 +438,7 @@ const PresetPanel: React.FC = () => {
     setModalProjectCode(preset.projectCode || '');
     setModalProjectName(preset.projectCode ? getProjectName(preset.projectCode) : '');
     setModalCategory(preset.category || null);
+    setModalNote(preset.note || '');
     setModalColor(preset.color);
     setIsModalOpen(true);
   }, [getProjectName]);
@@ -476,6 +482,7 @@ const PresetPanel: React.FC = () => {
       title: modal_title.trim(),
       projectCode: modal_project_code || undefined,
       category: modal_category || undefined,
+      note: modal_note.trim() || undefined,
       color: modal_color,
     };
 
@@ -725,6 +732,8 @@ const PresetPanel: React.FC = () => {
             <TextField
               label="비고"
               placeholder="추가 메모"
+              value={modal_note}
+              onChange={(e) => setModalNote(e.target.value)}
               multiline
               rows={2}
             />

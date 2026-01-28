@@ -90,6 +90,7 @@ interface TaskGroup {
   title: string;
   projectCode?: string;
   category?: string;
+  note?: string;
   sessions: TimerLog[];
   total_duration: number; // 초 단위 (해당 업무의 전체 작업 시간)
   today_duration: number; // 초 단위 (오늘 날짜 범위 내 작업 시간)
@@ -109,6 +110,7 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
   const [editTitle, setEditTitle] = useState('');
   const [editProjectCode, setEditProjectCode] = useState('');
   const [editCategory, setEditCategory] = useState<string | null>(null);
+  const [editNote, setEditNote] = useState('');
   const [editStartTime, setEditStartTime] = useState('');
   const [editEndTime, setEditEndTime] = useState('');
   
@@ -201,14 +203,16 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
           existing.has_running = true;
           existing.last_end = undefined;
         }
-        // 최신 projectCode, category로 업데이트
+        // 최신 projectCode, category, note로 업데이트
         if (log.projectCode) existing.projectCode = log.projectCode;
         if (log.category) existing.category = log.category;
+        if (log.note) existing.note = log.note;
       } else {
         groups.set(log.title, {
           title: log.title,
           projectCode: log.projectCode,
           category: log.category,
+          note: log.note,
           sessions: [log],
           total_duration: duration,
           today_duration: is_in_today_range ? duration : 0,
@@ -231,12 +235,15 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
           }
           existingGroup.has_running = true;
           existingGroup.last_end = undefined;
+          // note 업데이트
+          if (activeTimer.note) existingGroup.note = activeTimer.note;
         } else {
           // 새 그룹 생성 (activeTimer만 있는 경우)
           groups.set(activeTimer.title, {
             title: activeTimer.title,
             projectCode: activeTimer.projectCode,
             category: activeTimer.category,
+            note: activeTimer.note,
             sessions: [],
             total_duration: 0,
             today_duration: 0,
@@ -312,8 +319,8 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
     });
   };
 
-  const handleRestart = (title: string, projectCode?: string, category?: string) => {
-    startTimer(title, projectCode, category);
+  const handleRestart = (title: string, projectCode?: string, category?: string, note?: string) => {
+    startTimer(title, projectCode, category, note);
   };
 
   const getDuration = (log: TimerLog) => {
@@ -349,6 +356,7 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
     setEditTitle(log.title);
     setEditProjectCode(log.projectCode || '');
     setEditCategory(log.category || null);
+    setEditNote(log.note || '');
     setEditStartTime(timestampToDatetimeLocal(log.startTime));
     setEditEndTime(timestampToDatetimeLocal(log.endTime));
   };
@@ -374,6 +382,7 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
         title: editTitle,
         projectCode: editProjectCode || undefined,
         category: editCategory || undefined,
+        note: editNote.trim() || undefined,
         startTime: newStartTime,
         endTime: newEndTime
       });
@@ -386,6 +395,7 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
     setEditTitle('');
     setEditProjectCode('');
     setEditCategory(null);
+    setEditNote('');
     setEditStartTime('');
     setEditEndTime('');
   };
@@ -755,10 +765,10 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                                 pauseAndMoveToLogs();
                               } else if (all_completed && task.sessions.length > 0) {
                                 // 완료된 항목 → 완료 취소 후 새 타이머 시작
-                                handleRestart(task.title, task.projectCode, task.category);
+                                handleRestart(task.title, task.projectCode, task.category, task.note);
                               } else {
                                 // 미완료 항목 → 새 타이머 시작
-                                handleRestart(task.title, task.projectCode, task.category);
+                                handleRestart(task.title, task.projectCode, task.category, task.note);
                               }
                             }}
                             sx={{ 
@@ -1143,7 +1153,7 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                                       onClick={() => {
                                         // 기존 activeTimer는 startTimer 내부에서 자동으로 logs로 이동됨
                                         // 새 세션을 현재 시간으로 시작
-                                        startTimer(session.title, session.projectCode, session.category);
+                                        startTimer(session.title, session.projectCode, session.category, session.note);
                                       }}
                                       sx={{ p: 0.25, color: 'success.main' }}
                                       aria-label="재진행"
@@ -1235,6 +1245,15 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                 sx={{ flex: 1 }}
               />
             </Box>
+            <TextField
+              label="비고"
+              placeholder="추가 메모"
+              value={editNote}
+              onChange={(e) => setEditNote(e.target.value)}
+              multiline
+              rows={2}
+              fullWidth
+            />
             <Box sx={{ display: 'flex', gap: 2 }}>
               <TextField
                 label="시작 시간"
