@@ -23,8 +23,8 @@ beforeEach(() => {
 });
 
 describe('v0.12.0 - 타이머 세션 관리', () => {
-  describe('같은 이름 작업 시작 시 완료 세션 자동 취소', () => {
-    it('완료된 동일 이름 작업이 PAUSED로 변경됨', () => {
+  describe('새 작업 시작 시 기존 세션 관리', () => {
+    it('완료된 세션은 유지되고 새 작업이 시작됨', () => {
       const { result } = renderHook(() => useTimerStore());
 
       // 1. 첫 번째 작업 시작 및 완료
@@ -44,10 +44,10 @@ describe('v0.12.0 - 타이머 세션 관리', () => {
         result.current.startTimer('테스트 작업', 'TEST01');
       });
 
-      // 기존 완료 로그가 PAUSED로 변경되고 endTime이 제거됨
-      const pausedLog = result.current.logs.find(log => log.title === '테스트 작업');
-      expect(pausedLog?.status).toBe('PAUSED');
-      expect(pausedLog?.endTime).toBeUndefined();
+      // 기존 완료 로그는 COMPLETED로 유지됨
+      const completedLog = result.current.logs.find(log => log.title === '테스트 작업');
+      expect(completedLog?.status).toBe('COMPLETED');
+      expect(completedLog?.endTime).toBeDefined();
 
       // 새 activeTimer 확인
       expect(result.current.activeTimer?.title).toBe('테스트 작업');
@@ -191,15 +191,18 @@ describe('v0.12.0 - 세션 상태별 동작', () => {
     expect(result.current.logs[0].status).toBe('PAUSED');
     expect(result.current.logs[1].status).toBe('COMPLETED');
 
-    // 3. 같은 이름으로 다시 시작 - 완료된 세션이 PAUSED로 변경
+    // 3. 같은 이름으로 다시 시작 - 기존 완료된 세션은 유지됨
     act(() => {
       result.current.startTimer('작업A');
     });
 
-    // 기존 PAUSED는 유지, COMPLETED가 PAUSED로 변경
+    // 기존 로그 상태 유지 (PAUSED 1개, COMPLETED 1개)
     const logs = result.current.logs.filter(log => log.title === '작업A');
     const pausedLogs = logs.filter(log => log.status === 'PAUSED');
-    expect(pausedLogs).toHaveLength(2); // 두 개 모두 PAUSED
+    const completedLogs = logs.filter(log => log.status === 'COMPLETED');
+    expect(pausedLogs).toHaveLength(1);
+    expect(completedLogs).toHaveLength(1);
+    expect(result.current.activeTimer?.title).toBe('작업A');
   });
 });
 

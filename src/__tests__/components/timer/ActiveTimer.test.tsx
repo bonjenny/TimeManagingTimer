@@ -1,18 +1,22 @@
 /**
- * v0.1.0 테스트: ActiveTimer 컴포넌트 테스트
+ * v0.13.5 테스트: ActiveTimer 컴포넌트 테스트
  */
-import { render, screen, act } from '../../../test-utils';
+import { render, screen, act, within } from '../../../test-utils';
 import userEvent from '@testing-library/user-event';
 import ActiveTimer from '../../../components/timer/ActiveTimer';
 import { useTimerStore } from '../../../store/useTimerStore';
 
 describe('ActiveTimer', () => {
   beforeEach(() => {
-    // 스토어 초기화
-    const store = useTimerStore.getState();
-    if (store.activeTimer) {
-      store.completeTimer();
-    }
+    // 스토어 완전 초기화
+    useTimerStore.setState({
+      activeTimer: null,
+      logs: [],
+      deleted_logs: [],
+      excludedTitles: [],
+      titleColorIndexMap: {},
+      nextColorIndex: 0,
+    });
     localStorage.clear();
   });
 
@@ -38,11 +42,15 @@ describe('ActiveTimer', () => {
 
     render(<ActiveTimer />);
 
-    const pause_button = screen.getByRole('button', { name: /일시정지/i });
+    // 일시정지 아이콘(PauseIcon)이 있는 버튼 찾기
+    const pause_icon = screen.getByTestId('PauseIcon');
+    const pause_button = pause_icon.closest('button') as HTMLButtonElement;
     await user.click(pause_button);
 
-    const { activeTimer } = useTimerStore.getState();
-    expect(activeTimer?.status).toBe('PAUSED');
+    // pauseAndMoveToLogs가 호출되어 activeTimer는 null, logs에 PAUSED 상태로 이동
+    const { activeTimer, logs } = useTimerStore.getState();
+    expect(activeTimer).toBeNull();
+    expect(logs[0]?.status).toBe('PAUSED');
   });
 
   it('일시정지 상태에서 재개 버튼을 클릭하면 타이머가 재개된다', async () => {
@@ -54,7 +62,9 @@ describe('ActiveTimer', () => {
 
     render(<ActiveTimer />);
 
-    const resume_button = screen.getByRole('button', { name: /재개/i });
+    // 재생 아이콘(PlayArrowIcon)이 있는 버튼 찾기
+    const play_icon = screen.getByTestId('PlayArrowIcon');
+    const resume_button = play_icon.closest('button') as HTMLButtonElement;
     await user.click(resume_button);
 
     const { activeTimer } = useTimerStore.getState();
@@ -78,14 +88,15 @@ describe('ActiveTimer', () => {
     expect(logs[0].status).toBe('COMPLETED');
   });
 
-  it('경과 시간이 HH:MM:SS 형식으로 표시된다', () => {
+  it('경과 시간이 표시된다', () => {
     act(() => {
       useTimerStore.getState().startTimer('테스트 작업');
     });
 
     render(<ActiveTimer />);
 
-    // 초기 시간은 00:00:00
-    expect(screen.getByText(/00:00/)).toBeInTheDocument();
+    // 타이머 시간 표시 영역에 00:00이 포함되어 있는지 확인
+    const time_elements = screen.getAllByText(/00:00/);
+    expect(time_elements.length).toBeGreaterThan(0);
   });
 });

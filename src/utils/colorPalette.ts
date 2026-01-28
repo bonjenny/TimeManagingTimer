@@ -41,9 +41,9 @@ export const COOLORS_PALETTES: Record<Exclude<PaletteType, 'custom'>, Omit<Palet
   // 올리브 & 노랑 (노란색 + 올리브 - 명도 다양화)
   'olive-yellow': {
     name: '올리브 & 노랑',
-    colors: ['#2a3018', '#4a5428', '#8a7a20', '#3a3a10', '#6a6a00', '#5a6030', '#7a6a18', '#4a4a00', '#606c38', '#5a5020'],
-    primary: '#4a5428',
-    accent: '#8a7a20',
+    colors: ['#4a5428', '#808000', '#a0a050', '#6a6a00', '#b0a040', '#5a6030', '#8a8a30', '#7a6a18', '#606c38', '#90a048'],
+    primary: '#808000',
+    accent: '#a0a050',
   },
   // 파스텔 레인보우 (흰색 계열 수정)
   'pastel-rainbow': {
@@ -55,7 +55,7 @@ export const COOLORS_PALETTES: Record<Exclude<PaletteType, 'custom'>, Omit<Palet
   // 오션 딥블루 (색조 다양화: 네이비, 청록, 딥블루 + 딥바이올렛)
   'ocean-blue': {
     name: '오션 딥블루',
-    colors: ['#1a365d', '#234e70', '#3a3a8c', '#2a6478', '#3182ce', '#4a4a9a', '#2b6cb0', '#2c7a7b', '#4a90a4', '#285e61'],
+    colors: ['#1a365d', '#3a3a8c', '#234e70', '#4a90b8', '#3182ce', '#3a7090', '#2b6cb0', '#4a80a0', '#3a7a9a', '#285e61'],
     primary: '#2b6cb0',
     accent: '#3182ce',
   },
@@ -69,29 +69,29 @@ export const COOLORS_PALETTES: Record<Exclude<PaletteType, 'custom'>, Omit<Palet
   // 브라운 그린 (브라운 → 그린 → 베이지 그라데이션)
   'beige-brown': {
     name: '브라운 그린',
-    colors: ['#582f0e', '#7f4f24', '#3d5a45', '#4a6b52', '#6b8e5a', '#7a9a30', '#556b2f', '#8b7355', '#936639', '#a68a64'],
+    colors: ['#582f0e', '#2d5a45', '#3d5a45', '#4a6b52', '#6b8e5a', '#7a9a30', '#556b2f', '#8b7355', '#936639', '#a68a64'],
     primary: '#582f0e',
     accent: '#6b8e5a',
   },
   // 핑크 & 퍼플 (여린 핑크 + 퍼플-바이올렛 + 채도 높은 색)
   'pink-purple': {
     name: '핑크 & 퍼플',
-    colors: ['#a0607a', '#c74080', '#9a6080', '#8a5070', '#9932cc', '#6a4078', '#8060a0', '#7050a0', '#a040a0', '#8a6098'],
+    colors: ['#a0607a', '#c74080', '#d080a0', '#9932cc', '#b070c0', '#8060a0', '#c090d0', '#a040a0', '#d0a0e0', '#b080c0'],
     primary: '#9932cc',
     accent: '#c74080',
   },
-  // 스카이 선셋 (구름/하늘 이미지 기반)
+  // 스카이 선셋 (청록/블루/그린 계열)
   'sky-sunset': {
     name: '스카이 선셋',
-    colors: ['#1e6091', '#168aad', '#34a0a4', '#52b69a', '#76c893', '#d9845e', '#e09f7d', '#c9848a', '#a86e7a', '#8e5c6a'],
+    colors: ['#0d4060', '#1e6091', '#168aad', '#52b69a', '#6aaac0', '#34a0a4', '#4a8a9a', '#7ab0a0', '#1a5a6a', '#2a6a7a'],
     primary: '#168aad',
-    accent: '#d9845e',
+    accent: '#52b69a',
   },
-  // 포레스트 그린 (다양한 그린 계열 - 짙은 색상 포함)
+  // 포레스트 그린 (짙은 그린 + 밝은 그린 분산)
   'forest-green': {
     name: '포레스트 그린',
-    colors: ['#0d2818', '#1a3a28', '#3cb371', '#6b8e23', '#7a9a30', '#228b22', '#8a9a20', '#2d5a45', '#32cd32', '#4a7c59'],
-    primary: '#1a3a28',
+    colors: ['#2d5a45', '#3cb371', '#1a3a28', '#6b8e23', '#4a7c59', '#7a9a30', '#228b22', '#8a9a20', '#32cd32', '#3a8a5a'],
+    primary: '#2d5a45',
     accent: '#3cb371',
   },
   // 핑크 스카이 (라벤더 → 스카이블루 → 핑크 → 딥블루 → 청록 → 베이지 그라데이션)
