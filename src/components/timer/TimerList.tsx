@@ -65,6 +65,20 @@ const formatTime = (timestamp: number | undefined) => {
   return date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
 };
 
+// 시작시간이 선택된 날짜 범위 밖이면 날짜 포함 (M/D HH:mm)
+const formatTimeWithDate = (timestamp: number, date_range: { start: number; end: number }) => {
+  const date = new Date(timestamp);
+  const timeStr = date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
+  
+  // 선택된 날짜 범위 밖이면 날짜 표시
+  if (timestamp < date_range.start) {
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    return `${month}/${day} ${timeStr}`;
+  }
+  return timeStr;
+};
+
 // 날짜 포맷 (YYYY-MM-DD)
 const formatDate = (timestamp: number) => {
   const date = new Date(timestamp);
@@ -77,7 +91,8 @@ interface TaskGroup {
   projectCode?: string;
   category?: string;
   sessions: TimerLog[];
-  total_duration: number; // 초 단위
+  total_duration: number; // 초 단위 (해당 업무의 전체 작업 시간)
+  today_duration: number; // 초 단위 (오늘 날짜 범위 내 작업 시간)
   first_start: number;
   last_end: number | undefined;
   has_running: boolean;
@@ -118,12 +133,31 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
   // 휴지통 모달 상태
   const [trash_modal_open, setTrashModalOpen] = useState(false);
 
+  // 오늘인지 확인 (useMemo 전에 계산)
+  const now = new Date();
+  let todayForCheck = new Date(now);
+  if (now.getHours() < DAY_START_HOUR) {
+    todayForCheck.setDate(todayForCheck.getDate() - 1);
+  }
+  const is_today = 
+    selectedDate.getFullYear() === todayForCheck.getFullYear() &&
+    selectedDate.getMonth() === todayForCheck.getMonth() &&
+    selectedDate.getDate() === todayForCheck.getDate();
+
   // 로그를 제목별로 그룹화 (선택된 날짜만)
   const groupedTasks = useMemo(() => {
     const date_range = getDateRange(selectedDate);
     
     const filtered_logs = logs.filter(log => {
-      // 선택된 날짜 필터링 (06:00 ~ 익일 06:00)
+      // 미완료 상태(PAUSED, RUNNING)는 오늘 날짜에서 항상 표시
+      const is_incomplete = log.status === 'PAUSED' || log.status === 'RUNNING';
+      
+      if (is_today && is_incomplete) {
+        if (!showCompleted && log.status === 'COMPLETED') return false;
+        return true;
+      }
+      
+      // 그 외에는 기존 날짜 필터링 적용
       if (log.startTime < date_range.start || log.startTime >= date_range.end) {
         return false;
       }
@@ -144,9 +178,17 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
         return getDurationSecondsExcludingLunch(l.startTime, effectiveEndTime, l.pausedDuration);
       };
       
+      // 세션이 오늘 날짜 범위에 해당하는지 확인
+      const is_in_today_range = log.startTime >= date_range.start && log.startTime < date_range.end;
+      const duration = get_duration(log);
+      
       if (existing) {
         existing.sessions.push(log);
-        existing.total_duration += get_duration(log);
+        existing.total_duration += duration;
+        // 오늘 범위 내 세션만 today_duration에 합산
+        if (is_in_today_range) {
+          existing.today_duration += duration;
+        }
         if (log.startTime < existing.first_start) {
           existing.first_start = log.startTime;
         }
@@ -166,7 +208,8 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
           projectCode: log.projectCode,
           category: log.category,
           sessions: [log],
-          total_duration: get_duration(log),
+          total_duration: duration,
+          today_duration: is_in_today_range ? duration : 0,
           first_start: log.startTime,
           last_end: log.endTime,
           has_running: log.status === 'RUNNING' || log.status === 'PAUSED'
@@ -194,6 +237,7 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
             category: activeTimer.category,
             sessions: [],
             total_duration: 0,
+            today_duration: 0,
             first_start: activeTimer.startTime,
             last_end: undefined,
             has_running: true
@@ -233,7 +277,7 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
       // 3. 작업명 오름차순
       return a.title.localeCompare(b.title);
     });
-  }, [logs, showCompleted, selectedDate, activeTimer]);
+  }, [logs, showCompleted, selectedDate, activeTimer, is_today]);
 
   // 총 시간 합계 계산
   const totalDurationSeconds = useMemo(() => {
@@ -479,22 +523,16 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
     return code;
   };
 
-  // 선택된 날짜 로그 확인
+  // 선택된 날짜 로그 확인 (미완료 업무 포함)
   const date_range = getDateRange(selectedDate);
-  const date_logs = logs.filter(log => 
-    log.startTime >= date_range.start && log.startTime < date_range.end
-  );
-
-  // 오늘인지 확인
-  const now = new Date();
-  let today = new Date(now);
-  if (now.getHours() < DAY_START_HOUR) {
-    today.setDate(today.getDate() - 1);
-  }
-  const is_today = 
-    selectedDate.getFullYear() === today.getFullYear() &&
-    selectedDate.getMonth() === today.getMonth() &&
-    selectedDate.getDate() === today.getDate();
+  const date_logs = logs.filter(log => {
+    // 미완료 상태는 오늘일 때 항상 포함
+    const is_incomplete = log.status === 'PAUSED' || log.status === 'RUNNING';
+    if (is_today && is_incomplete) {
+      return true;
+    }
+    return log.startTime >= date_range.start && log.startTime < date_range.end;
+  });
 
   if (date_logs.length === 0) {
     return (
@@ -552,7 +590,7 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
         {/* 헤더 */}
         <Box sx={{ 
           display: 'grid', 
-          gridTemplateColumns: '56px 140px 1fr 90px 130px 120px 60px 60px',
+          gridTemplateColumns: '56px 140px 1fr 90px 110px 110px 130px 50px 50px',
           gap: 1,
           px: 2,
           py: 1,
@@ -567,7 +605,8 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
           <Box>프로젝트 코드</Box>
           <Box>기록명</Box>
           <Box>카테고리</Box>
-          <Box>시간</Box>
+          <Box>총시간</Box>
+          <Box>오늘시간</Box>
           <Box>시작-종료</Box>
           <Box>세션</Box>
           <Box></Box>
@@ -587,7 +626,7 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                 onClick={() => toggleExpand(task.title)}
                 sx={{ 
                   display: 'grid', 
-                  gridTemplateColumns: '56px 140px 1fr 90px 130px 120px 60px 60px',
+                  gridTemplateColumns: '56px 140px 1fr 90px 110px 110px 130px 50px 50px',
                   gap: 1,
                   px: 2,
                   py: 1.5,
@@ -819,14 +858,19 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                   )}
                 </Box>
 
-                {/* 총 시간 */}
-                <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                {/* 총시간 */}
+                <Typography variant="body2" sx={{ fontWeight: 500, fontSize: '0.8rem' }}>
                   {formatDuration(task.total_duration)}
+                </Typography>
+
+                {/* 오늘시간 */}
+                <Typography variant="body2" sx={{ fontWeight: 500, fontSize: '0.8rem', color: task.today_duration > 0 ? 'primary.main' : 'text.secondary' }}>
+                  {formatDuration(task.today_duration)}
                 </Typography>
 
                 {/* 시작-종료 */}
                 <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.8rem' }}>
-                  {formatTime(is_active_task && activeTimer ? activeTimer.startTime : task.first_start)} ~ {task.last_end ? formatTime(task.last_end) : (is_active_task ? '진행 중' : '일시정지')}
+                  {formatTimeWithDate(is_active_task && activeTimer ? activeTimer.startTime : task.first_start, date_range)} ~ {task.last_end ? formatTime(task.last_end) : (is_active_task ? '진행 중' : '일시정지')}
                 </Typography>
 
                 {/* 세션 수 */}
@@ -1070,7 +1114,7 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                     </Table>
                   </TableContainer>
                   <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-                    첫 시작: {formatTime(task.first_start)} | 마지막 종료: {task.last_end ? formatTime(task.last_end) : (is_active_task ? '진행 중' : '일시정지')} | 총 {formatDuration(task.total_duration)}
+                    첫 시작: {formatTimeWithDate(task.first_start, date_range)} | 마지막 종료: {task.last_end ? formatTime(task.last_end) : (is_active_task ? '진행 중' : '일시정지')} | 총 {formatDuration(task.total_duration)}
                   </Typography>
                 </Box>
               </Collapse>
