@@ -45,9 +45,9 @@ describe('colorPalette', () => {
       expect(unique_names.size).toBe(names.length);
     });
 
-    it('9개의 Coolors 팔레트가 있다', () => {
+    it('10개의 Coolors 팔레트가 있다', () => {
       const palette_count = Object.keys(COOLORS_PALETTES).length;
-      expect(palette_count).toBe(9);
+      expect(palette_count).toBe(10);
     });
   });
 
@@ -83,9 +83,9 @@ describe('colorPalette', () => {
   });
 
   describe('getPaletteList', () => {
-    it('9개의 팔레트 옵션을 반환한다', () => {
+    it('10개의 팔레트 옵션을 반환한다', () => {
       const list = getPaletteList();
-      expect(list.length).toBe(9); // Coolors 9개
+      expect(list.length).toBe(10); // Coolors 10개
     });
 
     it('각 팔레트에 type, name, colors가 포함된다', () => {
