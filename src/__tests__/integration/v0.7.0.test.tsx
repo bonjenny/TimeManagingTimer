@@ -195,20 +195,14 @@ describe('v0.7.0 통합 테스트', () => {
 
       render(<WeeklySchedule />);
 
-      // 복사 버튼 찾기
-      const copyBtn = screen.getByText(/템플릿 복사/i);
+      // 복사 버튼 찾기 (ContentCopyIcon 아이콘 버튼)
+      const copy_icon = screen.getByTestId('ContentCopyIcon');
+      const copyBtn = copy_icon.closest('button') as HTMLButtonElement;
       await user.click(copyBtn);
 
-      // 메뉴가 뜨는지 확인 ("상세형 템플릿", "요약형 템플릿")
+      // 클립보드 복사 완료 스낵바 확인
       await waitFor(() => {
-        expect(screen.getByText('상세형 템플릿')).toBeInTheDocument();
-      });
-      const detailOption = screen.getByText('상세형 템플릿');
-      await user.click(detailOption);
-
-      // 클립보드 호출 대신 결과 스낵바 확인
-      await waitFor(() => {
-        expect(screen.getByText('상세형 템플릿이 복사되었습니다.')).toBeInTheDocument();
+        expect(screen.getByText(/클립보드에 복사되었습니다/i)).toBeInTheDocument();
       });
     });
   });

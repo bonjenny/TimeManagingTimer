@@ -1,18 +1,22 @@
 /**
- * v0.2.0 테스트: NewTaskModal 컴포넌트 테스트 (F8 단축키 팝업)
+ * v0.13.5 테스트: NewTaskModal 컴포넌트 테스트 (F8 단축키 팝업)
  */
-import { render, screen, act } from '../../../test-utils';
+import { render, screen } from '../../../test-utils';
 import userEvent from '@testing-library/user-event';
 import NewTaskModal from '../../../components/modal/NewTaskModal';
 import { useTimerStore } from '../../../store/useTimerStore';
 
 describe('NewTaskModal', () => {
   beforeEach(() => {
-    // 스토어 초기화
-    const store = useTimerStore.getState();
-    if (store.activeTimer) {
-      store.completeTimer();
-    }
+    // 스토어 완전 초기화
+    useTimerStore.setState({
+      activeTimer: null,
+      logs: [],
+      deleted_logs: [],
+      excludedTitles: [],
+      titleColorIndexMap: {},
+      nextColorIndex: 0,
+    });
     localStorage.clear();
   });
 
@@ -55,7 +59,8 @@ describe('NewTaskModal', () => {
   it('제목이 비어있으면 시작 버튼이 비활성화된다', () => {
     render(<NewTaskModal open={true} onClose={() => {}} />);
 
-    const start_button = screen.getByRole('button', { name: /타이머 시작/i });
+    // 버튼 텍스트가 "시작(Enter)"로 변경됨
+    const start_button = screen.getByRole('button', { name: /시작/i });
     expect(start_button).toBeDisabled();
   });
 
@@ -70,10 +75,11 @@ describe('NewTaskModal', () => {
 
     await user.type(title_input, '테스트 작업');
     await user.type(board_input, '12345');
-    await user.click(screen.getByRole('button', { name: /타이머 시작/i }));
+    await user.click(screen.getByRole('button', { name: /시작/i }));
 
     const { activeTimer } = useTimerStore.getState();
-    expect(activeTimer?.boardNo).toBe('12345');
+    // NewTaskModal은 board_no를 projectCode 파라미터로 전달함
+    expect(activeTimer?.projectCode).toBe('12345');
   });
 
   it('F8 라벨이 표시된다', () => {

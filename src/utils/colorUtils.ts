@@ -84,34 +84,34 @@ export const hslToHex = (h: number, s: number, l: number): string => {
 };
 
 // 톤온톤 팔레트 생성 (10가지 색상)
+// 색상/채도/명도 다양화, 너무 밝은 색상 제외
 export const generateToneOnTonePalette = (baseColor: string): string[] => {
-  const { h, s, l } = hexToHsl(baseColor);
+  const { h, s } = hexToHsl(baseColor);
   
   const palette: string[] = [];
   
-  // 다양한 명도와 채도로 10가지 색상 생성
-  // 1. 아주 밝은
-  palette.push(hslToHex(h, Math.max(s - 10, 10), 95));
-  palette.push(hslToHex(h, Math.max(s - 5, 20), 85));
-  palette.push(hslToHex(h, s, 75));
+  // 색조 변화 함수 (±15도 범위)
+  const shiftHue = (hue: number, shift: number) => (hue + shift + 360) % 360;
   
-  // 2. 중간 (기준 색상 포함)
-  palette.push(hslToHex(h, Math.min(s + 10, 100), 65));
-  palette.push(hslToHex(h, Math.min(s + 20, 100), 55)); // 기준 명도에 가까움
+  // 1. 밝은 톤 (명도 65~70%, 너무 밝은 95%는 제외)
+  palette.push(hslToHex(h, Math.max(s - 10, 30), 70));
+  palette.push(hslToHex(shiftHue(h, 10), Math.max(s, 40), 65));
   
-  // 3. 진한
-  palette.push(hslToHex(h, Math.min(s + 30, 100), 45));
-  palette.push(hslToHex(h, Math.min(s + 40, 100), 35));
-  palette.push(hslToHex(h, Math.min(s + 30, 100), 25));
+  // 2. 중간 밝기 (명도 50~60%)
+  palette.push(hslToHex(h, Math.min(s + 10, 100), 60));
+  palette.push(hslToHex(shiftHue(h, -10), Math.min(s + 20, 100), 55));
+  palette.push(hslToHex(h, Math.min(s + 30, 100), 50));
   
-  // 4. 아주 어두운 / 다른 톤
-  palette.push(hslToHex(h, Math.max(s - 20, 10), 15));
+  // 3. 진한 톤 (명도 35~45%)
+  palette.push(hslToHex(shiftHue(h, 15), Math.min(s + 20, 100), 45));
+  palette.push(hslToHex(h, Math.min(s + 40, 100), 40));
+  palette.push(hslToHex(shiftHue(h, -15), Math.min(s + 30, 100), 35));
   
-  // 5. 강조용 (보색에 가까운 톤온톤? 또는 채도가 매우 높은)
-  palette.push(hslToHex(h, 100, 50));
+  // 4. 어두운 톤 (명도 20~30%)
+  palette.push(hslToHex(h, Math.max(s - 10, 20), 25));
   
-  // 기준 색상이 포함되지 않았을 수 있으므로 중간쯤에 강제로 넣거나, 생성 로직을 따름
-  // 여기서는 단순히 자동 생성된 10개를 반환
+  // 5. 강조용 (채도 높은 중간 명도)
+  palette.push(hslToHex(h, Math.min(s + 50, 100), 45));
   
   return palette;
 };
