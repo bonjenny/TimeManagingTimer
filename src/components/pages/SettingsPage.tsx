@@ -25,6 +25,8 @@ import PaletteIcon from '@mui/icons-material/Palette';
 import EditIcon from '@mui/icons-material/Edit';
 import AddIcon from '@mui/icons-material/Add';
 import RestoreIcon from '@mui/icons-material/Restore';
+import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
+import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { useTimerStore } from '../../store/useTimerStore';
 import { useCategoryStore, DEFAULT_CATEGORIES } from '../../store/useCategoryStore';
 import { useStatusStore, DEFAULT_STATUSES, Status } from '../../store/useStatusStore';
@@ -56,8 +58,8 @@ const DEFAULT_SETTINGS = {
 
 const SettingsPage: React.FC = () => {
   const { setThemeConfig, themeConfig } = useTimerStore();
-  const { categories, addCategory, removeCategory, resetToDefault: resetCategories } = useCategoryStore();
-  const { statuses, addStatus, removeStatus, resetToDefault: resetStatuses } = useStatusStore();
+  const { categories, addCategory, removeCategory, reorderCategories, resetToDefault: resetCategories } = useCategoryStore();
+  const { statuses, addStatus, removeStatus, reorderStatuses, resetToDefault: resetStatuses } = useStatusStore();
   
   // 카테고리 관리 상태
   const [newCategory, setNewCategory] = useState('');
