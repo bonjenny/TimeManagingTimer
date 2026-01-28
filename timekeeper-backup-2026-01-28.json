@@ -1,7 +1,16 @@
 {
   "timekeeper-storage": {
     "state": {
-      "activeTimer": null,
+      "activeTimer": {
+        "id": "2b4244e7-7289-4126-85ea-914b369dd529",
+        "title": "HTML영역 다크모드 적용 TP",
+        "projectCode": "A25_07788",
+        "category": "테스트오류수정",
+        "startTime": 1769571600000,
+        "status": "RUNNING",
+        "pausedDuration": 0,
+        "endTime": 1769586848118
+      },
       "logs": [
         {
           "id": "c5777e43-bcd7-4111-a354-99477922968d",
@@ -162,9 +171,55 @@
           "pausedDuration": 0,
           "endTime": 1769504965707,
           "lastPausedAt": 1769504965707
+        },
+        {
+          "id": "b01e8cd4-0004-4e55-81eb-4bddf16783b8",
+          "title": "개발.12577 3) Abort 구조 설계 및 적용",
+          "projectCode": "A26_00413",
+          "category": "설계",
+          "startTime": 1769558400000,
+          "status": "PAUSED",
+          "pausedDuration": 0,
+          "endTime": 1769561975897.9402,
+          "lastPausedAt": 1769562913900
+        },
+        {
+          "id": "d216c4fd-ce23-4515-9e26-102ed073ba7b",
+          "title": "HTML영역 다크모드 적용 TP",
+          "projectCode": "A25_07788",
+          "category": "테스트오류수정",
+          "startTime": 1769561975897.9402,
+          "status": "PAUSED",
+          "pausedDuration": 0,
+          "endTime": 1769568000000,
+          "lastPausedAt": 1769572225772
         }
       ],
       "deleted_logs": [
+        {
+          "id": "eb5e4030-8ef3-41d7-9f1c-1fc5dcc5e700",
+          "title": "HTML영역 다크모드 적용 TP",
+          "projectCode": "A25_07788",
+          "category": "테스트오류수정",
+          "startTime": 1769571600000,
+          "status": "PAUSED",
+          "pausedDuration": 0,
+          "endTime": 1769586792725,
+          "lastPausedAt": 1769586792725,
+          "deletedAt": 1769586845422
+        },
+        {
+          "id": "bdad53b1-f74d-48ca-9f53-4a9c26f67583",
+          "title": "개발.12577 3) Abort 구조 설계 및 적용",
+          "projectCode": "A26_00413",
+          "category": "설계",
+          "startTime": 1769558409700,
+          "status": "PAUSED",
+          "pausedDuration": 0,
+          "endTime": 1769558412984,
+          "lastPausedAt": 1769558412984,
+          "deletedAt": 1769559209029
+        },
         {
           "id": "1863e078-f321-4dc6-b423-2ed50b2b2d7d",
           "title": "HTML영역 다크모드 적용 TP.15009 stage 아이콘바 설정 > 업무지원 AI 아이콘이 보이지 않습니다",
@@ -661,8 +716,8 @@
       ],
       "excludedTitles": [],
       "themeConfig": {
-        "primaryColor": "#264653",
-        "accentColor": "#e76f51",
+        "primaryColor": "#723d46",
+        "accentColor": "#e26d5c",
         "isDark": true
       },
       "titleColorIndexMap": {
@@ -674,9 +729,10 @@
         "HTML영역 다크모드 적용 TP.15009 stage 아이콘바 설정 > 업무지원 AI 아이콘이 보이지 않습니다.": 3,
         "질의응답": 5,
         "예나님 presentation impl 관련 질의에 응답": 6,
-        "HTML영역 다크모드 적용 TP.15009 stage 아이콘바 설정 > 업무지원 AI 아이콘이 보이지 않습니다": 8
+        "HTML영역 다크모드 적용 TP.15009 stage 아이콘바 설정 > 업무지원 AI 아이콘이 보이지 않습니다": 8,
+        "HTML영역 다크모드 적용 TP": 9
       },
-      "nextColorIndex": 9
+      "nextColorIndex": 10
     },
     "version": 0
   },
@@ -713,6 +769,6 @@
   ],
   "timekeeper-feedback-posts": [],
   "timekeeper-palette-settings": {
-    "type": "navy-orange"
+    "type": "pastel-rainbow"
   }
 }
