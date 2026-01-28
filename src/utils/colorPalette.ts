@@ -90,7 +90,7 @@ export const COOLORS_PALETTES: Record<Exclude<PaletteType, 'custom'>, Omit<Palet
   // 포레스트 그린 (짙은 그린 + 밝은 그린 분산)
   'forest-green': {
     name: '포레스트 그린',
-    colors: ['#2d5a45', '#3cb371', '#1a3a28', '#6b8e23', '#4a7c59', '#7a9a30', '#228b22', '#8a9a20', '#32cd32', '#3a8a5a'],
+    colors: ['#0d2818', '#1a3a28', '#2d5a45', '#1a4030', '#3cb371', '#4a7c59', '#228b22', '#6b8e23', '#7a9a30', '#3a8a5a'],
     primary: '#2d5a45',
     accent: '#3cb371',
   },
