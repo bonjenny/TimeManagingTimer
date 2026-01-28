@@ -251,6 +251,20 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
       group.sessions.sort((a, b) => a.startTime - b.startTime);
     });
 
+    // 미완료 업무는 전체 logs에서 같은 제목의 가장 이른 startTime으로 first_start 업데이트
+    groups.forEach(group => {
+      if (group.has_running) {
+        // 전체 logs에서 같은 제목의 가장 이른 startTime 찾기
+        const all_sessions_for_title = logs.filter(log => log.title === group.title);
+        if (all_sessions_for_title.length > 0) {
+          const earliest_start = Math.min(...all_sessions_for_title.map(s => s.startTime));
+          if (earliest_start < group.first_start) {
+            group.first_start = earliest_start;
+          }
+        }
+      }
+    });
+
     // 정렬: 진행 중 우선 → 미완료 우선 → 프로젝트 코드 오름차순 → 작업명 오름차순
     return Array.from(groups.values()).sort((a, b) => {
       // 0. 현재 진행 중인 작업 (activeTimer) 최상위
