@@ -117,7 +117,7 @@ describe('PresetPanel', () => {
   describe('푸터 안내 문구', () => {
     it('올바른 안내 문구가 표시된다', () => {
       render(<PresetPanel />);
-      expect(screen.getByText(/클릭하여 수정 • ▶ 타이머 시작/)).toBeInTheDocument();
+      expect(screen.getByText(/드래그하여 순서 변경 • 클릭하여 수정 • ▶ 타이머 시작/)).toBeInTheDocument();
     });
   });
 });

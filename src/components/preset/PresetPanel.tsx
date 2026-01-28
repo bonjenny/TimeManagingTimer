@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Paper,
@@ -26,6 +26,24 @@ import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import HistoryIcon from '@mui/icons-material/History';
+import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { useTimerStore } from '../../store/useTimerStore';
 import { useProjectStore } from '../../store/useProjectStore';
 import { getAdjustedPalette, loadPaletteSettings } from '../../utils/colorPalette';
@@ -42,6 +60,228 @@ interface PresetItem {
 
 // LocalStorage 키
 const PRESETS_STORAGE_KEY = 'timekeeper-manual-presets';
+
+// Sortable 프리셋 아이템 컴포넌트
+interface SortablePresetItemProps {
+  preset: PresetItem;
+  onEdit: (preset: PresetItem) => void;
+  onDelete: (id: string, e: React.MouseEvent) => void;
+  onStart: (preset: PresetItem, e: React.MouseEvent) => void;
+  onProjectEdit: (preset: PresetItem, e: React.MouseEvent) => void;
+  editingProject: string | null;
+  inlineProjectCode: string;
+  setInlineProjectCode: (code: string) => void;
+  projectOptions: string[];
+  getProjectName: (code: string) => string;
+  getInlineProjectDisplayValue: (code: string) => string;
+  saveInlineProject: (preset: PresetItem, code: string) => void;
+  cancelInlineEdit: () => void;
+}
+
+const SortablePresetItem: React.FC<SortablePresetItemProps> = ({
+  preset,
+  onEdit,
+  onDelete,
+  onStart,
+  onProjectEdit,
+  editingProject,
+  inlineProjectCode,
+  setInlineProjectCode,
+  projectOptions,
+  getProjectName,
+  getInlineProjectDisplayValue,
+  saveInlineProject,
+  cancelInlineEdit,
+}) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: preset.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 1000 : 0,
+    opacity: isDragging ? 0.8 : 1,
+  };
+
+  return (
+    <ListItem
+      ref={setNodeRef}
+      style={style}
+      disablePadding
+      sx={{
+        bgcolor: isDragging ? 'action.selected' : 'transparent',
+      }}
+      secondaryAction={
+        <Box sx={{ display: 'flex', gap: 0.5 }}>
+          <Tooltip title="삭제">
+            <IconButton
+              edge="end"
+              size="small"
+              onClick={(e) => onDelete(preset.id, e)}
+              sx={{ color: 'text.secondary', '&:hover': { color: 'error.main' } }}
+            >
+              <DeleteIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="타이머 시작">
+            <IconButton
+              edge="end"
+              size="small"
+              color="primary"
+              onClick={(e) => onStart(preset, e)}
+            >
+              <PlayArrowIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        </Box>
+      }
+    >
+      <ListItemButton
+        onClick={() => onEdit(preset)}
+        sx={{ py: 1.5, pr: '100px' }}
+      >
+        {/* 드래그 핸들 */}
+        <IconButton
+          size="small"
+          {...listeners}
+          {...attributes}
+          onClick={(e) => e.stopPropagation()}
+          sx={{ 
+            p: 0.25,
+            mr: 0.5,
+            cursor: 'grab',
+            '&:active': { cursor: 'grabbing' },
+          }}
+        >
+          <DragIndicatorIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+        </IconButton>
+        
+        {/* 색상 인디케이터 */}
+        {preset.color && (
+          <Box
+            sx={{
+              width: 4,
+              height: 32,
+              bgcolor: preset.color,
+              borderRadius: 1,
+              mr: 1.5,
+              flexShrink: 0,
+            }}
+          />
+        )}
+        <ListItemText
+          sx={{ 
+            overflow: 'hidden',
+            minWidth: 0,
+            maxWidth: 'calc(100% - 75px)',
+            '& .MuiListItemText-primary': { 
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }
+          }}
+          secondaryTypographyProps={{ component: 'div' }}
+          primary={
+            <Typography
+              variant="body2"
+              component="span"
+              sx={{
+                fontWeight: 500,
+                display: 'block',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                color: 'var(--text-primary)',
+              }}
+              title={preset.title}
+            >
+              {preset.title}
+            </Typography>
+          }
+          secondary={
+            <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5, overflow: 'hidden', flexWrap: 'nowrap' }}>
+              {editingProject === preset.id ? (
+                <Autocomplete
+                  freeSolo
+                  size="small"
+                  options={projectOptions}
+                  value={getInlineProjectDisplayValue(inlineProjectCode)}
+                  onInputChange={(_e, newValue) => setInlineProjectCode(newValue)}
+                  onChange={(_e, newValue) => {
+                    saveInlineProject(preset, newValue || '');
+                  }}
+                  onBlur={() => saveInlineProject(preset, inlineProjectCode)}
+                  renderInput={(params) => (
+                    <TextField 
+                      {...params} 
+                      variant="standard"
+                      autoFocus
+                      onClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          saveInlineProject(preset, inlineProjectCode);
+                        } else if (e.key === 'Escape') {
+                          cancelInlineEdit();
+                        }
+                      }}
+                      InputProps={{ ...params.InputProps, disableUnderline: true }}
+                      sx={{ '& .MuiInputBase-input': { fontSize: '0.65rem', p: 0 } }}
+                    />
+                  )}
+                  sx={{ width: 120 }}
+                />
+              ) : (
+                <Chip
+                  label={preset.projectCode ? getProjectName(preset.projectCode) : '-'}
+                  size="small"
+                  variant="outlined"
+                  onClick={(e) => onProjectEdit(preset, e)}
+                  sx={{ 
+                    height: 18, 
+                    fontSize: '0.65rem',
+                    maxWidth: 120,
+                    cursor: 'pointer',
+                    '& .MuiChip-label': {
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }
+                  }}
+                  title={preset.projectCode ? `[${preset.projectCode}] ${getProjectName(preset.projectCode)} - 클릭하여 변경` : '클릭하여 프로젝트 설정'}
+                />
+              )}
+              {preset.category && (
+                <Chip
+                  label={preset.category}
+                  size="small"
+                  sx={{
+                    height: 18,
+                    fontSize: '0.65rem',
+                    bgcolor: 'var(--bg-hover)',
+                    color: 'var(--text-secondary)',
+                    maxWidth: 80,
+                    '& .MuiChip-label': {
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }
+                  }}
+                  title={preset.category}
+                />
+              )}
+            </Box>
+          }
+        />
+      </ListItemButton>
+    </ListItem>
+  );
+};
 
 const PresetPanel: React.FC = () => {
   const { startTimer, logs, themeConfig } = useTimerStore();
@@ -60,12 +300,10 @@ const PresetPanel: React.FC = () => {
       setColorPalette(getAdjustedPalette(settings, themeConfig.isDark, 45));
     };
     
-    // 초기 로드 시 다크모드 상태 반영
     handlePaletteUpdate();
     
     window.addEventListener('storage', handlePaletteUpdate);
     window.addEventListener('focus', handlePaletteUpdate);
-    // 같은 탭 내 팔레트 변경 감지
     window.addEventListener('palette-changed', handlePaletteUpdate);
     
     return () => {
@@ -90,32 +328,53 @@ const PresetPanel: React.FC = () => {
   const [edit_preset, setEditPreset] = useState<PresetItem | null>(null);
   const [modal_title, setModalTitle] = useState('');
   const [modal_project_code, setModalProjectCode] = useState('');
-  const [modal_project_name, setModalProjectName] = useState('');  // 새 프로젝트명 입력용
+  const [modal_project_name, setModalProjectName] = useState('');
   const [modal_category, setModalCategory] = useState<string | null>(null);
   const [modal_color, setModalColor] = useState<string | undefined>(undefined);
   
-  // 프로젝트 옵션 (코드 + 이름 형태로 표시)
   const projectOptions = projects.map(p => `[${p.code}] ${p.name}`);
 
-  // 추가 메뉴 상태 (최근 작업 선택)
   const [add_menu_anchor, setAddMenuAnchor] = useState<null | HTMLElement>(null);
 
-  // 인라인 프로젝트 코드 편집 상태
   const [editingPresetProject, setEditingPresetProject] = useState<string | null>(null);
   const [inlinePresetProjectCode, setInlinePresetProjectCode] = useState('');
+
+  // dnd-kit 센서 설정
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   // 프리셋 변경 시 LocalStorage 저장
   useEffect(() => {
     localStorage.setItem(PRESETS_STORAGE_KEY, JSON.stringify(presets));
   }, [presets]);
 
-  // 최근 5개 작업 추출 (중복 제목 제거, 프리셋에 없는 것만)
+  // 드래그 종료 핸들러
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (over && active.id !== over.id) {
+      setPresets((items) => {
+        const oldIndex = items.findIndex(item => item.id === active.id);
+        const newIndex = items.findIndex(item => item.id === over.id);
+        return arrayMove(items, oldIndex, newIndex);
+      });
+    }
+  }, []);
+
+  // 최근 5개 작업 추출
   const getRecentTasks = () => {
     const seen_titles = new Set<string>();
     const preset_titles = new Set(presets.map(p => p.title));
     const recent: { title: string; projectCode?: string; category?: string }[] = [];
 
-    // 최신 로그부터 순회
     const sorted_logs = [...logs].sort((a, b) => b.startTime - a.startTime);
     
     for (const log of sorted_logs) {
@@ -133,12 +392,11 @@ const PresetPanel: React.FC = () => {
     return recent;
   };
 
-  const handleStartPreset = (preset: PresetItem, e: React.MouseEvent) => {
+  const handleStartPreset = useCallback((preset: PresetItem, e: React.MouseEvent) => {
     e.stopPropagation();
     startTimer(preset.title, preset.projectCode, preset.category);
-  };
+  }, [startTimer]);
 
-  // 프리셋 추가 메뉴 열기
   const handleOpenAddMenu = (event: React.MouseEvent<HTMLElement>) => {
     setAddMenuAnchor(event.currentTarget);
   };
@@ -147,7 +405,6 @@ const PresetPanel: React.FC = () => {
     setAddMenuAnchor(null);
   };
 
-  // 새 프리셋 추가 모달 열기
   const handleOpenAddModal = () => {
     handleCloseAddMenu();
     setEditPreset(null);
@@ -159,7 +416,6 @@ const PresetPanel: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  // 최근 작업에서 프리셋 추가
   const handleAddFromRecent = (task: { title: string; projectCode?: string; category?: string }) => {
     handleCloseAddMenu();
     setEditPreset(null);
@@ -171,8 +427,7 @@ const PresetPanel: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  // 프리셋 클릭 시 수정 모달 열기
-  const handleOpenEditModal = (preset: PresetItem) => {
+  const handleOpenEditModal = useCallback((preset: PresetItem) => {
     setEditPreset(preset);
     setModalTitle(preset.title);
     setModalProjectCode(preset.projectCode || '');
@@ -180,24 +435,20 @@ const PresetPanel: React.FC = () => {
     setModalCategory(preset.category || null);
     setModalColor(preset.color);
     setIsModalOpen(true);
-  };
+  }, [getProjectName]);
 
-  // 모달 닫기
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setEditPreset(null);
   };
   
-  // 프로젝트 코드 입력 처리 (자동완성 선택 또는 직접 입력)
   const handleProjectCodeChange = (value: string) => {
-    // [코드] 이름 형태에서 코드와 이름 추출
     const match = value.match(/^\[([^\]]+)\]\s*(.*)$/);
     if (match) {
       setModalProjectCode(match[1]);
       setModalProjectName(match[2] || getProjectName(match[1]));
     } else {
       setModalProjectCode(value);
-      // 기존 프로젝트에서 이름 찾기
       const existingProject = projects.find(p => p.code === value);
       if (existingProject) {
         setModalProjectName(existingProject.name);
@@ -205,7 +456,6 @@ const PresetPanel: React.FC = () => {
     }
   };
   
-  // 프로젝트 코드에서 표시용 문자열 생성
   const getProjectDisplayValue = () => {
     if (!modal_project_code) return '';
     if (modal_project_name && modal_project_name !== modal_project_code) {
@@ -214,11 +464,9 @@ const PresetPanel: React.FC = () => {
     return modal_project_code;
   };
 
-  // 프리셋 저장
   const handleSavePreset = () => {
     if (!modal_title.trim()) return;
     
-    // 새 프로젝트 코드-명 매핑 저장
     if (modal_project_code && modal_project_name) {
       addProject({ code: modal_project_code, name: modal_project_name });
     }
@@ -232,36 +480,30 @@ const PresetPanel: React.FC = () => {
     };
 
     if (edit_preset) {
-      // 수정
       setPresets(prev =>
         prev.map(p => (p.id === edit_preset.id ? new_preset : p))
       );
     } else {
-      // 추가
       setPresets(prev => [new_preset, ...prev]);
     }
 
     handleCloseModal();
   };
 
-  // 프리셋 삭제
-  const handleDeletePreset = (preset_id: string, e: React.MouseEvent) => {
+  const handleDeletePreset = useCallback((preset_id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (window.confirm('이 프리셋을 삭제하시겠습니까?')) {
       setPresets(prev => prev.filter(p => p.id !== preset_id));
     }
-  };
+  }, []);
 
-  // 인라인 프로젝트 편집 시작
-  const startInlinePresetProjectEdit = (preset: PresetItem, e: React.MouseEvent) => {
+  const startInlinePresetProjectEdit = useCallback((preset: PresetItem, e: React.MouseEvent) => {
     e.stopPropagation();
     setEditingPresetProject(preset.id);
     setInlinePresetProjectCode(preset.projectCode || '');
-  };
+  }, []);
 
-  // 인라인 프로젝트 저장
-  const saveInlinePresetProject = (preset: PresetItem, newCode: string) => {
-    // [코드] 이름 형태에서 코드 추출
+  const saveInlinePresetProject = useCallback((preset: PresetItem, newCode: string) => {
     const match = newCode.match(/^\[([^\]]+)\]/);
     const code = match ? match[1] : newCode;
     
@@ -272,23 +514,21 @@ const PresetPanel: React.FC = () => {
     }
     setEditingPresetProject(null);
     setInlinePresetProjectCode('');
-  };
+  }, []);
 
-  // 인라인 프로젝트 편집 취소
-  const cancelInlinePresetProjectEdit = () => {
+  const cancelInlinePresetProjectEdit = useCallback(() => {
     setEditingPresetProject(null);
     setInlinePresetProjectCode('');
-  };
+  }, []);
 
-  // 프로젝트 코드에서 표시용 문자열 생성 (인라인 편집용)
-  const getInlineProjectDisplayValue = (code: string) => {
+  const getInlineProjectDisplayValue = useCallback((code: string) => {
     if (!code) return '';
     const name = getProjectName(code);
     if (name && name !== code) {
       return `[${code}] ${name}`;
     }
     return code;
-  };
+  }, [getProjectName]);
 
   const recent_tasks = getRecentTasks();
 
@@ -299,12 +539,12 @@ const PresetPanel: React.FC = () => {
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        bgcolor: 'transparent', // 배경색 제거 (투명)
+        bgcolor: 'transparent',
         borderColor: 'var(--border-color)',
-        resize: 'horizontal',  // 가로 리사이즈 가능
-        overflow: 'auto',      // resize가 작동하려면 필요
-        minWidth: 200,         // 최소 너비
-        maxWidth: 450,         // 최대 너비
+        resize: 'horizontal',
+        overflow: 'auto',
+        minWidth: 200,
+        maxWidth: 450,
       }}
     >
       {/* 헤더 */}
@@ -315,7 +555,7 @@ const PresetPanel: React.FC = () => {
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          bgcolor: 'var(--bg-tertiary)', // 헤더 배경색 추가
+          bgcolor: 'var(--bg-tertiary)',
         }}
       >
         <Typography variant="subtitle1" sx={{ fontWeight: 600, color: 'var(--text-primary)' }}>
@@ -371,162 +611,39 @@ const PresetPanel: React.FC = () => {
             </Typography>
           </Box>
         ) : (
-          <List disablePadding dense>
-            {presets.map((preset, index) => (
-              <React.Fragment key={preset.id}>
-                {index > 0 && <Divider />}
-                <ListItem
-                  disablePadding
-                  secondaryAction={
-                    <Box sx={{ display: 'flex', gap: 0.5 }}>
-                      <Tooltip title="삭제">
-                        <IconButton
-                          edge="end"
-                          size="small"
-                          onClick={(e) => handleDeletePreset(preset.id, e)}
-                          sx={{ color: 'text.secondary', '&:hover': { color: 'error.main' } }}
-                        >
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="타이머 시작">
-                        <IconButton
-                          edge="end"
-                          size="small"
-                          color="primary"
-                          onClick={(e) => handleStartPreset(preset, e)}
-                        >
-                          <PlayArrowIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                    </Box>
-                  }
-                >
-                  <ListItemButton
-                    onClick={() => handleOpenEditModal(preset)}
-                    sx={{ py: 1.5, pr: '100px' }}
-                  >
-                    {/* 색상 인디케이터 */}
-                    {preset.color && (
-                      <Box
-                        sx={{
-                          width: 4,
-                          height: 32,
-                          bgcolor: preset.color,
-                          borderRadius: 1,
-                          mr: 1.5,
-                          flexShrink: 0,
-                        }}
-                      />
-                    )}
-                    <ListItemText
-                      sx={{ 
-                        overflow: 'hidden',
-                        minWidth: 0, // flex item에서 ellipsis가 동작하도록
-                        maxWidth: 'calc(100% - 75px)', // 아이콘바 너비(89px) + 여유분
-                        '& .MuiListItemText-primary': { 
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                        }
-                      }}
-                      secondaryTypographyProps={{ component: 'div' }}
-                      primary={
-                        <Typography
-                          variant="body2"
-                          component="span"
-                          sx={{
-                            fontWeight: 500,
-                            display: 'block',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                            color: 'var(--text-primary)',
-                          }}
-                          title={preset.title}
-                        >
-                          {preset.title}
-                        </Typography>
-                      }
-                      secondary={
-                        <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5, overflow: 'hidden', flexWrap: 'nowrap' }}>
-                          {editingPresetProject === preset.id ? (
-                            <Autocomplete
-                              freeSolo
-                              size="small"
-                              options={projectOptions}
-                              value={getInlineProjectDisplayValue(inlinePresetProjectCode)}
-                              onInputChange={(_e, newValue) => setInlinePresetProjectCode(newValue)}
-                              onChange={(_e, newValue) => {
-                                saveInlinePresetProject(preset, newValue || '');
-                              }}
-                              onBlur={() => saveInlinePresetProject(preset, inlinePresetProjectCode)}
-                              renderInput={(params) => (
-                                <TextField 
-                                  {...params} 
-                                  variant="standard"
-                                  autoFocus
-                                  onClick={(e) => e.stopPropagation()}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') {
-                                      saveInlinePresetProject(preset, inlinePresetProjectCode);
-                                    } else if (e.key === 'Escape') {
-                                      cancelInlinePresetProjectEdit();
-                                    }
-                                  }}
-                                  InputProps={{ ...params.InputProps, disableUnderline: true }}
-                                  sx={{ '& .MuiInputBase-input': { fontSize: '0.65rem', p: 0 } }}
-                                />
-                              )}
-                              sx={{ width: 120 }}
-                            />
-                          ) : (
-                            <Chip
-                              label={preset.projectCode ? getProjectName(preset.projectCode) : '-'}
-                              size="small"
-                              variant="outlined"
-                              onClick={(e) => startInlinePresetProjectEdit(preset, e)}
-                              sx={{ 
-                                height: 18, 
-                                fontSize: '0.65rem',
-                                maxWidth: 120,
-                                cursor: 'pointer',
-                                '& .MuiChip-label': {
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                  whiteSpace: 'nowrap',
-                                }
-                              }}
-                              title={preset.projectCode ? `[${preset.projectCode}] ${getProjectName(preset.projectCode)} - 클릭하여 변경` : '클릭하여 프로젝트 설정'}
-                            />
-                          )}
-                          {preset.category && (
-                            <Chip
-                              label={preset.category}
-                              size="small"
-                              sx={{
-                                height: 18,
-                                fontSize: '0.65rem',
-                                bgcolor: 'var(--bg-hover)',
-                                color: 'var(--text-secondary)',
-                                maxWidth: 80,
-                                '& .MuiChip-label': {
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                  whiteSpace: 'nowrap',
-                                }
-                              }}
-                              title={preset.category}
-                            />
-                          )}
-                        </Box>
-                      }
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={presets.map(p => p.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              <List disablePadding dense>
+                {presets.map((preset, index) => (
+                  <React.Fragment key={preset.id}>
+                    {index > 0 && <Divider />}
+                    <SortablePresetItem
+                      preset={preset}
+                      onEdit={handleOpenEditModal}
+                      onDelete={handleDeletePreset}
+                      onStart={handleStartPreset}
+                      onProjectEdit={startInlinePresetProjectEdit}
+                      editingProject={editingPresetProject}
+                      inlineProjectCode={inlinePresetProjectCode}
+                      setInlineProjectCode={setInlinePresetProjectCode}
+                      projectOptions={projectOptions}
+                      getProjectName={getProjectName}
+                      getInlineProjectDisplayValue={getInlineProjectDisplayValue}
+                      saveInlineProject={saveInlinePresetProject}
+                      cancelInlineEdit={cancelInlinePresetProjectEdit}
                     />
-                  </ListItemButton>
-                </ListItem>
-              </React.Fragment>
-            ))}
-          </List>
+                  </React.Fragment>
+                ))}
+              </List>
+            </SortableContext>
+          </DndContext>
         )}
       </Box>
 
@@ -539,7 +656,7 @@ const PresetPanel: React.FC = () => {
         }}
       >
         <Typography variant="caption" color="text.secondary">
-          클릭하여 수정 • ▶ 타이머 시작
+          드래그하여 순서 변경 • 클릭하여 수정 • ▶ 타이머 시작
         </Typography>
       </Box>
 
@@ -559,7 +676,6 @@ const PresetPanel: React.FC = () => {
         <DialogTitle>{edit_preset ? '프리셋 수정' : '새 프리셋 추가'}</DialogTitle>
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, mt: 1 }}>
-            {/* 프로젝트 코드 (자동완성 + 직접입력) */}
             <Autocomplete
               freeSolo
               options={projectOptions}
@@ -577,7 +693,6 @@ const PresetPanel: React.FC = () => {
               autoFocus
             />
             
-            {/* 프로젝트명 (새 코드 입력 시 or 기존 코드명 수정) */}
             {modal_project_code && (
               <TextField
                 label="프로젝트명"
@@ -589,7 +704,6 @@ const PresetPanel: React.FC = () => {
               />
             )}
 
-            {/* 업무명 & 카테고리명 */}
             <Box sx={{ display: 'flex', gap: 2 }}>
               <TextField
                 label="업무명"
@@ -608,7 +722,6 @@ const PresetPanel: React.FC = () => {
               />
             </Box>
             
-            {/* 비고 */}
             <TextField
               label="비고"
               placeholder="추가 메모"
@@ -616,13 +729,11 @@ const PresetPanel: React.FC = () => {
               rows={2}
             />
 
-            {/* 색상 선택 */}
             <Box>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                 프리셋 색상 (설정의 컬러 팔레트)
               </Typography>
               <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap' }}>
-                {/* 기본(색상 없음) 옵션 */}
                 <Tooltip title="기본 (자동)">
                   <Box
                     onClick={() => setModalColor(undefined)}
@@ -646,7 +757,6 @@ const PresetPanel: React.FC = () => {
                   </Box>
                 </Tooltip>
                 
-                {/* 팔레트 색상들 */}
                 {colorPalette.slice(0, 10).map((color, index) => (
                   <Tooltip key={index} title={`색상 ${index + 1}`}>
                     <Box
