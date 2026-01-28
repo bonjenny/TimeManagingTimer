@@ -843,6 +843,25 @@ const SettingsPage: React.FC = () => {
             <Chip label="..." size="small" sx={{ height: 24 }} />
           </Box>
         </Box>
+        
+        <Divider sx={{ my: 2 }} />
+        
+        <Button
+          variant="text"
+          size="small"
+          startIcon={<RestoreIcon />}
+          onClick={() => {
+            setPaletteType('navy-orange');
+            setCustomColors([]);
+            setCustomBaseColor('#3b82f6');
+            setSnackbarMessage('컬러 팔레트가 기본값(네이비 & 오렌지)으로 초기화되었습니다.');
+            setSnackbarSeverity('success');
+            setSnackbarOpen(true);
+          }}
+          color="warning"
+        >
+          기본값으로 초기화
+        </Button>
       </Paper>
 
       {/* 업무 환경 설정 */}
