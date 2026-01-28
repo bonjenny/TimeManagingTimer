@@ -26,7 +26,23 @@ import EditIcon from '@mui/icons-material/Edit';
 import AddIcon from '@mui/icons-material/Add';
 import RestoreIcon from '@mui/icons-material/Restore';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
-import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  rectSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { useTimerStore } from '../../store/useTimerStore';
 import { useCategoryStore, DEFAULT_CATEGORIES } from '../../store/useCategoryStore';
 import { useStatusStore, DEFAULT_STATUSES, Status } from '../../store/useStatusStore';
@@ -47,6 +63,87 @@ import { applyPaletteHighlight } from '../../styles/tokens';
 
 // 설정 저장 키
 const SETTINGS_STORAGE_KEY = 'timekeeper-settings';
+
+// Sortable Chip 컴포넌트 (카테고리용)
+interface SortableCategoryChipProps {
+  id: string;
+  onDelete: () => void;
+}
+
+const SortableCategoryChip: React.FC<SortableCategoryChipProps> = ({ id, onDelete }) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 1 : 0,
+    opacity: isDragging ? 0.8 : 1,
+  };
+
+  return (
+    <Chip
+      ref={setNodeRef}
+      style={style}
+      icon={<DragIndicatorIcon sx={{ fontSize: '1rem !important', color: 'text.secondary', cursor: 'grab' }} {...listeners} {...attributes} />}
+      label={id}
+      onDelete={onDelete}
+      variant="outlined"
+      sx={{ 
+        fontSize: '0.85rem',
+        bgcolor: isDragging ? 'action.selected' : 'transparent',
+        boxShadow: isDragging ? 2 : 0,
+      }}
+    />
+  );
+};
+
+// Sortable Chip 컴포넌트 (진행상태용)
+interface SortableStatusChipProps {
+  id: string;
+  label: string;
+  onDelete?: () => void;
+}
+
+const SortableStatusChip: React.FC<SortableStatusChipProps> = ({ id, label, onDelete }) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 1 : 0,
+    opacity: isDragging ? 0.8 : 1,
+  };
+
+  return (
+    <Chip
+      ref={setNodeRef}
+      style={style}
+      icon={<DragIndicatorIcon sx={{ fontSize: '1rem !important', color: 'text.secondary', cursor: 'grab' }} {...listeners} {...attributes} />}
+      label={label}
+      onDelete={onDelete}
+      variant="outlined"
+      sx={{ 
+        fontSize: '0.85rem',
+        bgcolor: isDragging ? 'action.selected' : 'transparent',
+        boxShadow: isDragging ? 2 : 0,
+      }}
+    />
+  );
+};
 
 // 기본 설정값
 const DEFAULT_SETTINGS = {
@@ -226,6 +323,40 @@ const SettingsPage: React.FC = () => {
   // 컬러 팔레트 변경 핸들러
   const handlePaletteTypeChange = (new_type: PaletteType) => {
     setPaletteType(new_type);
+  };
+
+  // dnd-kit 센서 설정
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  // 카테고리 드래그앤드롭 핸들러
+  const handleCategoryDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (over && active.id !== over.id) {
+      const oldIndex = categories.indexOf(active.id as string);
+      const newIndex = categories.indexOf(over.id as string);
+      reorderCategories(arrayMove(categories, oldIndex, newIndex));
+    }
+  };
+
+  // 진행상태 드래그앤드롭 핸들러
+  const handleStatusDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (over && active.id !== over.id) {
+      const oldIndex = statuses.findIndex(s => s.value === active.id);
+      const newIndex = statuses.findIndex(s => s.value === over.id);
+      reorderStatuses(arrayMove(statuses, oldIndex, newIndex));
+    }
   };
 
   // 기본값 복원
@@ -765,21 +896,27 @@ const SettingsPage: React.FC = () => {
         </Typography>
         
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          업무 기록에 사용할 카테고리를 관리합니다.
+          업무 기록에 사용할 카테고리를 관리합니다. 드래그하여 순서를 변경할 수 있습니다.
         </Typography>
         
-        {/* 카테고리 목록 */}
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 3 }}>
-          {categories.map((category) => (
-            <Chip
-              key={category}
-              label={category}
-              onDelete={() => removeCategory(category)}
-              variant="outlined"
-              sx={{ fontSize: '0.85rem' }}
-            />
-          ))}
-        </Box>
+        {/* 카테고리 목록 (드래그앤드롭) */}
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleCategoryDragEnd}
+        >
+          <SortableContext items={categories} strategy={rectSortingStrategy}>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 3, minHeight: 40 }}>
+              {categories.map((category) => (
+                <SortableCategoryChip
+                  key={category}
+                  id={category}
+                  onDelete={() => removeCategory(category)}
+                />
+              ))}
+            </Box>
+          </SortableContext>
+        </DndContext>
         
         {/* 새 카테고리 추가 */}
         <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mb: 2 }}>
@@ -832,21 +969,28 @@ const SettingsPage: React.FC = () => {
         </Typography>
         
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          주간일정에서 사용할 진행상태를 관리합니다.
+          주간일정에서 사용할 진행상태를 관리합니다. 드래그하여 순서를 변경할 수 있습니다.
         </Typography>
         
-        {/* 진행상태 목록 */}
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 3 }}>
-          {statuses.map((status) => (
-            <Chip
-              key={status.value}
-              label={status.label}
-              onDelete={statuses.length > 1 ? () => removeStatus(status.value) : undefined}
-              variant="outlined"
-              sx={{ fontSize: '0.85rem' }}
-            />
-          ))}
-        </Box>
+        {/* 진행상태 목록 (드래그앤드롭) */}
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleStatusDragEnd}
+        >
+          <SortableContext items={statuses.map(s => s.value)} strategy={rectSortingStrategy}>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 3, minHeight: 40 }}>
+              {statuses.map((status) => (
+                <SortableStatusChip
+                  key={status.value}
+                  id={status.value}
+                  label={status.label}
+                  onDelete={statuses.length > 1 ? () => removeStatus(status.value) : undefined}
+                />
+              ))}
+            </Box>
+          </SortableContext>
+        </DndContext>
         
         {/* 새 진행상태 추가 */}
         <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mb: 2 }}>

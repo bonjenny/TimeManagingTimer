@@ -1,7 +1,8 @@
 /**
- * v0.3.0 테스트: PresetPanel 컴포넌트 테스트 (즐겨찾기, 수동 추가)
+ * v0.13.1 테스트: PresetPanel 컴포넌트 테스트 (수동 추가, 타이머 시작)
+ * - v0.13.1에서 즐겨찾기 기능 제거됨 (순서 조정 기능으로 대체)
  */
-import { render, screen, act } from '../../../test-utils';
+import { render, screen, waitFor } from '../../../test-utils';
 import userEvent from '@testing-library/user-event';
 import PresetPanel from '../../../components/preset/PresetPanel';
 import { useTimerStore } from '../../../store/useTimerStore';
@@ -24,20 +25,20 @@ describe('PresetPanel', () => {
 
   it('프리셋이 없으면 빈 상태 메시지가 표시된다', () => {
     render(<PresetPanel />);
-    expect(screen.getByText(/아직 프리셋이 없습니다/i)).toBeInTheDocument();
+    expect(screen.getByText(/프리셋이 없습니다/i)).toBeInTheDocument();
   });
 
-  it('새 프리셋 추가 버튼이 렌더링된다', () => {
+  it('프리셋 추가 버튼이 렌더링된다', () => {
     render(<PresetPanel />);
-    expect(screen.getByRole('button', { name: /새 프리셋 추가/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /프리셋 추가/i })).toBeInTheDocument();
   });
 
   describe('프리셋 추가', () => {
-    it('추가 버튼을 클릭하면 모달이 열린다', async () => {
+    it('추가 버튼을 클릭하면 메뉴가 열린다', async () => {
       const user = userEvent.setup();
       render(<PresetPanel />);
 
-      const add_button = screen.getByRole('button', { name: /새 프리셋 추가/i });
+      const add_button = screen.getByRole('button', { name: /프리셋 추가/i });
       await user.click(add_button);
 
       expect(screen.getByText('새 프리셋 추가')).toBeInTheDocument();
@@ -47,90 +48,26 @@ describe('PresetPanel', () => {
       const user = userEvent.setup();
       render(<PresetPanel />);
 
-      // 모달 열기
-      const add_button = screen.getByRole('button', { name: /새 프리셋 추가/i });
+      // 추가 버튼 클릭하여 메뉴 열기
+      const add_button = screen.getByRole('button', { name: /프리셋 추가/i });
       await user.click(add_button);
 
+      // 새 프리셋 추가 메뉴 아이템 클릭
+      const new_preset_menu = screen.getByText('새 프리셋 추가');
+      await user.click(new_preset_menu);
+
       // 정보 입력
-      const title_input = screen.getByLabelText(/작업 제목/i);
+      const title_input = screen.getByLabelText(/업무명/i);
       await user.type(title_input, '테스트 프리셋');
 
       // 추가 버튼 클릭
-      const submit_button = screen.getByRole('button', { name: /^추가$/i });
+      const submit_button = screen.getByRole('button', { name: /추가\(Enter\)/i });
       await user.click(submit_button);
 
       // 목록에 표시되는지 확인
-      expect(screen.getByText('테스트 프리셋')).toBeInTheDocument();
-    });
-
-    it('수동 추가된 프리셋에 "수동" 라벨이 표시된다', async () => {
-      const user = userEvent.setup();
-      render(<PresetPanel />);
-
-      const add_button = screen.getByRole('button', { name: /새 프리셋 추가/i });
-      await user.click(add_button);
-
-      const title_input = screen.getByLabelText(/작업 제목/i);
-      await user.type(title_input, '수동 프리셋');
-
-      const submit_button = screen.getByRole('button', { name: /^추가$/i });
-      await user.click(submit_button);
-
-      expect(screen.getByText('수동')).toBeInTheDocument();
-    });
-  });
-
-  describe('프리셋 클릭으로 타이머 시작', () => {
-    it('프리셋을 클릭하면 타이머가 시작된다', async () => {
-      const user = userEvent.setup();
-
-      // 기존 로그 추가 (프리셋 생성용)
-      act(() => {
-        useTimerStore.getState().addLog({
-          id: 'test-log',
-          title: '기존 작업',
-          startTime: Date.now() - 3600000,
-          endTime: Date.now(),
-          status: 'COMPLETED',
-          pausedDuration: 0,
-        });
+      await waitFor(() => {
+        expect(screen.getByText('테스트 프리셋')).toBeInTheDocument();
       });
-
-      render(<PresetPanel />);
-
-      // 프리셋 클릭
-      const preset_item = screen.getByText('기존 작업');
-      await user.click(preset_item);
-
-      const { activeTimer } = useTimerStore.getState();
-      expect(activeTimer?.title).toBe('기존 작업');
-    });
-  });
-
-  describe('즐겨찾기', () => {
-    it('즐겨찾기 버튼을 클릭하면 즐겨찾기 상태가 토글된다', async () => {
-      const user = userEvent.setup();
-
-      // 기존 로그 추가
-      act(() => {
-        useTimerStore.getState().addLog({
-          id: 'test-log',
-          title: '기존 작업',
-          startTime: Date.now() - 3600000,
-          endTime: Date.now(),
-          status: 'COMPLETED',
-          pausedDuration: 0,
-        });
-      });
-
-      render(<PresetPanel />);
-
-      // 별 아이콘 버튼 찾기 (빈 별)
-      const star_buttons = screen.getAllByRole('button').filter(
-        (btn) => btn.querySelector('[data-testid="StarBorderIcon"]')
-      );
-
-      expect(star_buttons.length).toBeGreaterThan(0);
     });
   });
 
@@ -139,34 +76,48 @@ describe('PresetPanel', () => {
       const user = userEvent.setup();
       render(<PresetPanel />);
 
-      const add_button = screen.getByRole('button', { name: /새 프리셋 추가/i });
+      const add_button = screen.getByRole('button', { name: /프리셋 추가/i });
       await user.click(add_button);
 
+      const new_preset_menu = screen.getByText('새 프리셋 추가');
+      await user.click(new_preset_menu);
+
       // 색상 선택 영역 확인
-      expect(screen.getByText('프리셋 색상')).toBeInTheDocument();
+      expect(screen.getByText(/프리셋 색상/i)).toBeInTheDocument();
     });
   });
 
   describe('LocalStorage 저장', () => {
-    it('즐겨찾기 상태가 LocalStorage에 저장된다', async () => {
+    it('프리셋이 LocalStorage에 저장된다', async () => {
       const user = userEvent.setup();
-
-      act(() => {
-        useTimerStore.getState().addLog({
-          id: 'test-log',
-          title: '저장 테스트',
-          startTime: Date.now() - 3600000,
-          endTime: Date.now(),
-          status: 'COMPLETED',
-          pausedDuration: 0,
-        });
-      });
-
       render(<PresetPanel />);
 
-      // 컴포넌트가 렌더링된 후 LocalStorage 확인
-      // (실제 구현에서는 즐겨찾기 토글 후 확인)
-      expect(localStorage.getItem('timekeeper-preset-favorites')).toBeDefined();
+      // 프리셋 추가
+      const add_button = screen.getByRole('button', { name: /프리셋 추가/i });
+      await user.click(add_button);
+
+      const new_preset_menu = screen.getByText('새 프리셋 추가');
+      await user.click(new_preset_menu);
+
+      const title_input = screen.getByLabelText(/업무명/i);
+      await user.type(title_input, '저장 테스트');
+
+      const submit_button = screen.getByRole('button', { name: /추가\(Enter\)/i });
+      await user.click(submit_button);
+
+      // LocalStorage 확인
+      await waitFor(() => {
+        const saved_data = localStorage.getItem('timekeeper-manual-presets');
+        expect(saved_data).not.toBeNull();
+        expect(saved_data).toContain('저장 테스트');
+      });
+    });
+  });
+
+  describe('푸터 안내 문구', () => {
+    it('올바른 안내 문구가 표시된다', () => {
+      render(<PresetPanel />);
+      expect(screen.getByText(/클릭하여 수정 • ▶ 타이머 시작/)).toBeInTheDocument();
     });
   });
 });

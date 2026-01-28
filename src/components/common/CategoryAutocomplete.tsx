@@ -10,6 +10,24 @@ import {
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import AddIcon from '@mui/icons-material/Add';
+import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { useCategoryStore } from '../../store/useCategoryStore';
 
 interface CategoryAutocompleteProps {
@@ -27,8 +45,83 @@ interface CategoryAutocompleteProps {
   onBlur?: () => void;
 }
 
+// Sortable 옵션 아이템 컴포넌트
+interface SortableOptionProps {
+  id: string;
+  onSelect: (value: string) => void;
+  onRemove: (e: React.MouseEvent, value: string) => void;
+}
+
+const SortableOption: React.FC<SortableOptionProps> = ({ id, onSelect, onRemove }) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 1000 : 0,
+    opacity: isDragging ? 0.8 : 1,
+  };
+
+  return (
+    <Box
+      ref={setNodeRef}
+      style={style}
+      component="li"
+      onClick={() => onSelect(id)}
+      sx={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        py: 0.5,
+        px: 1,
+        cursor: 'pointer',
+        bgcolor: isDragging ? 'action.selected' : 'transparent',
+        '&:hover': {
+          bgcolor: 'action.hover',
+        },
+      }}
+    >
+      <IconButton
+        size="small"
+        {...listeners}
+        {...attributes}
+        onClick={(e) => e.stopPropagation()}
+        sx={{ 
+          p: 0.25,
+          mr: 0.5,
+          cursor: 'grab',
+          '&:active': { cursor: 'grabbing' },
+        }}
+      >
+        <DragIndicatorIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+      </IconButton>
+      <Typography variant="body2" sx={{ flex: 1 }}>
+        {id}
+      </Typography>
+      <IconButton
+        size="small"
+        onClick={(e) => onRemove(e, id)}
+        onMouseDown={(e) => e.preventDefault()}
+        sx={{ 
+          p: 0.25,
+          opacity: 0.5,
+          '&:hover': { opacity: 1, color: 'error.main' }
+        }}
+      >
+        <CloseIcon sx={{ fontSize: 14 }} />
+      </IconButton>
+    </Box>
+  );
+};
+
 // 커스텀 Paper 컴포넌트 (드롭다운 하단에 추가 UI 포함)
-// React.memo로 불필요한 리렌더링 방지
 const CustomPaper = React.memo<{
   children?: React.ReactNode;
   inputRef: React.RefObject<HTMLInputElement | null>;
@@ -136,10 +229,23 @@ const CategoryAutocomplete: React.FC<CategoryAutocompleteProps> = ({
   autoFocus = false,
   onBlur,
 }) => {
-  const { categories, addCategory, removeCategory } = useCategoryStore();
+  const { categories, addCategory, removeCategory, reorderCategories } = useCategoryStore();
   const [open, setOpen] = useState(false);
   const isAddInputFocused = useRef(false);
+  const isDragging = useRef(false);
   const addInputRef = useRef<HTMLInputElement | null>(null);
+
+  // dnd-kit 센서 설정
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   const handleAddCategory = useCallback(() => {
     const inputValue = addInputRef.current?.value?.trim();
@@ -152,14 +258,21 @@ const CategoryAutocomplete: React.FC<CategoryAutocompleteProps> = ({
     }
   }, [addCategory]);
 
-  const handleRemoveCategory = (e: React.MouseEvent, categoryToRemove: string) => {
+  const handleRemoveCategory = useCallback((e: React.MouseEvent, categoryToRemove: string) => {
     e.stopPropagation();
     e.preventDefault();
     removeCategory(categoryToRemove);
     if (value === categoryToRemove) {
       onChange(null);
     }
-  };
+  }, [removeCategory, value, onChange]);
+
+  const handleSelectCategory = useCallback((category: string) => {
+    if (!isDragging.current) {
+      onChange(category);
+      setOpen(false);
+    }
+  }, [onChange]);
 
   const handleInputFocus = useCallback(() => {
     isAddInputFocused.current = true;
@@ -169,21 +282,38 @@ const CategoryAutocomplete: React.FC<CategoryAutocompleteProps> = ({
     isAddInputFocused.current = false;
     
     setTimeout(() => {
-      if (!isAddInputFocused.current) {
+      if (!isAddInputFocused.current && !isDragging.current) {
         setOpen(false);
       }
     }, 150);
   }, []);
 
   const handleClose = useCallback((_event: React.SyntheticEvent, reason: string) => {
-    if (isAddInputFocused.current) {
+    if (isAddInputFocused.current || isDragging.current) {
       return;
     }
-    if (reason === 'blur' && isAddInputFocused.current) {
+    if (reason === 'blur' && (isAddInputFocused.current || isDragging.current)) {
       return;
     }
     setOpen(false);
   }, []);
+
+  // 드래그 시작
+  const handleDragStart = useCallback(() => {
+    isDragging.current = true;
+  }, []);
+
+  // 드래그 종료 및 순서 변경
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    isDragging.current = false;
+    const { active, over } = event;
+    
+    if (over && active.id !== over.id) {
+      const oldIndex = categories.indexOf(active.id as string);
+      const newIndex = categories.indexOf(over.id as string);
+      reorderCategories(arrayMove(categories, oldIndex, newIndex));
+    }
+  }, [categories, reorderCategories]);
 
   // PaperComponent를 useMemo로 메모이제이션하여 불필요한 리마운트 방지
   const paperComponent = useMemo(() => {
@@ -198,14 +328,46 @@ const CategoryAutocomplete: React.FC<CategoryAutocompleteProps> = ({
     );
   }, [handleAddCategory, handleInputFocus, handleInputBlur]);
 
+  // 커스텀 Listbox 컴포넌트
+  const ListboxComponent = useMemo(() => {
+    return React.forwardRef<HTMLUListElement, React.HTMLAttributes<HTMLUListElement>>(
+      function ListboxComponent(props, ref) {
+        const { children, ...other } = props;
+        return (
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext items={categories} strategy={verticalListSortingStrategy}>
+              <ul ref={ref} {...other} style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                {categories.map((category) => (
+                  <SortableOption
+                    key={category}
+                    id={category}
+                    onSelect={handleSelectCategory}
+                    onRemove={handleRemoveCategory}
+                  />
+                ))}
+              </ul>
+            </SortableContext>
+          </DndContext>
+        );
+      }
+    );
+  }, [sensors, handleDragStart, handleDragEnd, categories, handleSelectCategory, handleRemoveCategory]);
+
   return (
     <Autocomplete
       options={categories}
       value={value}
       onChange={(_e, newValue) => {
-        onChange(newValue);
-        if (!isAddInputFocused.current) {
-          setOpen(false);
+        if (!isDragging.current) {
+          onChange(newValue);
+          if (!isAddInputFocused.current) {
+            setOpen(false);
+          }
         }
       }}
       open={open}
@@ -234,41 +396,9 @@ const CategoryAutocomplete: React.FC<CategoryAutocompleteProps> = ({
         },
       }}
       PaperComponent={paperComponent}
-      renderOption={(props, option) => {
-        const { key, ...otherProps } = props;
-        return (
-          <Box
-            key={key}
-            component="li"
-            {...otherProps}
-            sx={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              '&.MuiAutocomplete-option': {
-                py: 0.5,
-                px: 1,
-              }
-            }}
-          >
-            <Typography variant="body2" sx={{ flex: 1 }}>
-              {option}
-            </Typography>
-            <IconButton
-              size="small"
-              onClick={(e) => handleRemoveCategory(e, option)}
-              onMouseDown={(e) => e.preventDefault()}
-              sx={{ 
-                p: 0.25,
-                opacity: 0.5,
-                '&:hover': { opacity: 1, color: 'error.main' }
-              }}
-            >
-              <CloseIcon sx={{ fontSize: 14 }} />
-            </IconButton>
-          </Box>
-        );
-      }}
+      ListboxComponent={ListboxComponent}
+      renderOption={() => null} // ListboxComponent에서 직접 렌더링하므로 null 반환
+      filterOptions={(options) => options} // 필터링 비활성화 (드래그 순서 유지)
       renderInput={(params) => (
         <TextField
           {...params}

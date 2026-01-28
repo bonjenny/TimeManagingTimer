@@ -23,8 +23,6 @@ import {
   ListItemIcon,
 } from '@mui/material';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
-import StarIcon from '@mui/icons-material/Star';
-import StarBorderIcon from '@mui/icons-material/StarBorder';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import HistoryIcon from '@mui/icons-material/History';
@@ -40,7 +38,6 @@ interface PresetItem {
   projectCode?: string;  // boardNo에서 변경
   category?: string;
   color?: string;
-  is_favorite: boolean;
 }
 
 // LocalStorage 키
@@ -136,25 +133,9 @@ const PresetPanel: React.FC = () => {
     return recent;
   };
 
-  // 정렬된 프리셋 (즐겨찾기 먼저)
-  const sorted_presets = [...presets].sort((a, b) => {
-    if (a.is_favorite && !b.is_favorite) return -1;
-    if (!a.is_favorite && b.is_favorite) return 1;
-    return 0;
-  });
-
   const handleStartPreset = (preset: PresetItem, e: React.MouseEvent) => {
     e.stopPropagation();
     startTimer(preset.title, preset.projectCode, preset.category);
-  };
-
-  const handleToggleFavorite = (preset_id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setPresets(prev =>
-      prev.map(p =>
-        p.id === preset_id ? { ...p, is_favorite: !p.is_favorite } : p
-      )
-    );
   };
 
   // 프리셋 추가 메뉴 열기
@@ -248,7 +229,6 @@ const PresetPanel: React.FC = () => {
       projectCode: modal_project_code || undefined,
       category: modal_category || undefined,
       color: modal_color,
-      is_favorite: edit_preset?.is_favorite || false,
     };
 
     if (edit_preset) {
@@ -383,7 +363,7 @@ const PresetPanel: React.FC = () => {
 
       {/* 프리셋 목록 */}
       <Box sx={{ flexGrow: 1, overflow: 'auto' }}>
-        {sorted_presets.length === 0 ? (
+        {presets.length === 0 ? (
           <Box sx={{ p: 3, textAlign: 'center', color: 'text.secondary' }}>
             <Typography variant="body2">프리셋이 없습니다.</Typography>
             <Typography variant="caption" sx={{ display: 'block', mt: 1 }}>
@@ -392,26 +372,13 @@ const PresetPanel: React.FC = () => {
           </Box>
         ) : (
           <List disablePadding dense>
-            {sorted_presets.map((preset, index) => (
+            {presets.map((preset, index) => (
               <React.Fragment key={preset.id}>
                 {index > 0 && <Divider />}
                 <ListItem
                   disablePadding
                   secondaryAction={
                     <Box sx={{ display: 'flex', gap: 0.5 }}>
-                      <Tooltip title={preset.is_favorite ? '즐겨찾기 해제' : '즐겨찾기'}>
-                        <IconButton
-                          edge="end"
-                          size="small"
-                          onClick={(e) => handleToggleFavorite(preset.id, e)}
-                        >
-                          {preset.is_favorite ? (
-                            <StarIcon fontSize="small" sx={{ color: '#ffc107' }} />
-                          ) : (
-                            <StarBorderIcon fontSize="small" />
-                          )}
-                        </IconButton>
-                      </Tooltip>
                       <Tooltip title="삭제">
                         <IconButton
                           edge="end"
@@ -463,12 +430,13 @@ const PresetPanel: React.FC = () => {
                           whiteSpace: 'nowrap',
                         }
                       }}
+                      secondaryTypographyProps={{ component: 'div' }}
                       primary={
                         <Typography
                           variant="body2"
                           component="span"
                           sx={{
-                            fontWeight: preset.is_favorite ? 600 : 500,
+                            fontWeight: 500,
                             display: 'block',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
@@ -571,7 +539,7 @@ const PresetPanel: React.FC = () => {
         }}
       >
         <Typography variant="caption" color="text.secondary">
-          클릭하여 수정 • ⭐ 즐겨찾기는 상단 고정
+          클릭하여 수정 • ▶ 타이머 시작
         </Typography>
       </Box>
 
