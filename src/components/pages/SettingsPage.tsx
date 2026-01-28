@@ -16,6 +16,9 @@ import {
   Alert,
   Snackbar,
   Chip,
+  Slider,
+  ToggleButton,
+  ToggleButtonGroup,
 } from '@mui/material';
 import { LocalizationProvider, TimePicker } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
@@ -26,6 +29,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import AddIcon from '@mui/icons-material/Add';
 import RestoreIcon from '@mui/icons-material/Restore';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
+import ZoomInIcon from '@mui/icons-material/ZoomIn';
 import {
   DndContext,
   closestCenter,
@@ -145,12 +149,22 @@ const SortableStatusChip: React.FC<SortableStatusChipProps> = ({ id, label, onDe
   );
 };
 
+// 화면 크기 옵션
+export const SCREEN_SCALE_OPTIONS = [
+  { value: 0.8, label: '작게 (80%)' },
+  { value: 0.9, label: '약간 작게 (90%)' },
+  { value: 1.0, label: '보통 (100%)' },
+  { value: 1.1, label: '약간 크게 (110%)' },
+  { value: 1.2, label: '크게 (120%)' },
+];
+
 // 기본 설정값
 const DEFAULT_SETTINGS = {
   lunchStart: '12:00',
   lunchEnd: '13:00',
   lunchExcludeEnabled: true,
   autoCompleteEnabled: true,
+  screenScale: 1.0,
 };
 
 const SettingsPage: React.FC = () => {
@@ -170,6 +184,7 @@ const SettingsPage: React.FC = () => {
   const [lunch_end, setLunchEnd] = useState(DEFAULT_SETTINGS.lunchEnd);
   const [lunch_exclude_enabled, setLunchExcludeEnabled] = useState(DEFAULT_SETTINGS.lunchExcludeEnabled);
   const [auto_complete_enabled, setAutoCompleteEnabled] = useState(DEFAULT_SETTINGS.autoCompleteEnabled);
+  const [screen_scale, setScreenScale] = useState(DEFAULT_SETTINGS.screenScale);
 
   // 컬러 팔레트 설정
   const [palette_type, setPaletteType] = useState<PaletteType>('navy-orange');
@@ -202,6 +217,7 @@ const SettingsPage: React.FC = () => {
         setLunchEnd(settings.lunchEnd || DEFAULT_SETTINGS.lunchEnd);
         setLunchExcludeEnabled(settings.lunchExcludeEnabled ?? DEFAULT_SETTINGS.lunchExcludeEnabled);
         setAutoCompleteEnabled(settings.autoCompleteEnabled ?? DEFAULT_SETTINGS.autoCompleteEnabled);
+        setScreenScale(settings.screenScale ?? DEFAULT_SETTINGS.screenScale);
       }
       
       // 컬러 팔레트 설정 로드
@@ -232,8 +248,12 @@ const SettingsPage: React.FC = () => {
       lunchEnd: lunch_end,
       lunchExcludeEnabled: lunch_exclude_enabled,
       autoCompleteEnabled: auto_complete_enabled,
+      screenScale: screen_scale,
     };
     localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+    
+    // 화면 크기 즉시 적용
+    document.documentElement.style.zoom = String(screen_scale);
     
     // 컬러 팔레트 설정 저장
     const palette_settings: PaletteSettings = {
@@ -261,6 +281,7 @@ const SettingsPage: React.FC = () => {
     lunch_end, 
     lunch_exclude_enabled, 
     auto_complete_enabled, 
+    screen_scale,
     palette_type, 
     custom_colors, 
     custom_base_color,
@@ -365,6 +386,7 @@ const SettingsPage: React.FC = () => {
     setLunchEnd(DEFAULT_SETTINGS.lunchEnd);
     setLunchExcludeEnabled(DEFAULT_SETTINGS.lunchExcludeEnabled);
     setAutoCompleteEnabled(DEFAULT_SETTINGS.autoCompleteEnabled);
+    setScreenScale(DEFAULT_SETTINGS.screenScale);
     
     // 컬러 팔레트 기본값 복원
     setPaletteType('navy-orange');
@@ -488,6 +510,72 @@ const SettingsPage: React.FC = () => {
         <Typography variant="body2" color="text.secondary">
           앱의 테마, 업무 환경, 데이터를 관리하세요.
         </Typography>
+      </Paper>
+
+      {/* 화면 크기 설정 */}
+      <Paper variant="outlined" sx={{ p: 3, mb: 3 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+          <ZoomInIcon sx={{ color: 'text.secondary' }} />
+          <Typography variant="h6" sx={{ fontWeight: 600 }}>
+            화면 크기
+          </Typography>
+        </Box>
+        
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+          화면의 전체적인 크기를 조절합니다. 설정은 자동으로 저장됩니다.
+        </Typography>
+
+        {/* 화면 크기 토글 버튼 그룹 */}
+        <ToggleButtonGroup
+          value={screen_scale}
+          exclusive
+          onChange={(_, new_value) => {
+            if (new_value !== null) {
+              setScreenScale(new_value);
+            }
+          }}
+          aria-label="화면 크기"
+          sx={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: 1,
+            '& .MuiToggleButton-root': {
+              flex: '1 1 auto',
+              minWidth: 100,
+              py: 1.5,
+              borderRadius: '8px !important',
+              border: '1px solid',
+              borderColor: 'divider',
+              '&.Mui-selected': {
+                bgcolor: 'primary.main',
+                color: 'primary.contrastText',
+                borderColor: 'primary.main',
+                '&:hover': {
+                  bgcolor: 'primary.dark',
+                },
+              },
+            },
+          }}
+        >
+          {SCREEN_SCALE_OPTIONS.map((option) => (
+            <ToggleButton key={option.value} value={option.value}>
+              {option.label}
+            </ToggleButton>
+          ))}
+        </ToggleButtonGroup>
+
+        {/* 현재 설정 표시 */}
+        <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Typography variant="body2" color="text.secondary">
+            현재 화면 크기:
+          </Typography>
+          <Chip 
+            label={`${Math.round(screen_scale * 100)}%`} 
+            size="small" 
+            color="primary" 
+            variant="outlined"
+          />
+        </Box>
       </Paper>
 
       {/* 작업 컬러 팔레트 & 테마 */}

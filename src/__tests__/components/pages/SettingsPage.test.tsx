@@ -9,11 +9,91 @@ import SettingsPage from '../../../components/pages/SettingsPage';
 describe('SettingsPage', () => {
   beforeEach(() => {
     localStorage.clear();
+    // zoom 스타일 초기화
+    document.documentElement.style.zoom = '';
   });
 
   it('설정 제목이 표시된다', () => {
     render(<SettingsPage />);
     expect(screen.getByText('설정')).toBeInTheDocument();
+  });
+
+  describe('화면 크기 설정', () => {
+    it('화면 크기 섹션이 표시된다', () => {
+      render(<SettingsPage />);
+      expect(screen.getByText('화면 크기')).toBeInTheDocument();
+    });
+
+    it('모든 화면 크기 옵션이 표시된다', () => {
+      render(<SettingsPage />);
+      
+      expect(screen.getByRole('button', { name: /작게 \(80%\)/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /약간 작게 \(90%\)/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /보통 \(100%\)/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /약간 크게 \(110%\)/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /크게 \(120%\)/i })).toBeInTheDocument();
+    });
+
+    it('기본값으로 100%가 선택된다', () => {
+      render(<SettingsPage />);
+      
+      const normal_button = screen.getByRole('button', { name: /보통 \(100%\)/i });
+      expect(normal_button).toHaveAttribute('aria-pressed', 'true');
+    });
+
+    it('화면 크기 변경 시 localStorage에 저장된다', async () => {
+      const user = userEvent.setup();
+      render(<SettingsPage />);
+      
+      const large_button = screen.getByRole('button', { name: /크게 \(120%\)/i });
+      await user.click(large_button);
+      
+      await waitFor(() => {
+        const saved = localStorage.getItem('timekeeper-settings');
+        expect(saved).not.toBeNull();
+        const settings = JSON.parse(saved!);
+        expect(settings.screenScale).toBe(1.2);
+      });
+    });
+
+    it('저장된 화면 크기 설정이 로드된다', () => {
+      localStorage.setItem('timekeeper-settings', JSON.stringify({
+        lunchStart: '12:00',
+        lunchEnd: '13:00',
+        lunchExcludeEnabled: true,
+        autoCompleteEnabled: true,
+        screenScale: 0.9,
+      }));
+      
+      render(<SettingsPage />);
+      
+      const small_button = screen.getByRole('button', { name: /약간 작게 \(90%\)/i });
+      expect(small_button).toHaveAttribute('aria-pressed', 'true');
+    });
+
+    it('현재 화면 크기가 표시된다', () => {
+      render(<SettingsPage />);
+      expect(screen.getByText('100%')).toBeInTheDocument();
+    });
+
+    it('기본값 복원 시 화면 크기가 100%로 초기화된다', async () => {
+      const user = userEvent.setup();
+      
+      localStorage.setItem('timekeeper-settings', JSON.stringify({
+        screenScale: 0.8,
+      }));
+      
+      render(<SettingsPage />);
+      
+      // 기본값 복원 버튼 클릭
+      const reset_button = screen.getByRole('button', { name: /기본값 복원/i });
+      await user.click(reset_button);
+      
+      await waitFor(() => {
+        const normal_button = screen.getByRole('button', { name: /보통 \(100%\)/i });
+        expect(normal_button).toHaveAttribute('aria-pressed', 'true');
+      });
+    });
   });
 
   describe('테마 및 컬러 팔레트', () => {
