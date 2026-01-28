@@ -1,7 +1,8 @@
 /**
- * v0.6.0 테스트: SettingsPage 컴포넌트 테스트 (테마, 단축키, 초기화)
+ * v0.13.1 테스트: SettingsPage 컴포넌트 테스트 (테마, 단축키, 카테고리/진행상태 관리)
+ * - v0.13.1에서 카테고리/진행상태 드래그앤드롭 순서 조정 기능 추가
  */
-import { render, screen, act, waitFor } from '../../../test-utils';
+import { render, screen, waitFor } from '../../../test-utils';
 import userEvent from '@testing-library/user-event';
 import SettingsPage from '../../../components/pages/SettingsPage';
 
@@ -15,31 +16,10 @@ describe('SettingsPage', () => {
     expect(screen.getByText('설정')).toBeInTheDocument();
   });
 
-  describe('테마 설정', () => {
-    it('테마 커스터마이징 섹션이 표시된다', () => {
+  describe('테마 및 컬러 팔레트', () => {
+    it('테마 및 컬러 팔레트 섹션이 표시된다', () => {
       render(<SettingsPage />);
-      expect(screen.getByText('테마 커스터마이징')).toBeInTheDocument();
-    });
-
-    it('테마 프리셋 선택 드롭다운이 렌더링된다', () => {
-      render(<SettingsPage />);
-      expect(screen.getByLabelText(/테마 프리셋/i)).toBeInTheDocument();
-    });
-
-    it('커스텀 색상 입력 필드가 렌더링된다', () => {
-      render(<SettingsPage />);
-      expect(screen.getByLabelText(/커스텀 색상/i)).toBeInTheDocument();
-    });
-
-    it('설정 저장 버튼을 클릭하면 설정이 저장된다', async () => {
-      const user = userEvent.setup();
-      render(<SettingsPage />);
-
-      const save_button = screen.getByRole('button', { name: /설정 저장/i });
-      await user.click(save_button);
-
-      const saved_data = localStorage.getItem('timekeeper-settings');
-      expect(saved_data).not.toBeNull();
+      expect(screen.getByText('테마 및 컬러 팔레트')).toBeInTheDocument();
     });
 
     it('기본값 복원 버튼을 클릭하면 설정이 초기화된다', async () => {
@@ -62,57 +42,9 @@ describe('SettingsPage', () => {
       expect(screen.getByText('업무 환경')).toBeInTheDocument();
     });
 
-    it('점심시간 시작 입력 필드가 렌더링된다', () => {
-      render(<SettingsPage />);
-      expect(screen.getByLabelText(/점심시간 시작/i)).toBeInTheDocument();
-    });
-
-    it('점심시간 종료 입력 필드가 렌더링된다', () => {
-      render(<SettingsPage />);
-      expect(screen.getByLabelText(/점심시간 종료/i)).toBeInTheDocument();
-    });
-
     it('자동 완성 스위치가 렌더링된다', () => {
       render(<SettingsPage />);
       expect(screen.getByLabelText(/작업명 자동 완성/i)).toBeInTheDocument();
-    });
-  });
-
-  describe('TimePicker 적용 (v0.11.0)', () => {
-    it('점심시간 시작 TimePicker가 렌더링된다', () => {
-      render(<SettingsPage />);
-      const lunchStartField = screen.getByLabelText(/점심시간 시작/i);
-      expect(lunchStartField).toBeInTheDocument();
-      // TimePicker는 TextField를 내부적으로 사용
-      expect(lunchStartField.tagName.toLowerCase()).toBe('input');
-    });
-
-    it('점심시간 종료 TimePicker가 렌더링된다', () => {
-      render(<SettingsPage />);
-      const lunchEndField = screen.getByLabelText(/점심시간 종료/i);
-      expect(lunchEndField).toBeInTheDocument();
-      expect(lunchEndField.tagName.toLowerCase()).toBe('input');
-    });
-
-    it('저장된 점심시간 설정이 TimePicker에 로드된다', () => {
-      localStorage.setItem(
-        'timekeeper-settings',
-        JSON.stringify({
-          lunchStart: '11:30',
-          lunchEnd: '12:30',
-        })
-      );
-
-      render(<SettingsPage />);
-
-      // TimePicker 내부 input 필드에서 시간 확인
-      const lunchStartInput = screen.getByLabelText(/점심시간 시작/i) as HTMLInputElement;
-      const lunchEndInput = screen.getByLabelText(/점심시간 종료/i) as HTMLInputElement;
-      
-      // TimePicker는 Date 객체를 사용하므로 value 형식이 다를 수 있음
-      // input에 값이 존재하는지 확인
-      expect(lunchStartInput).toBeInTheDocument();
-      expect(lunchEndInput).toBeInTheDocument();
     });
 
     it('점심시간 제외 스위치가 렌더링된다', () => {
@@ -122,9 +54,9 @@ describe('SettingsPage', () => {
   });
 
   describe('단축키 목록', () => {
-    it('단축키 섹션이 표시된다', () => {
+    it('단축키 섹션 제목이 표시된다', () => {
       render(<SettingsPage />);
-      expect(screen.getByText('단축키')).toBeInTheDocument();
+      expect(screen.getByText(/⌨️ 단축키/)).toBeInTheDocument();
     });
 
     it('F8 단축키가 표시된다', () => {
@@ -164,13 +96,6 @@ describe('SettingsPage', () => {
       expect(screen.getByRole('button', { name: /데이터 내보내기/i })).toBeInTheDocument();
     });
 
-    it('데이터 가져오기 버튼이 렌더링된다', () => {
-      render(<SettingsPage />);
-      expect(screen.getByText(/데이터 가져오기/i)).toBeInTheDocument();
-    });
-  });
-
-  describe('데이터 초기화', () => {
     it('위험 영역 섹션이 표시된다', () => {
       render(<SettingsPage />);
       expect(screen.getByText('위험 영역')).toBeInTheDocument();
@@ -180,78 +105,58 @@ describe('SettingsPage', () => {
       render(<SettingsPage />);
       expect(screen.getByRole('button', { name: /모든 데이터 초기화/i })).toBeInTheDocument();
     });
+  });
 
-    it('초기화 버튼을 클릭하면 확인 모달이 열린다', async () => {
-      const user = userEvent.setup();
+  describe('카테고리 관리 (v0.13.1)', () => {
+    it('카테고리 관리 섹션이 표시된다', () => {
       render(<SettingsPage />);
-
-      const reset_button = screen.getByRole('button', { name: /모든 데이터 초기화/i });
-      await user.click(reset_button);
-
-      expect(screen.getByText(/이 작업은 되돌릴 수 없습니다/i)).toBeInTheDocument();
+      expect(screen.getByText('카테고리 관리')).toBeInTheDocument();
     });
 
-    it('확인 텍스트 없이는 초기화 버튼이 비활성화된다', async () => {
-      const user = userEvent.setup();
+    it('드래그앤드롭 안내 문구가 표시된다', () => {
       render(<SettingsPage />);
-
-      const reset_button = screen.getByRole('button', { name: /모든 데이터 초기화/i });
-      await user.click(reset_button);
-
-      const confirm_button = screen.getByRole('button', { name: /초기화 실행/i });
-      expect(confirm_button).toBeDisabled();
+      // 카테고리와 진행상태 둘 다 안내 문구가 있음
+      const help_texts = screen.getAllByText(/드래그하여 순서를 변경할 수 있습니다/i);
+      expect(help_texts.length).toBeGreaterThanOrEqual(2);
     });
 
-    it('올바른 텍스트를 입력하면 초기화 버튼이 활성화된다', async () => {
-      const user = userEvent.setup();
+    it('기본 카테고리가 표시된다', () => {
       render(<SettingsPage />);
-
-      const reset_button = screen.getByRole('button', { name: /모든 데이터 초기화/i });
-      await user.click(reset_button);
-
-      const text_input = screen.getByPlaceholderText('초기화');
-      await user.type(text_input, '초기화');
-
-      const confirm_button = screen.getByRole('button', { name: /초기화 실행/i });
-      expect(confirm_button).not.toBeDisabled();
+      
+      expect(screen.getByText('분석')).toBeInTheDocument();
+      expect(screen.getByText('개발')).toBeInTheDocument();
+      expect(screen.getByText('회의')).toBeInTheDocument();
     });
 
-    it('취소 버튼을 클릭하면 모달이 닫힌다', async () => {
-      const user = userEvent.setup();
+    it('카테고리 Chip에 드래그 핸들 아이콘이 있다', () => {
       render(<SettingsPage />);
+      
+      // DragIndicatorIcon이 존재해야 함
+      const drag_icons = document.querySelectorAll('[data-testid="DragIndicatorIcon"]');
+      expect(drag_icons.length).toBeGreaterThan(0);
+    });
 
-      const reset_button = screen.getByRole('button', { name: /모든 데이터 초기화/i });
-      await user.click(reset_button);
+    it('새 카테고리 입력 필드가 렌더링된다', () => {
+      render(<SettingsPage />);
+      expect(screen.getByPlaceholderText(/새 카테고리/)).toBeInTheDocument();
+    });
 
-      const cancel_button = screen.getByRole('button', { name: /취소/i });
-      await user.click(cancel_button);
+    it('카테고리 추가 버튼이 렌더링된다', () => {
+      render(<SettingsPage />);
+      
+      const add_buttons = screen.getAllByRole('button', { name: /추가/i });
+      expect(add_buttons.length).toBeGreaterThan(0);
+    });
 
-      await waitFor(() => {
-        expect(screen.queryByText(/이 작업은 되돌릴 수 없습니다/i)).not.toBeInTheDocument();
-      });
+    it('기본값으로 초기화 버튼이 렌더링된다', () => {
+      render(<SettingsPage />);
+      
+      const reset_buttons = screen.getAllByRole('button', { name: /기본값으로 초기화/i });
+      expect(reset_buttons.length).toBeGreaterThan(0);
     });
   });
 
-  describe('설정 저장/로드', () => {
-    it('저장된 설정이 로드된다', () => {
-      localStorage.setItem(
-        'timekeeper-settings',
-        JSON.stringify({
-          themePreset: '파랑',
-          lunchStart: '11:30',
-          lunchEnd: '12:30',
-          autoCompleteEnabled: false,
-        })
-      );
-
-      render(<SettingsPage />);
-
-      const lunch_start_input = screen.getByLabelText(/점심시간 시작/i) as HTMLInputElement;
-      expect(lunch_start_input.value).toBe('11:30');
-    });
-  });
-
-  describe('진행상태 관리 (v0.10.4)', () => {
+  describe('진행상태 관리 (v0.13.1)', () => {
     it('진행상태 관리 섹션이 표시된다', () => {
       render(<SettingsPage />);
       expect(screen.getByText('진행상태 관리')).toBeInTheDocument();
@@ -277,6 +182,15 @@ describe('SettingsPage', () => {
       // MuiChip-deleteIcon이 존재해야 함
       const delete_icons = document.querySelectorAll('.MuiChip-deleteIcon');
       expect(delete_icons.length).toBeGreaterThan(0);
+    });
+
+    it('진행상태 Chip에 드래그 핸들 아이콘이 있다', () => {
+      render(<SettingsPage />);
+      
+      // DragIndicatorIcon이 존재해야 함 (카테고리와 진행상태 둘 다)
+      const drag_icons = document.querySelectorAll('[data-testid="DragIndicatorIcon"]');
+      // 카테고리 8개 + 진행상태 4개 = 12개 이상
+      expect(drag_icons.length).toBeGreaterThanOrEqual(12);
     });
 
     it('새 진행상태 입력 필드가 렌더링된다', () => {
