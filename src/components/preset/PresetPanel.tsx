@@ -103,6 +103,10 @@ const PresetPanel: React.FC = () => {
   // 추가 메뉴 상태 (최근 작업 선택)
   const [add_menu_anchor, setAddMenuAnchor] = useState<null | HTMLElement>(null);
 
+  // 인라인 프로젝트 코드 편집 상태
+  const [editingPresetProject, setEditingPresetProject] = useState<string | null>(null);
+  const [inlinePresetProjectCode, setInlinePresetProjectCode] = useState('');
+
   // 프리셋 변경 시 LocalStorage 저장
   useEffect(() => {
     localStorage.setItem(PRESETS_STORAGE_KEY, JSON.stringify(presets));
@@ -266,6 +270,44 @@ const PresetPanel: React.FC = () => {
     if (window.confirm('이 프리셋을 삭제하시겠습니까?')) {
       setPresets(prev => prev.filter(p => p.id !== preset_id));
     }
+  };
+
+  // 인라인 프로젝트 편집 시작
+  const startInlinePresetProjectEdit = (preset: PresetItem, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingPresetProject(preset.id);
+    setInlinePresetProjectCode(preset.projectCode || '');
+  };
+
+  // 인라인 프로젝트 저장
+  const saveInlinePresetProject = (preset: PresetItem, newCode: string) => {
+    // [코드] 이름 형태에서 코드 추출
+    const match = newCode.match(/^\[([^\]]+)\]/);
+    const code = match ? match[1] : newCode;
+    
+    if (code !== preset.projectCode) {
+      setPresets(prev =>
+        prev.map(p => (p.id === preset.id ? { ...p, projectCode: code || undefined } : p))
+      );
+    }
+    setEditingPresetProject(null);
+    setInlinePresetProjectCode('');
+  };
+
+  // 인라인 프로젝트 편집 취소
+  const cancelInlinePresetProjectEdit = () => {
+    setEditingPresetProject(null);
+    setInlinePresetProjectCode('');
+  };
+
+  // 프로젝트 코드에서 표시용 문자열 생성 (인라인 편집용)
+  const getInlineProjectDisplayValue = (code: string) => {
+    if (!code) return '';
+    const name = getProjectName(code);
+    if (name && name !== code) {
+      return `[${code}] ${name}`;
+    }
+    return code;
   };
 
   const recent_tasks = getRecentTasks();
@@ -440,22 +482,54 @@ const PresetPanel: React.FC = () => {
                       }
                       secondary={
                         <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5, overflow: 'hidden', flexWrap: 'nowrap' }}>
-                          {preset.projectCode && (
+                          {editingPresetProject === preset.id ? (
+                            <Autocomplete
+                              freeSolo
+                              size="small"
+                              options={projectOptions}
+                              value={getInlineProjectDisplayValue(inlinePresetProjectCode)}
+                              onInputChange={(_e, newValue) => setInlinePresetProjectCode(newValue)}
+                              onChange={(_e, newValue) => {
+                                saveInlinePresetProject(preset, newValue || '');
+                              }}
+                              onBlur={() => saveInlinePresetProject(preset, inlinePresetProjectCode)}
+                              renderInput={(params) => (
+                                <TextField 
+                                  {...params} 
+                                  variant="standard"
+                                  autoFocus
+                                  onClick={(e) => e.stopPropagation()}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      saveInlinePresetProject(preset, inlinePresetProjectCode);
+                                    } else if (e.key === 'Escape') {
+                                      cancelInlinePresetProjectEdit();
+                                    }
+                                  }}
+                                  InputProps={{ ...params.InputProps, disableUnderline: true }}
+                                  sx={{ '& .MuiInputBase-input': { fontSize: '0.65rem', p: 0 } }}
+                                />
+                              )}
+                              sx={{ width: 120 }}
+                            />
+                          ) : (
                             <Chip
-                              label={getProjectName(preset.projectCode)}
+                              label={preset.projectCode ? getProjectName(preset.projectCode) : '-'}
                               size="small"
                               variant="outlined"
+                              onClick={(e) => startInlinePresetProjectEdit(preset, e)}
                               sx={{ 
                                 height: 18, 
                                 fontSize: '0.65rem',
                                 maxWidth: 120,
+                                cursor: 'pointer',
                                 '& .MuiChip-label': {
                                   overflow: 'hidden',
                                   textOverflow: 'ellipsis',
                                   whiteSpace: 'nowrap',
                                 }
                               }}
-                              title={`[${preset.projectCode}] ${getProjectName(preset.projectCode)}`}
+                              title={preset.projectCode ? `[${preset.projectCode}] ${getProjectName(preset.projectCode)} - 클릭하여 변경` : '클릭하여 프로젝트 설정'}
                             />
                           )}
                           {preset.category && (

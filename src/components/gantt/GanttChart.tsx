@@ -715,12 +715,13 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
     const percent = getPercentFromEvent(e);
     const row = getRowFromEvent(e);
 
-    // 왼쪽 라벨 영역이면 무시 (패딩 영역은 허용하되 getPercentFromEvent에서 0으로 클램핑됨)
-    // 정확히는 클릭한 x좌표가 LABEL_WIDTH + 16 보다 작으면 무시해야 함
+    // 왼쪽 라벨 영역 또는 시간축 헤더 영역이면 무시
     if (!containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
-    if (x < LABEL_WIDTH + 16) return;
+    const y = e.clientY - rect.top;
+    // 왼쪽 라벨 영역 (x < LABEL_WIDTH + 16) 또는 시간축 헤더 영역 (y < HEADER_HEIGHT) 무시
+    if (x < LABEL_WIDTH + 16 || y < HEADER_HEIGHT) return;
 
     setIsDragging(true);
     setDragStartPercent(percent);
@@ -1274,7 +1275,8 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
           right: 16, // 패딩(16px) 고려
           height: HEADER_HEIGHT,
           borderBottom: '1px solid var(--border-color)',
-          overflow: 'hidden' // 라벨 영역 침범 방지
+          overflow: 'hidden', // 라벨 영역 침범 방지
+          pointerEvents: 'none', // 드래그앤드롭 방지
         }}>
           {timeLabels.map((item, index) => {
             // 라벨 위치에 따라 정렬 조정 (양끝 잘림 방지)
@@ -1381,7 +1383,8 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
                 display: 'flex',
                 alignItems: 'center',
                 gap: 0.5,
-                overflow: 'hidden'
+                overflow: 'hidden',
+                pointerEvents: 'none', // 드래그앤드롭 방지
               }}>
                 {row.projectCode && (
                   <Chip
