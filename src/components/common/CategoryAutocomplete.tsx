@@ -23,6 +23,8 @@ interface CategoryAutocompleteProps {
   label?: string;
   sx?: object;
   onKeyDown?: (e: React.KeyboardEvent) => void;
+  autoFocus?: boolean;
+  onBlur?: () => void;
 }
 
 // 커스텀 Paper 컴포넌트 (드롭다운 하단에 추가 UI 포함)
@@ -131,6 +133,8 @@ const CategoryAutocomplete: React.FC<CategoryAutocompleteProps> = ({
   label,
   sx = {},
   onKeyDown,
+  autoFocus = false,
+  onBlur,
 }) => {
   const { categories, addCategory, removeCategory } = useCategoryStore();
   const [open, setOpen] = useState(false);
@@ -272,6 +276,8 @@ const CategoryAutocomplete: React.FC<CategoryAutocompleteProps> = ({
           placeholder={placeholder}
           variant={variant}
           onKeyDown={onKeyDown}
+          autoFocus={autoFocus}
+          onBlur={onBlur}
           InputProps={{
             ...params.InputProps,
             ...(disableUnderline && variant === 'standard' ? { disableUnderline: true } : {}),

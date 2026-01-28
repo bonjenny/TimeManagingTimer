@@ -117,6 +117,8 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
   const [inlineTitle, setInlineTitle] = useState('');
   const [editingInlineProject, setEditingInlineProject] = useState<string | null>(null); // 편집 중인 task.title
   const [inlineProjectCode, setInlineProjectCode] = useState('');
+  const [editingInlineCategory, setEditingInlineCategory] = useState<string | null>(null); // 편집 중인 task.title
+  const [inlineCategory, setInlineCategory] = useState<string | null>(null);
   
   // 인라인 시간 편집 상태
   const [editingSessionTime, setEditingSessionTime] = useState<{
@@ -438,6 +440,30 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
   const cancelInlineProjectEdit = () => {
     setEditingInlineProject(null);
     setInlineProjectCode('');
+  };
+
+  // 인라인 카테고리 편집 시작
+  const startInlineCategoryEdit = (task: TaskGroup) => {
+    setEditingInlineCategory(task.title);
+    setInlineCategory(task.category || null);
+  };
+
+  // 인라인 카테고리 저장
+  const saveInlineCategory = (task: TaskGroup, newCategory: string | null) => {
+    if (newCategory !== task.category) {
+      // 모든 세션의 카테고리 업데이트
+      task.sessions.forEach(session => {
+        updateLog(session.id, { category: newCategory || undefined });
+      });
+    }
+    setEditingInlineCategory(null);
+    setInlineCategory(null);
+  };
+
+  // 인라인 카테고리 편집 취소
+  const cancelInlineCategoryEdit = () => {
+    setEditingInlineCategory(null);
+    setInlineCategory(null);
   };
 
   // 인라인 시간 편집 시작
@@ -858,16 +884,42 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                 </Box>
 
                 {/* 카테고리 */}
-                <Box>
-                  {task.category && (
+                <Box sx={{ overflow: 'hidden' }} onClick={(e) => e.stopPropagation()}>
+                  {editingInlineCategory === task.title ? (
+                    <CategoryAutocomplete
+                      value={inlineCategory}
+                      onChange={(newValue) => {
+                        saveInlineCategory(task, newValue);
+                      }}
+                      size="small"
+                      variant="standard"
+                      autoFocus
+                      onBlur={() => cancelInlineCategoryEdit()}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Escape') {
+                          cancelInlineCategoryEdit();
+                        }
+                      }}
+                      sx={{ 
+                        width: '100%',
+                        '& .MuiInputBase-input': { fontSize: '0.65rem', p: 0 }
+                      }}
+                    />
+                  ) : (
                     <Chip 
-                      label={task.category} 
-                      size="small" 
+                      label={task.category || '-'} 
+                      size="small"
+                      color={task.category ? "default" : "default"}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        startInlineCategoryEdit(task);
+                      }}
                       sx={{ 
                         height: 20, 
-                        fontSize: '0.65rem', 
-                        // bgcolor 제거 -> MUI default
-                      }} 
+                        fontSize: '0.65rem',
+                        cursor: 'pointer',
+                      }}
+                      title={task.category ? `${task.category} - 클릭하여 변경` : '클릭하여 카테고리 설정'}
                     />
                   )}
                 </Box>
