@@ -1,7 +1,17 @@
 import { generateToneOnTonePalette, adjustColorForDarkMode } from './colorUtils';
 
 // 팔레트 타입 정의
-export type PaletteType = 'navy-orange' | 'olive-yellow' | 'pastel-rainbow' | 'ocean-blue' | 'sunset' | 'forest' | 'beige-brown' | 'pink-purple' | 'terracotta' | 'custom';
+export type PaletteType = 
+  | 'navy-orange' 
+  | 'olive-yellow' 
+  | 'pastel-rainbow' 
+  | 'ocean-blue' 
+  | 'sunset' 
+  | 'beige-brown' 
+  | 'pink-purple' 
+  | 'sky-sunset' 
+  | 'forest-green' 
+  | 'custom';
 
 // 팔레트 설정 인터페이스
 export interface PaletteSettings {
@@ -28,26 +38,26 @@ export const COOLORS_PALETTES: Record<Exclude<PaletteType, 'custom'>, Omit<Palet
     primary: '#264653',
     accent: '#e76f51',
   },
-  // 올리브 & 노랑
+  // 올리브 & 노랑 (노란색 + 올리브 - 명도 다양화)
   'olive-yellow': {
     name: '올리브 & 노랑',
-    colors: ['#606c38', '#283618', '#fefae0', '#dda15e', '#bc6c25', '#7f9172', '#9b9b7a', '#d9ae94', '#c9b79c', '#e3d5ca'],
-    primary: '#606c38',
-    accent: '#bc6c25',
+    colors: ['#2a3018', '#4a5428', '#8a7a20', '#3a3a10', '#6a6a00', '#5a6030', '#7a6a18', '#4a4a00', '#606c38', '#5a5020'],
+    primary: '#4a5428',
+    accent: '#8a7a20',
   },
-  // 파스텔 레인보우
+  // 파스텔 레인보우 (흰색 계열 수정)
   'pastel-rainbow': {
     name: '파스텔 레인보우',
-    colors: ['#c9cba3', '#ffe1a8', '#e26d5c', '#723d46', '#472d30', '#ffcad4', '#f4acb7', '#9d8189', '#d8e2dc', '#ece4db'],
-    primary: '#723d46', // 조금 진한 색으로 Primary
+    colors: ['#a8a978', '#d4a574', '#e26d5c', '#723d46', '#472d30', '#c9889a', '#b8848f', '#9d8189', '#8a9a8e', '#a69082'],
+    primary: '#723d46',
     accent: '#e26d5c',
   },
-  // 오션 블루
+  // 오션 딥블루 (색조 다양화: 네이비, 청록, 딥블루 + 딥바이올렛)
   'ocean-blue': {
-    name: '오션 블루',
-    colors: ['#03045e', '#023e8a', '#0077b6', '#0096c7', '#00b4d8', '#48cae4', '#90e0ef', '#ade8f4', '#caf0f8', '#a2d2ff'],
-    primary: '#0077b6',
-    accent: '#48cae4',
+    name: '오션 딥블루',
+    colors: ['#1a365d', '#234e70', '#3a3a8c', '#2a6478', '#3182ce', '#4a4a9a', '#2b6cb0', '#2c7a7b', '#4a90a4', '#285e61'],
+    primary: '#2b6cb0',
+    accent: '#3182ce',
   },
   // 선셋 워터멜론
   'sunset': {
@@ -56,33 +66,40 @@ export const COOLORS_PALETTES: Record<Exclude<PaletteType, 'custom'>, Omit<Palet
     primary: '#6a4c93',
     accent: '#ff595e',
   },
-  // 포레스트 그린
-  'forest': {
-    name: '포레스트',
-    colors: ['#2d6a4f', '#40916c', '#52b788', '#74c69d', '#95d5b2', '#b7e4c7', '#d8f3dc', '#1b4332', '#081c15', '#344e41'],
-    primary: '#2d6a4f',
-    accent: '#52b788',
-  },
-  // 베이지 & 브라운
+  // 브라운 그린 (브라운 → 그린 → 베이지 그라데이션)
   'beige-brown': {
-    name: '베이지 & 브라운',
-    colors: ['#582f0e', '#7f4f24', '#936639', '#a68a64', '#b6ad90', '#c2c5aa', '#a4ac86', '#656d4a', '#414833', '#333d29'],
+    name: '브라운 그린',
+    colors: ['#582f0e', '#7f4f24', '#3d5a45', '#4a6b52', '#6b8e5a', '#7a9a30', '#556b2f', '#8b7355', '#936639', '#a68a64'],
     primary: '#582f0e',
-    accent: '#a68a64',
+    accent: '#6b8e5a',
   },
-  // 핑크 & 퍼플
+  // 핑크 & 퍼플 (여린 핑크 + 퍼플-바이올렛 + 채도 높은 색)
   'pink-purple': {
     name: '핑크 & 퍼플',
-    colors: ['#ffcbf2', '#f3c4fb', '#ecbcfd', '#e5b3fe', '#e2afff', '#deaaff', '#d8bbff', '#d0d1ff', '#c8e7ff', '#c0fdff'],
-    primary: '#e2afff',
-    accent: '#f3c4fb',
+    colors: ['#a0607a', '#c74080', '#9a6080', '#8a5070', '#9932cc', '#6a4078', '#8060a0', '#7050a0', '#a040a0', '#8a6098'],
+    primary: '#9932cc',
+    accent: '#c74080',
   },
-  // 테라코타
-  'terracotta': {
-    name: '테라코타',
-    colors: ['#edc4b3', '#e6b8a2', '#deab90', '#d69f7e', '#cd9777', '#c38e70', '#b07d62', '#9d6b53', '#8a5a44', '#774936'],
-    primary: '#9d6b53',
-    accent: '#cd9777',
+  // 스카이 선셋 (구름/하늘 이미지 기반)
+  'sky-sunset': {
+    name: '스카이 선셋',
+    colors: ['#1e6091', '#168aad', '#34a0a4', '#52b69a', '#76c893', '#d9845e', '#e09f7d', '#c9848a', '#a86e7a', '#8e5c6a'],
+    primary: '#168aad',
+    accent: '#d9845e',
+  },
+  // 포레스트 그린 (다양한 그린 계열 - 짙은 색상 포함)
+  'forest-green': {
+    name: '포레스트 그린',
+    colors: ['#0d2818', '#1a3a28', '#3cb371', '#6b8e23', '#7a9a30', '#228b22', '#8a9a20', '#2d5a45', '#32cd32', '#4a7c59'],
+    primary: '#1a3a28',
+    accent: '#3cb371',
+  },
+  // 핑크 스카이 (라벤더 → 스카이블루 → 핑크 → 딥블루 → 청록 → 베이지 그라데이션)
+  'pink-sky': {
+    name: '핑크 스카이',
+    colors: ['#9070a0', '#4a90c0', '#c07088', '#0a5a8a', '#7080a8', '#2090a0', '#4a9a9a', '#a08070', '#9a8060', '#806850'],
+    primary: '#2090a0',
+    accent: '#c07088',
   },
 };
 
