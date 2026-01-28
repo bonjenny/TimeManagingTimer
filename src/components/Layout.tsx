@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { AppBar, Toolbar, Typography, Tabs, Tab, Box, Container, IconButton, Tooltip, Dialog, DialogContent, Button } from '@mui/material';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
@@ -8,6 +8,9 @@ import DarkModeIcon from '@mui/icons-material/DarkMode';
 import CloseIcon from '@mui/icons-material/Close';
 import { useTimerStore } from '../store/useTimerStore';
 import FeedbackBoard from './pages/FeedbackBoard';
+
+// 설정 저장 키
+const SETTINGS_STORAGE_KEY = 'timekeeper-settings';
 
 // 로컬스토리지 사용량 계산 함수
 const getLocalStorageUsage = (): { usageKB: string; usageMB: string } => {
@@ -20,6 +23,20 @@ const getLocalStorageUsage = (): { usageKB: string; usageMB: string } => {
     usageKB: (total / 1024).toFixed(1),
     usageMB: (total / (1024 * 1024)).toFixed(2)
   };
+};
+
+// 저장된 화면 크기 설정 로드 및 적용
+const loadAndApplyScreenScale = () => {
+  try {
+    const saved = localStorage.getItem(SETTINGS_STORAGE_KEY);
+    if (saved) {
+      const settings = JSON.parse(saved);
+      const scale = settings.screenScale ?? 1.0;
+      document.documentElement.style.zoom = String(scale);
+    }
+  } catch {
+    // 무시
+  }
 };
 
 export type PageType = 'daily' | 'weekly' | 'settings';
@@ -43,6 +60,11 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, onPageChange }) 
   
   // 로컬스토리지 사용량 (logs/deleted_logs 변경 시 재계산)
   const storageUsage = useMemo(() => getLocalStorageUsage(), [logs.length, deleted_logs.length]);
+
+  // 페이지 로드 시 저장된 화면 크기 설정 적용
+  useEffect(() => {
+    loadAndApplyScreenScale();
+  }, []);
 
   const handleChange = (_event: React.SyntheticEvent, newValue: number) => {
     onPageChange(PAGE_MAP[newValue].page);
