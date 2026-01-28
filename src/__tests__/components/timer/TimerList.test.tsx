@@ -411,6 +411,58 @@ describe('TimerList 미완료 업무 표시 기능 (v0.13.0)', () => {
       // 어제 시작 시간은 date_range.start보다 이전
       expect(yesterday.getTime()).toBeLessThan(date_range.start);
     });
+
+    it('미완료 업무는 전체 세션 중 가장 이른 시작 시간을 first_start로 사용한다', () => {
+      const { result } = renderHook(() => useTimerStore());
+      
+      const now = new Date();
+      const todayStart = new Date(now);
+      todayStart.setHours(6, 0, 0, 0);
+      
+      // 어제 06:00에 시작한 COMPLETED 세션
+      const yesterdayEarly = todayStart.getTime() - 86400000; // 어제 06:00
+      
+      // 어제 16:00에 시작한 PAUSED 세션 (더 늦은 시간)
+      const yesterdayLate = todayStart.getTime() - 86400000 + 10 * 3600000; // 어제 16:00
+      
+      // 첫 번째 세션: 어제 06:00 COMPLETED
+      act(() => {
+        result.current.startTimer('연속 작업', 'P001', '개발');
+        result.current.completeTimer();
+      });
+      
+      const log1 = result.current.logs[0];
+      act(() => {
+        result.current.updateLog(log1.id, {
+          startTime: yesterdayEarly,
+          endTime: yesterdayEarly + 3600000,
+          status: 'COMPLETED' as const,
+        });
+      });
+      
+      // 두 번째 세션: 어제 16:00 PAUSED
+      act(() => {
+        result.current.startTimer('연속 작업', 'P001', '개발');
+        result.current.completeTimer();
+      });
+      
+      const log2 = result.current.logs.find(l => l.id !== log1.id);
+      act(() => {
+        result.current.updateLog(log2!.id, {
+          startTime: yesterdayLate,
+          endTime: undefined,
+          status: 'PAUSED' as const,
+        });
+      });
+      
+      // 같은 제목의 로그가 2개 존재해야 함
+      const logsWithTitle = result.current.logs.filter(l => l.title === '연속 작업');
+      expect(logsWithTitle.length).toBe(2);
+      
+      // 가장 이른 startTime은 yesterdayEarly (어제 06:00)
+      const earliestStart = Math.min(...logsWithTitle.map(l => l.startTime));
+      expect(earliestStart).toBe(yesterdayEarly);
+    });
   });
 
   describe('총시간/오늘시간 분리', () => {
