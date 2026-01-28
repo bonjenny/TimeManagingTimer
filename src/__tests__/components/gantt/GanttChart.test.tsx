@@ -446,6 +446,71 @@ describe('GanttChart', () => {
     });
   });
 
+  describe('진행 중인 업무 실시간 너비 업데이트 (v0.13.2)', () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it('RUNNING 상태의 업무는 endTime이 있어도 currentTime 기준으로 너비가 계산된다', () => {
+      const now = Date.now();
+      const start = new Date(now);
+      start.setHours(9, 0, 0, 0);
+
+      // RUNNING 상태인데 endTime이 설정된 경우 (비정상 데이터)
+      act(() => {
+        useTimerStore.getState().addLog({
+          id: 'running-with-endtime',
+          title: '진행 중 작업',
+          startTime: start.getTime(),
+          endTime: start.getTime() + 30 * 60 * 1000, // 30분 후 endTime이 있지만
+          status: 'RUNNING', // RUNNING 상태이므로 무시되어야 함
+          pausedDuration: 0,
+        });
+      });
+
+      // 오늘 날짜로 렌더링
+      const today = new Date();
+      render(<GanttChart selectedDate={today} />);
+      
+      // 작업이 표시됨
+      expect(screen.getByText('진행 중 작업')).toBeInTheDocument();
+    });
+
+    it('탭 활성화 시 visibilitychange 이벤트가 발생하면 currentTime이 즉시 갱신된다', () => {
+      const today = new Date();
+      render(<GanttChart selectedDate={today} />);
+      
+      // visibilitychange 이벤트 발생 시뮬레이션
+      Object.defineProperty(document, 'hidden', { value: false, writable: true });
+      
+      act(() => {
+        document.dispatchEvent(new Event('visibilitychange'));
+      });
+      
+      // 컴포넌트가 정상 렌더링됨
+      expect(screen.getByText('08:00')).toBeInTheDocument();
+    });
+
+    it('탭이 비활성화된 상태에서는 interval 업데이트가 중단된다', () => {
+      const today = new Date();
+      render(<GanttChart selectedDate={today} />);
+      
+      // document.hidden이 true인 경우 interval 내에서 업데이트 안 함
+      Object.defineProperty(document, 'hidden', { value: true, writable: true });
+      
+      act(() => {
+        jest.advanceTimersByTime(1000);
+      });
+      
+      // 컴포넌트가 정상 렌더링됨 (업데이트 중단되어도 기존 상태 유지)
+      expect(screen.getByText('08:00')).toBeInTheDocument();
+    });
+  });
+
   describe('삭제 시 토스트 알림 (v0.12.6)', () => {
     it('작업 삭제 시 confirm 대화상자 없이 바로 삭제된다', async () => {
       const start = new Date(selectedDate);

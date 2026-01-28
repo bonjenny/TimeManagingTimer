@@ -139,13 +139,41 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
   const currentTimeRef = useRef(Date.now());
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      const now = Date.now();
-      setCurrentTime(now);
-      currentTimeRef.current = now;
-    }, 1000); // 1초마다 업데이트
+    // 탭이 활성화 상태일 때만 interval 실행
+    let interval: number | null = null;
+    
+    const startInterval = () => {
+      if (interval) clearInterval(interval);
+      interval = window.setInterval(() => {
+        if (!document.hidden) {
+          const now = Date.now();
+          setCurrentTime(now);
+          currentTimeRef.current = now;
+        }
+      }, 1000);
+    };
 
-    return () => clearInterval(interval);
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        // 탭이 다시 활성화되면 즉시 시간 갱신
+        const now = Date.now();
+        setCurrentTime(now);
+        currentTimeRef.current = now;
+        // interval 재시작
+        startInterval();
+      }
+    };
+
+    // 초기 interval 시작
+    startInterval();
+    
+    // visibilitychange 이벤트 리스너 등록
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      if (interval) clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   // 오늘 날짜인지 확인
@@ -565,14 +593,19 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
     return (hours - timelineStartHour) * 60 + minutes;
   }, [timelineStartHour]);
 
-  // 너비 계산 (분 단위) - 실시간 업데이트를 위해 currentTime 사용
-  const getWidthMinutes = (start: number, end?: number) => {
-    const end_time = end || currentTime;
-    return (end_time - start) / 1000 / 60; // 분
-  };
-
   // 제목별로 그룹화하여 같은 제목은 같은 행에 표시
   const { chartItems, uniqueRows } = useMemo(() => {
+    // 현재 시간 캡처 (클로저 문제 방지)
+    const now = currentTime;
+    
+    // 너비 계산 (분 단위) - inline 정의
+    // status가 RUNNING인 경우 endTime을 무시하고 현재 시간 사용
+    const calcWidthMinutes = (start: number, end: number | undefined, status?: string) => {
+      // RUNNING 상태면 endTime을 무시하고 현재 시간 사용
+      const effective_end = (status === 'RUNNING') ? now : (end || now);
+      return (effective_end - start) / 1000 / 60; // 분
+    };
+    
     // 1. 제목별로 그룹화하고 row_index 할당
     const title_to_row_index = new Map<string, number>();
     const rows: { title: string; projectCode?: string; category?: string; color: string }[] = [];
@@ -596,7 +629,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
     // 2. 각 로그에 row_index와 위치 정보 추가
     const items = todayLogs.map(log => {
       const start_offset = getOffsetMinutes(log.startTime);
-      let width = getWidthMinutes(log.startTime, log.endTime);
+      let width = calcWidthMinutes(log.startTime, log.endTime, log.status);
 
       // 최소 너비 (5분)
       if (width < 5) width = 5;
