@@ -111,6 +111,72 @@
           "lastPausedAt": 1769498465212
         },
         {
+          "id": "805eef4d-e056-45cd-ad7a-402e55847561",
+          "title": "업무 기록 타이머 개발",
+          "projectCode": "A25_05591",
+          "category": "개발",
+          "startTime": 1769497800000,
+          "endTime": 1769500350905.4326,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "b44f223e-ad56-4220-ae2e-a0c21263e728",
+          "title": "개발.12577 3) Abort 구조 설계 및 적용",
+          "projectCode": "A26_00413",
+          "category": "개발",
+          "startTime": 1769500490444,
+          "status": "PAUSED",
+          "pausedDuration": 0,
+          "endTime": 1769500593867,
+          "lastPausedAt": 1769500593867
+        },
+        {
+          "id": "1f4870f7-79cd-4336-86c3-76428a80ea87",
+          "title": "개발.12577 3) Abort 구조 설계 및 적용",
+          "projectCode": "A26_00413",
+          "category": "개발",
+          "startTime": 1769500597985,
+          "status": "PAUSED",
+          "pausedDuration": 0,
+          "endTime": 1769501425498,
+          "lastPausedAt": 1769501425498
+        },
+        {
+          "id": "8d5746c6-7d3c-4fda-ab72-8a9edeaaf85a",
+          "title": "개발.12577 3) Abort 구조 설계 및 적용",
+          "projectCode": "A26_00413",
+          "category": "개발",
+          "startTime": 1769463543259.5571,
+          "endTime": 1769471659557.344,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "813e7568-0e4b-4bcb-b502-8c640b1f43b1",
+          "title": "개발.12577 3) Abort 구조 설계 및 적용",
+          "projectCode": "A26_00413",
+          "category": "설계",
+          "startTime": 1769501443551,
+          "status": "PAUSED",
+          "pausedDuration": 0,
+          "endTime": 1769504965707,
+          "lastPausedAt": 1769504965707
+        }
+      ],
+      "deleted_logs": [
+        {
+          "id": "1863e078-f321-4dc6-b423-2ed50b2b2d7d",
+          "title": "HTML영역 다크모드 적용 TP.15009 stage 아이콘바 설정 > 업무지원 AI 아이콘이 보이지 않습니다",
+          "projectCode": "A25_07788",
+          "category": "테스트오류수정",
+          "startTime": 1769502263179.0745,
+          "endTime": 1769504016096.5796,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "deletedAt": 1769500615528
+        },
+        {
           "id": "518d0c14-fdfd-4e41-9f74-b05c98f28ce0",
           "title": "업무 기록 타이머 개발",
           "projectCode": "A25_05591",
@@ -118,7 +184,8 @@
           "startTime": 1769497800000,
           "endTime": 1769498481231.3362,
           "status": "COMPLETED",
-          "pausedDuration": 0
+          "pausedDuration": 0,
+          "deletedAt": 1769500243095
         },
         {
           "id": "520280d7-c5a0-45cd-b265-0933f684dcd2",
@@ -129,7 +196,31 @@
           "status": "COMPLETED",
           "pausedDuration": 0,
           "lastPausedAt": 1769498534166,
-          "endTime": 1769498534166
+          "endTime": 1769498534166,
+          "deletedAt": 1769500238160
+        },
+        {
+          "id": "72cf19f7-c7c3-4db5-aab2-edd1ccdc8d9f",
+          "title": "개발.12577 3) Abort 구조 설계 및 적용",
+          "projectCode": "A26_00413",
+          "category": "개발",
+          "startTime": 1769499830689,
+          "status": "PAUSED",
+          "pausedDuration": 0,
+          "endTime": 1769500130689,
+          "lastPausedAt": 1769500130689,
+          "deletedAt": 1769500219633
+        },
+        {
+          "id": "d94214df-1701-43b5-8021-b4d3e0ce8a7f",
+          "title": "개발.12577 3) Abort 구조 설계 및 적용",
+          "projectCode": "A26_00413",
+          "category": "개발",
+          "startTime": 1769498534166,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1769499455099,
+          "deletedAt": 1769500137125
         },
         {
           "id": "45d00841-f34f-44d0-8239-7dc10f6c6cfb",
@@ -139,20 +230,9 @@
           "startTime": 1769498545946,
           "status": "PAUSED",
           "pausedDuration": 0,
-          "lastPausedAt": 1769498990672
+          "lastPausedAt": 1769498990672,
+          "deletedAt": 1769500133306
         },
-        {
-          "id": "d94214df-1701-43b5-8021-b4d3e0ce8a7f",
-          "title": "개발.12577 3) Abort 구조 설계 및 적용",
-          "projectCode": "A26_00413",
-          "category": "개발",
-          "startTime": 1769498996178,
-          "status": "COMPLETED",
-          "pausedDuration": 0,
-          "endTime": 1769499455099
-        }
-      ],
-      "deleted_logs": [
         {
           "id": "0bee7fe0-0dd2-4a93-b3fd-5587e17c2a00",
           "title": "123123",
