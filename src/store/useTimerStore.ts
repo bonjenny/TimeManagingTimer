@@ -12,6 +12,7 @@ export interface TimerLog {
   title: string;       // 업무 제목
   projectCode?: string; // 프로젝트 코드 (기존 boardNo 대체)
   category?: string;   // 카테고리
+  note?: string;       // 비고
   
   startTime: number;   // 시작 시각 (timestamp ms)
   endTime?: number;    // 종료 시각 (timestamp ms)
@@ -50,7 +51,7 @@ interface TimerState {
   nextColorIndex: number; // 다음에 할당할 색상 인덱스
 
   // --- Actions ---
-  startTimer: (title: string, projectCode?: string, category?: string) => void;
+  startTimer: (title: string, projectCode?: string, category?: string, note?: string) => void;
   pauseTimer: () => void;
   resumeTimer: () => void;
   stopTimer: () => void;
@@ -151,7 +152,7 @@ export const useTimerStore = create<TimerState>()(
         return result.slice(0, 30); // 최대 30개
       },
 
-      startTimer: (title, projectCode, category) => {
+      startTimer: (title, projectCode, category, note) => {
         const now = Date.now();
         const { logs } = get();
         
@@ -163,6 +164,7 @@ export const useTimerStore = create<TimerState>()(
           title,
           projectCode,
           category,
+          note,
           startTime: now,
           status: 'RUNNING',
           pausedDuration: 0,

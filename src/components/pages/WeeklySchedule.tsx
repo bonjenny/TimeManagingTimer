@@ -74,8 +74,13 @@ const WeeklySchedule: React.FC = () => {
   });
 
   // 필터 상태 (all: 전체, exclude:특정프로젝트 제외)
-  const [filterMode, setFilterMode] = useState<'all' | 'exclude'>('all');
-  const [excludedProject, setExcludedProject] = useState<string>('');
+  const [filterMode, setFilterMode] = useState<'all' | 'exclude'>(() => {
+    const saved = localStorage.getItem('weeklyScheduleFilterMode');
+    return saved === 'exclude' ? 'exclude' : 'all';
+  });
+  const [excludedProject, setExcludedProject] = useState<string>(() => {
+    return localStorage.getItem('weeklyScheduleExcludedProject') || '';
+  });
 
   // 복사 미리보기 탭
   const [copyFormat, setCopyFormat] = useState<'1' | '2'>(() => {
@@ -359,9 +364,13 @@ const WeeklySchedule: React.FC = () => {
     if (value === 'all') {
       setFilterMode('all');
       setExcludedProject('');
+      localStorage.setItem('weeklyScheduleFilterMode', 'all');
+      localStorage.setItem('weeklyScheduleExcludedProject', '');
     } else {
       setFilterMode('exclude');
       setExcludedProject(value);
+      localStorage.setItem('weeklyScheduleFilterMode', 'exclude');
+      localStorage.setItem('weeklyScheduleExcludedProject', value);
     }
   };
 
@@ -434,7 +443,12 @@ const WeeklySchedule: React.FC = () => {
             >
               <ToggleButton 
                 value="all" 
-                onClick={() => { setFilterMode('all'); setExcludedProject(''); }}
+                onClick={() => { 
+                  setFilterMode('all'); 
+                  setExcludedProject('');
+                  localStorage.setItem('weeklyScheduleFilterMode', 'all');
+                  localStorage.setItem('weeklyScheduleExcludedProject', '');
+                }}
                 sx={{ px: 2 }}
               >
                 전체 보기

@@ -383,8 +383,8 @@ describe('useTimerStore', () => {
       const { deleted_logs } = useTimerStore.getState();
       const deleted_log = deleted_logs[0] as DeletedLog;
       
-      expect(deleted_log.deleted_at).toBeGreaterThanOrEqual(before);
-      expect(deleted_log.deleted_at).toBeLessThanOrEqual(after);
+      expect(deleted_log.deletedAt).toBeGreaterThanOrEqual(before);
+      expect(deleted_log.deletedAt).toBeLessThanOrEqual(after);
     });
   });
 
@@ -556,20 +556,20 @@ describe('useTimerStore', () => {
     });
 
     it('getRecentTitles에서 excludedTitles가 필터링된다', () => {
-      const { startTimer, stopTimer, removeRecentTitle, getRecentTitles } = useTimerStore.getState();
+      const { startTimer, completeTimer, removeRecentTitle, getRecentTitles } = useTimerStore.getState();
 
-      // 로그 생성
+      // 로그 생성 (completeTimer를 사용해야 logs에 추가됨)
       act(() => {
         startTimer('포함될 제목', 'P001', '개발');
       });
       act(() => {
-        stopTimer();
+        completeTimer();
       });
       act(() => {
         startTimer('제외될 제목', 'P002', '개발');
       });
       act(() => {
-        stopTimer();
+        completeTimer();
       });
 
       // 제외 처리
@@ -583,13 +583,13 @@ describe('useTimerStore', () => {
     });
 
     it('제외된 제목의 로그 데이터는 유지된다', () => {
-      const { startTimer, stopTimer, removeRecentTitle } = useTimerStore.getState();
+      const { startTimer, completeTimer, removeRecentTitle } = useTimerStore.getState();
 
       act(() => {
         startTimer('제외할 제목', 'P001', '개발');
       });
       act(() => {
-        stopTimer();
+        completeTimer(); // logs에 추가하려면 completeTimer 사용
       });
       act(() => {
         removeRecentTitle('제외할 제목');
