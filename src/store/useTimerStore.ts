@@ -38,6 +38,10 @@ export interface ThemeConfig {
   isDark: boolean;
 }
 
+export interface ViewConfig {
+  zoomLevel: number; // 50 ~ 200 (%)
+}
+
 interface TimerState {
   activeTimer: TimerLog | null;
   logs: TimerLog[];
