@@ -10,7 +10,7 @@ import PresetPanel from './components/preset/PresetPanel';
 import WeeklySchedule from './components/pages/WeeklySchedule';
 import SettingsPage from './components/pages/SettingsPage';
 import NewTaskModal from './components/modal/NewTaskModal';
-import { Box, Typography, IconButton, Tooltip, useMediaQuery } from '@mui/material';
+import { Box, Typography, IconButton, Tooltip, useMediaQuery, Snackbar } from '@mui/material';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import TodayIcon from '@mui/icons-material/Today';
@@ -18,6 +18,11 @@ import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import { useTimerStore } from './store/useTimerStore';
 import { applyThemeColors, applyPaletteHighlight } from './styles/tokens';
 import { loadPaletteSettings, getPalette, getAdjustedColor } from './utils/colorPalette';
+
+// 줌 레벨 상수
+const ZOOM_STEP = 10; // 10% 단위
+const MIN_ZOOM = 50;
+const MAX_ZOOM = 200;
 
 // 설정 저장 키
 const SETTINGS_STORAGE_KEY = 'timekeeper-settings';
@@ -37,9 +42,11 @@ function App() {
   const activeTimer = useTimerStore((state) => state.activeTimer);
   const pauseTimer = useTimerStore((state) => state.pauseTimer);
   const resumeTimer = useTimerStore((state) => state.resumeTimer);
-  const { themeConfig, setThemeConfig } = useTimerStore();
+  const { themeConfig, setThemeConfig, viewConfig, setZoomLevel } = useTimerStore();
   const timer_input_ref = useRef<HTMLInputElement>(null);
   const date_input_ref = useRef<HTMLInputElement>(null);
+  const [zoom_toast_open, setZoomToastOpen] = useState(false);
+  const [zoom_toast_message, setZoomToastMessage] = useState('');
 
   // 선택된 날짜 상태 (기본값: 오늘)
   const [selectedDate, setSelectedDate] = useState<Date>(() => {
@@ -226,6 +233,27 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [activeTimer, pauseTimer, resumeTimer, current_page, handlePageChange]);
 
+  // Ctrl + 마우스 휠로 줌 레벨 조절
+  useEffect(() => {
+    const handleWheel = (e: WheelEvent) => {
+      if (e.ctrlKey) {
+        e.preventDefault();
+        const current_zoom = viewConfig.zoomLevel;
+        const delta = e.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP;
+        const new_zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, current_zoom + delta));
+        
+        if (new_zoom !== current_zoom) {
+          setZoomLevel(new_zoom);
+          setZoomToastMessage(`화면 비율: ${new_zoom}%`);
+          setZoomToastOpen(true);
+        }
+      }
+    };
+
+    window.addEventListener('wheel', handleWheel, { passive: false });
+    return () => window.removeEventListener('wheel', handleWheel);
+  }, [viewConfig.zoomLevel, setZoomLevel]);
+
   // 일간 타이머 페이지 - 3단 구성 레이아웃
   const renderDailyPage = () => (
     <Box
@@ -385,14 +413,30 @@ function App() {
 
   return (
     <ThemeProvider theme={currentTheme}>
-      <Layout currentPage={current_page} onPageChange={handlePageChange}>
-        {renderPage()}
-      </Layout>
+      <Box
+        sx={{
+          zoom: `${viewConfig.zoomLevel}%`,
+          minHeight: '100vh',
+        }}
+      >
+        <Layout currentPage={current_page} onPageChange={handlePageChange}>
+          {renderPage()}
+        </Layout>
+      </Box>
       
       {/* F8 새 작업 추가 모달 */}
       <NewTaskModal
         open={is_new_task_modal_open}
         onClose={() => setIsNewTaskModalOpen(false)}
+      />
+
+      {/* 줌 레벨 표시 토스트 */}
+      <Snackbar
+        open={zoom_toast_open}
+        autoHideDuration={1000}
+        onClose={() => setZoomToastOpen(false)}
+        message={zoom_toast_message}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       />
     </ThemeProvider>
   );

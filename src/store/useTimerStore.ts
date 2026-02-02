@@ -49,6 +49,7 @@ interface TimerState {
   excludedTitles: string[]; // 자동완성에서 제외된 제목들
   
   themeConfig: ThemeConfig;
+  viewConfig: ViewConfig;
 
   // --- 색상 인덱스 관리 (글로벌) ---
   titleColorIndexMap: Record<string, number>; // 작업 제목별 색상 인덱스 매핑
@@ -80,6 +81,9 @@ interface TimerState {
   // --- Theme Actions ---
   setThemeConfig: (config: Partial<ThemeConfig>) => void;
   toggleDarkMode: () => void;
+
+  // --- View Actions ---
+  setZoomLevel: (level: number) => void;
 }
 
 // ----------------------------------------------------------------------
@@ -99,6 +103,11 @@ export const useTimerStore = create<TimerState>()(
         primaryColor: '#000000',
         accentColor: '#000000',
         isDark: false,
+      },
+
+      // 뷰 설정 초기값
+      viewConfig: {
+        zoomLevel: 100, // 100%
       },
 
       // 색상 인덱스 관리 초기값
@@ -363,6 +372,11 @@ export const useTimerStore = create<TimerState>()(
       // 다크모드 토글
       toggleDarkMode: () => set((state) => ({
         themeConfig: { ...state.themeConfig, isDark: !state.themeConfig.isDark }
+      })),
+
+      // 줌 레벨 설정 (50% ~ 200%)
+      setZoomLevel: (level) => set((state) => ({
+        viewConfig: { ...state.viewConfig, zoomLevel: Math.min(200, Math.max(50, level)) }
       })),
     }),
     {

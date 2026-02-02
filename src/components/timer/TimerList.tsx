@@ -666,8 +666,8 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
           <Box>프로젝트 코드</Box>
           <Box>기록명</Box>
           <Box>카테고리</Box>
-          <Box>총시간</Box>
-          <Box>오늘시간</Box>
+          <Box sx={{ color: 'var(--text-primary)', fontWeight: 700 }}>오늘시간</Box>
+          <Box sx={{ color: 'var(--text-secondary)', fontWeight: 400 }}>총시간</Box>
           <Box>시작-종료</Box>
           <Box>세션</Box>
           <Box></Box>
@@ -945,14 +945,14 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                   )}
                 </Box>
 
-                {/* 총시간 */}
-                <Typography variant="body2" sx={{ fontWeight: 500, fontSize: '0.8rem' }}>
-                  {formatDuration(task.total_duration)}
+                {/* 오늘시간 - 돋보이게 (다크모드: 흰색, 라이트모드: 검정) */}
+                <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.8rem', color: 'var(--text-primary)' }}>
+                  {formatDuration(task.today_duration)}
                 </Typography>
 
-                {/* 오늘시간 */}
-                <Typography variant="body2" sx={{ fontWeight: 500, fontSize: '0.8rem', color: task.today_duration > 0 ? 'primary.main' : 'text.secondary' }}>
-                  {formatDuration(task.today_duration)}
+                {/* 총시간 - 옅은 색 (다크모드: 옅은 회색, 라이트모드: 짙은 회색) */}
+                <Typography variant="body2" sx={{ fontWeight: 400, fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                  {formatDuration(task.total_duration)}
                 </Typography>
 
                 {/* 시작-종료 */}
