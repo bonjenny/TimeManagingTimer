@@ -1341,58 +1341,109 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
           })}
         </Box>
 
-        {/* 세로 그리드 라인 */}
-        {timeLabels.map((item, index) => (
-          <Box
-            key={index}
-            sx={{
-              position: 'absolute',
-              left: `calc(${LABEL_WIDTH + 16}px + ${item.left_percent}% * (100% - ${LABEL_WIDTH + 32}px) / 100%)`, // 패딩 고려한 위치 계산
-              top: HEADER_HEIGHT,
-              bottom: 0,
-              borderLeft: '1px dashed var(--border-color)',
-              zIndex: 0,
-              pointerEvents: 'none'
-            }}
-          />
-        ))}
+        {/* 타임라인 영역 (그리드, 점심시간, 드래그 영역, 현재 시간 라인 공통 컨테이너) */}
+        <Box sx={{
+          position: 'absolute',
+          top: HEADER_HEIGHT,
+          left: LABEL_WIDTH + 16,
+          right: 16,
+          bottom: 0,
+          pointerEvents: 'none',
+        }}>
+          {/* 세로 그리드 라인 */}
+          {timeLabels.map((item, index) => (
+            <Box
+              key={index}
+              sx={{
+                position: 'absolute',
+                left: `${item.left_percent}%`,
+                top: 0,
+                bottom: 0,
+                borderLeft: '1px dashed var(--border-color)',
+                zIndex: 0,
+              }}
+            />
+          ))}
 
-        {/* 점심시간 표시 영역 */}
-        {lunchTimeStyle && (
-          <Box
-            sx={{
-              position: 'absolute',
-              left: `calc(${LABEL_WIDTH + 16}px + ${lunchTimeStyle.leftPercent}% * (100% - ${LABEL_WIDTH + 32}px) / 100%)`,
-              width: `calc(${lunchTimeStyle.widthPercent}% * (100% - ${LABEL_WIDTH + 32}px) / 100%)`,
-              top: HEADER_HEIGHT,
-              bottom: 0,
-              backgroundImage: 'repeating-linear-gradient(45deg, var(--bg-tertiary), var(--bg-tertiary) 10px, var(--bg-secondary) 10px, var(--bg-secondary) 20px)',
-              borderLeft: '1px solid var(--border-color)',
-              borderRight: '1px solid var(--border-color)',
-              zIndex: 0,
-              pointerEvents: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              opacity: 0.7
-            }}
-          >
-            <Typography 
-              variant="caption" 
-              sx={{ 
-                color: 'var(--text-secondary)', 
-                fontWeight: 600,
-                bgcolor: 'var(--bg-secondary)',
-                px: 0.5,
-                borderRadius: 0.5,
-                fontSize: '0.7rem',
-                opacity: 0.8
+          {/* 점심시간 표시 영역 */}
+          {lunchTimeStyle && (
+            <Box
+              sx={{
+                position: 'absolute',
+                left: `${lunchTimeStyle.leftPercent}%`,
+                width: `${lunchTimeStyle.widthPercent}%`,
+                top: 0,
+                bottom: 0,
+                backgroundImage: 'repeating-linear-gradient(45deg, var(--bg-tertiary), var(--bg-tertiary) 10px, var(--bg-secondary) 10px, var(--bg-secondary) 20px)',
+                borderLeft: '1px solid var(--border-color)',
+                borderRight: '1px solid var(--border-color)',
+                zIndex: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                opacity: 0.7
               }}
             >
-              점심시간
-            </Typography>
-          </Box>
-        )}
+              <Typography 
+                variant="caption" 
+                sx={{ 
+                  color: 'var(--text-secondary)', 
+                  fontWeight: 600,
+                  bgcolor: 'var(--bg-secondary)',
+                  px: 0.5,
+                  borderRadius: 0.5,
+                  fontSize: '0.7rem',
+                  opacity: 0.8
+                }}
+              >
+                점심시간
+              </Typography>
+            </Box>
+          )}
+
+          {/* 드래그 중인 영역 표시 */}
+          {isDragging && dragStartPercent !== null && dragCurrentPercent !== null && dragRowIndex !== null && (
+            <Box
+              sx={{
+                position: 'absolute',
+                left: `${Math.min(dragStartPercent, dragCurrentPercent)}%`,
+                width: `${Math.abs(dragCurrentPercent - dragStartPercent)}%`,
+                top: Math.min(dragRowIndex, uniqueRows.length) * (ROW_HEIGHT + ROW_GAP) + 4,
+                height: ROW_HEIGHT - 8,
+                bgcolor: 'var(--highlight-light)',
+                border: '2px dashed var(--text-primary)',
+                borderRadius: 0.5,
+                zIndex: 10,
+              }}
+            />
+          )}
+
+          {/* 현재 시간 표시 라인 (오늘만 표시) */}
+          {isToday && (
+            <Box
+              sx={{
+                position: 'absolute',
+                left: `${current_time_percent}%`,
+                top: -HEADER_HEIGHT,
+                bottom: 0,
+                borderLeft: '2px solid var(--error-color)',
+                zIndex: 5,
+              }}
+            >
+              <Box
+                sx={{
+                  position: 'absolute',
+                  top: HEADER_HEIGHT - 6,
+                  left: -5,
+                  width: 10,
+                  height: 10,
+                  borderRadius: '50%',
+                  bgcolor: 'var(--error-color)'
+                }}
+              />
+            </Box>
+          )}
+        </Box>
 
         {/* 작업 행들 - 제목별로 그룹화 */}
         {uniqueRows.map((row, row_index) => {
@@ -1476,11 +1527,14 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
                   
                   const is_context_menu_open = contextMenu !== null;
                   
+                  // 드래그/리사이즈/컨텍스트 메뉴 중에는 툴팁 비활성화
+                  const should_disable_tooltip = is_context_menu_open || is_resizing_this || isDragging || isResizing;
+                  
                   return (
                     <Tooltip
                       key={item.id}
                       title={
-                        (is_context_menu_open || is_resizing_this) ? "" : (
+                        should_disable_tooltip ? "" : (
                         <Box sx={{ textAlign: 'center' }}>
                           <Typography variant="subtitle2" sx={{ color: '#fff' }}>{item.title}</Typography>
                           {item.category && (
@@ -1495,16 +1549,20 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
                             {formatDuration((item.endTime ? item.endTime - item.startTime : currentTime - item.startTime) / 1000)}
                           </Typography>
                           <Typography variant="caption" display="block" sx={{ mt: 0.5, color: 'rgba(255,255,255,0.6)' }}>
-                            우클릭: 메뉴 / 더블클릭: 수정
-                            {(is_completed || item.status === 'PAUSED') ? ' / 양끝: 크기 조절' : ' / 왼쪽: 시작 시간 조절'}
+                            우클릭: 메뉴 / 더블클릭: 수정 / 양끝: 크기 조절
                           </Typography>
                         </Box>
                         )
                       }
                       arrow
-                      // 리사이즈 중이거나 컨텍스트 메뉴가 열려있으면 강제로 닫음
-                      open={(is_resizing_this || is_context_menu_open) ? false : undefined}
-                      disableHoverListener={is_resizing_this || is_context_menu_open}
+                      enterDelay={300}
+                      enterNextDelay={300}
+                      // 드래그/리사이즈 중이거나 컨텍스트 메뉴가 열려있으면 강제로 닫음
+                      open={should_disable_tooltip ? false : undefined}
+                      disableHoverListener={should_disable_tooltip}
+                      PopperProps={{
+                        sx: { pointerEvents: 'none' }
+                      }}
                     >
                       <Box
                         onMouseDown={(e) => {
@@ -1611,50 +1669,6 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
         })}
 
 
-        {/* 드래그 중인 영역 표시 */}
-        {isDragging && dragStartPercent !== null && dragCurrentPercent !== null && dragRowIndex !== null && (
-          <Box
-            sx={{
-              position: 'absolute',
-              left: `calc(${LABEL_WIDTH + 16}px + ${Math.min(dragStartPercent, dragCurrentPercent)}% * (100% - ${LABEL_WIDTH + 32}px) / 100%)`,
-              width: `calc(${Math.abs(dragCurrentPercent - dragStartPercent)}% * (100% - ${LABEL_WIDTH + 32}px) / 100%)`,
-              top: HEADER_HEIGHT + Math.min(dragRowIndex, uniqueRows.length) * (ROW_HEIGHT + ROW_GAP) + 4,
-              height: ROW_HEIGHT - 8,
-              bgcolor: 'var(--highlight-light)', // 하이라이트 배경
-              border: '2px dashed var(--text-primary)', // 점선 테두리
-              borderRadius: 0.5,
-              zIndex: 10,
-              pointerEvents: 'none'
-            }}
-          />
-        )}
-
-        {/* 현재 시간 표시 라인 (오늘만 표시) */}
-        {isToday && (
-          <Box
-            sx={{
-              position: 'absolute',
-              left: `calc(${LABEL_WIDTH + 16}px + ${current_time_percent}% * (100% - ${LABEL_WIDTH + 32}px) / 100%)`,
-              top: 0,
-              bottom: 0,
-              borderLeft: '2px solid var(--error-color)',
-              zIndex: 5,
-              pointerEvents: 'none'
-            }}
-          >
-            <Box
-              sx={{
-                position: 'absolute',
-                top: HEADER_HEIGHT - 6,
-                left: -5,
-                width: 10,
-                height: 10,
-                borderRadius: '50%',
-                bgcolor: 'var(--error-color)'
-              }}
-            />
-          </Box>
-        )}
       </Box>
 
       {/* 우클릭 메뉴 */}
