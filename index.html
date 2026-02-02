@@ -111,12 +111,25 @@
         --accent-color: #2563eb;
       }
 
-      body { 
+      html, body, #root { 
         font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
         margin: 0;
         padding: 0;
         background-color: var(--bg-primary);
         color: var(--text-primary);
+        min-height: 100%;
+      }
+      
+      html {
+        height: 100%;
+      }
+      
+      body {
+        min-height: 100%;
+      }
+      
+      #root {
+        min-height: 100vh;
       }
 
       /* 스크롤바 스타일링 (선택적) */
