@@ -40,10 +40,12 @@ interface ProjectGroup {
   projectName: string;
   status: 'completed' | 'in_progress';
   startDate: string;
-  totalSeconds: number;
+  totalSeconds: number;           // 해당 날짜의 소요 시간
+  cumulativeSeconds: number;      // 시작일부터 해당 날짜까지의 누적 시간
   tasks: {
     title: string;
-    seconds: number;
+    seconds: number;              // 해당 날짜의 소요 시간
+    cumulativeSeconds: number;    // 시작일부터 해당 날짜까지의 누적 시간
     logs: TimerLog[];
   }[];
 }
@@ -134,6 +136,70 @@ const WeeklySchedule: React.FC = () => {
     }));
   }, [logs, getProjectName]);
 
+  // 로그 소요 시간 계산 헬퍼 함수
+  const calcLogDuration = (log: TimerLog) => {
+    const rawDurationSec = log.endTime 
+      ? (log.endTime - log.startTime) / 1000
+      : (Date.now() - log.startTime) / 1000;
+    const safePausedDuration = log.pausedDuration > rawDurationSec ? 0 : log.pausedDuration;
+    return Math.max(0, rawDurationSec - safePausedDuration);
+  };
+
+  // 프로젝트별/업무별 누적시간 계산 (시작일부터 특정 날짜까지)
+  const calcCumulativeSeconds = useMemo(() => {
+    // 프로젝트별 시작일 및 모든 로그 캐시
+    const projectFirstStart = new Map<string, number>();
+    const taskFirstStart = new Map<string, number>(); // key: projectCode-title
+    
+    logs.forEach(log => {
+      const projectCode = log.projectCode || '미지정';
+      const taskKey = `${projectCode}:::${log.title}`;
+      
+      // 프로젝트 시작일
+      if (!projectFirstStart.has(projectCode) || log.startTime < projectFirstStart.get(projectCode)!) {
+        projectFirstStart.set(projectCode, log.startTime);
+      }
+      
+      // 업무 시작일
+      if (!taskFirstStart.has(taskKey) || log.startTime < taskFirstStart.get(taskKey)!) {
+        taskFirstStart.set(taskKey, log.startTime);
+      }
+    });
+
+    return {
+      // 특정 날짜까지의 프로젝트 누적시간
+      getProjectCumulative: (projectCode: string, untilDate: Date) => {
+        const dayEnd = new Date(untilDate);
+        dayEnd.setDate(dayEnd.getDate() + 1);
+        dayEnd.setHours(0, 0, 0, 0);
+        
+        return logs
+          .filter(log => (log.projectCode || '미지정') === projectCode && log.startTime < dayEnd.getTime())
+          .reduce((sum, log) => sum + calcLogDuration(log), 0);
+      },
+      
+      // 특정 날짜까지의 업무 누적시간
+      getTaskCumulative: (projectCode: string, title: string, untilDate: Date) => {
+        const dayEnd = new Date(untilDate);
+        dayEnd.setDate(dayEnd.getDate() + 1);
+        dayEnd.setHours(0, 0, 0, 0);
+        
+        return logs
+          .filter(log => (log.projectCode || '미지정') === projectCode && log.title === title && log.startTime < dayEnd.getTime())
+          .reduce((sum, log) => sum + calcLogDuration(log), 0);
+      },
+      
+      // 프로젝트 시작일
+      getProjectStartDate: (projectCode: string) => {
+        const startTime = projectFirstStart.get(projectCode);
+        if (startTime) {
+          return new Date(startTime).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric', weekday: 'short' });
+        }
+        return '';
+      }
+    };
+  }, [logs]);
+
   // 주간 데이터 집계 (날짜별 → 프로젝트별 → 업무별)
   const weeklyData = useMemo(() => {
     const startTime = selectedWeekStart.getTime();
@@ -175,8 +241,9 @@ const WeeklySchedule: React.FC = () => {
             projectCode,
             projectName,
             status: 'completed',
-            startDate: new Date(log.startTime).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric', weekday: 'short' }),
+            startDate: calcCumulativeSeconds.getProjectStartDate(projectCode),
             totalSeconds: 0,
+            cumulativeSeconds: 0,
             tasks: []
           });
         }
@@ -188,27 +255,31 @@ const WeeklySchedule: React.FC = () => {
           group.status = 'in_progress';
         }
 
-        // 소요 시간 계산 (pausedDuration이 전체 duration보다 크면 비정상 데이터로 무시)
-        const rawDurationSec = log.endTime 
-          ? (log.endTime - log.startTime) / 1000
-          : (Date.now() - log.startTime) / 1000;
-        const safePausedDuration = log.pausedDuration > rawDurationSec ? 0 : log.pausedDuration;
-        const duration = rawDurationSec - safePausedDuration;
-
-        group.totalSeconds += Math.max(0, duration);
+        // 해당 날짜의 소요 시간
+        const duration = calcLogDuration(log);
+        group.totalSeconds += duration;
 
         // 업무별 그룹화
         const existingTask = group.tasks.find(t => t.title === log.title);
         if (existingTask) {
-          existingTask.seconds += Math.max(0, duration);
+          existingTask.seconds += duration;
           existingTask.logs.push(log);
         } else {
           group.tasks.push({
             title: log.title,
-            seconds: Math.max(0, duration),
+            seconds: duration,
+            cumulativeSeconds: 0, // 나중에 계산
             logs: [log]
           });
         }
+      });
+
+      // 누적시간 계산 (해당 날짜까지의 전체 누적)
+      projectMap.forEach((group) => {
+        group.cumulativeSeconds = calcCumulativeSeconds.getProjectCumulative(group.projectCode, date);
+        group.tasks.forEach(task => {
+          task.cumulativeSeconds = calcCumulativeSeconds.getTaskCumulative(group.projectCode, task.title, date);
+        });
       });
 
       const projects = Array.from(projectMap.values()).sort((a, b) => b.totalSeconds - a.totalSeconds);
@@ -233,7 +304,7 @@ const WeeklySchedule: React.FC = () => {
       totalSeconds,
       allLogs: filtered
     };
-  }, [logs, selectedWeekStart, weekDates, filterMode, excludedProject, getProjectName]);
+  }, [logs, selectedWeekStart, weekDates, filterMode, excludedProject, getProjectName, calcCumulativeSeconds]);
 
   // 주 이동 핸들러
   const handlePrevWeek = () => {
@@ -291,9 +362,9 @@ const WeeklySchedule: React.FC = () => {
     });
   };
 
-  // 프로젝트 표시명 생성 (코드와 이름이 같으면 미등록 표시)
+  // 프로젝트 표시명 생성 (이름이 없으면 빈 문자열)
   const getDisplayProjectName = (project: ProjectGroup) => {
-    return project.projectName !== project.projectCode ? project.projectName : '(미등록)';
+    return project.projectName !== project.projectCode ? project.projectName : '';
   };
 
   // 복사 템플릿 생성 (형식 1: 간단형 - 구분선 없음)
@@ -308,10 +379,11 @@ const WeeklySchedule: React.FC = () => {
         const status = statusOverrides[projectKey] || project.status;
         const statusText = getStatusLabel(status);
         const displayName = getDisplayProjectName(project);
-        text += `[${project.projectCode}] ${displayName} (진행상태: ${statusText}, 시작일자: ${project.startDate}, 누적시간: ${formatTimeHHMM(project.totalSeconds)})\n`;
+        const nameSection = displayName ? `${displayName} ` : '';
+        text += `[${project.projectCode}] ${nameSection}(진행상태: ${statusText}, 시작일자: ${project.startDate}, 누적시간: ${formatTimeHHMM(project.cumulativeSeconds)})\n`;
 
         project.tasks.forEach(task => {
-          text += `> ${task.title} (누적시간: ${formatTimeHHMM(task.seconds)})\n`;
+          text += `> ${task.title} (누적시간: ${formatTimeHHMM(task.cumulativeSeconds)})\n`;
         });
       });
     });
@@ -333,10 +405,11 @@ const WeeklySchedule: React.FC = () => {
         const status = statusOverrides[projectKey] || project.status;
         const statusText = getStatusLabel(status);
         const displayName = getDisplayProjectName(project);
-        text += `[${project.projectCode}] ${displayName} (진행상태: ${statusText}, 시작일자: ${project.startDate}, 누적시간: ${formatTimeHHMM(project.totalSeconds)})\n`;
+        const nameSection = displayName ? `${displayName} ` : '';
+        text += `[${project.projectCode}] ${nameSection}(진행상태: ${statusText}, 시작일자: ${project.startDate}, 누적시간: ${formatTimeHHMM(project.cumulativeSeconds)})\n`;
 
         project.tasks.forEach(task => {
-          text += `  · ${task.title} (누적시간: ${formatTimeHHMM(task.seconds)})\n`;
+          text += `  · ${task.title} (누적시간: ${formatTimeHHMM(task.cumulativeSeconds)})\n`;
         });
         text += '\n';
       });
@@ -562,7 +635,7 @@ const WeeklySchedule: React.FC = () => {
                             [{project.projectCode}]
                           </Typography>
                           <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                            {project.projectName !== project.projectCode ? project.projectName : '(미등록)'}
+                            {project.projectName !== project.projectCode ? project.projectName : ''}
                           </Typography>
                         </Box>
 
@@ -597,7 +670,7 @@ const WeeklySchedule: React.FC = () => {
 
                         {/* 누적시간 */}
                         <Typography variant="body2" sx={{ fontWeight: 500, minWidth: 100, textAlign: 'right' }}>
-                          누적시간: {formatTimeHHMM(project.totalSeconds)}
+                          누적시간: {formatTimeHHMM(project.cumulativeSeconds)}
                         </Typography>
                       </Box>
 
@@ -623,7 +696,7 @@ const WeeklySchedule: React.FC = () => {
                                 {task.title}
                               </Typography>
                               <Typography variant="caption" color="text.secondary">
-                                (누적시간: {formatTimeHHMM(task.seconds)})
+                                (누적시간: {formatTimeHHMM(task.cumulativeSeconds)})
                               </Typography>
                             </Box>
                           ))}
