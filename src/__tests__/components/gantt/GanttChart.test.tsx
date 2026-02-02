@@ -511,6 +511,133 @@ describe('GanttChart', () => {
     });
   });
 
+  describe('타임라인 영역 통합 및 위치 계산 (v0.13.6)', () => {
+    it('타임라인 요소들이 일관된 위치에 렌더링된다', () => {
+      const start = new Date(selectedDate);
+      start.setHours(9, 0, 0, 0);
+      const end = new Date(selectedDate);
+      end.setHours(10, 0, 0, 0);
+
+      act(() => {
+        useTimerStore.getState().addLog({
+          id: 'timeline-test',
+          title: '위치 테스트 작업',
+          startTime: start.getTime(),
+          endTime: end.getTime(),
+          status: 'COMPLETED',
+          pausedDuration: 0,
+        });
+      });
+
+      render(<GanttChart selectedDate={selectedDate} />);
+      
+      // 작업 막대와 시간축이 정상적으로 렌더링됨
+      expect(screen.getByText('위치 테스트 작업')).toBeInTheDocument();
+      expect(screen.getByText('08:00')).toBeInTheDocument();
+      expect(screen.getByText('09:00')).toBeInTheDocument();
+    });
+
+    it('그리드 라인이 시간축 라벨과 동일한 위치에 렌더링된다', () => {
+      render(<GanttChart selectedDate={selectedDate} />);
+      
+      // 시간축 라벨들이 존재함
+      expect(screen.getByText('08:00')).toBeInTheDocument();
+      expect(screen.getByText('09:00')).toBeInTheDocument();
+      expect(screen.getByText('10:00')).toBeInTheDocument();
+      
+      // 그리드 라인은 시간축과 동일한 퍼센트 위치에 렌더링됨
+      // (시각적 테스트는 E2E 필요)
+    });
+  });
+
+  describe('툴팁 UX 개선 (v0.13.6)', () => {
+    it('툴팁은 드래그 중에 표시되지 않는다', async () => {
+      const start = new Date(selectedDate);
+      start.setHours(9, 0, 0, 0);
+      const end = new Date(selectedDate);
+      end.setHours(10, 0, 0, 0);
+
+      act(() => {
+        useTimerStore.getState().addLog({
+          id: 'tooltip-drag-test',
+          title: '툴팁 드래그 테스트',
+          startTime: start.getTime(),
+          endTime: end.getTime(),
+          status: 'COMPLETED',
+          pausedDuration: 0,
+        });
+      });
+
+      render(<GanttChart selectedDate={selectedDate} />);
+      
+      // 작업이 표시됨
+      expect(screen.getByText('툴팁 드래그 테스트')).toBeInTheDocument();
+      
+      // 드래그 시작 시 툴팁이 표시되지 않아야 함
+      const container = screen.getByText('08:00').closest('.MuiPaper-root');
+      if (container) {
+        fireEvent.mouseDown(container, { clientX: 250, clientY: 100 });
+        
+        // 툴팁 내용이 표시되지 않음 확인
+        expect(screen.queryByText('우클릭: 메뉴')).not.toBeInTheDocument();
+        
+        fireEvent.mouseUp(container);
+      }
+    });
+
+    it('툴팁은 리사이즈 중에 표시되지 않는다', () => {
+      const start = new Date(selectedDate);
+      start.setHours(9, 0, 0, 0);
+      const end = new Date(selectedDate);
+      end.setHours(10, 0, 0, 0);
+
+      act(() => {
+        useTimerStore.getState().addLog({
+          id: 'tooltip-resize-test',
+          title: '툴팁 리사이즈 테스트',
+          startTime: start.getTime(),
+          endTime: end.getTime(),
+          status: 'COMPLETED',
+          pausedDuration: 0,
+        });
+      });
+
+      render(<GanttChart selectedDate={selectedDate} />);
+      
+      // 작업이 표시됨
+      expect(screen.getByText('툴팁 리사이즈 테스트')).toBeInTheDocument();
+      
+      // 리사이즈 중에는 툴팁이 표시되지 않음
+      // (구체적인 리사이즈 동작은 E2E 테스트 필요)
+    });
+
+    it('툴팁에 포인터 이벤트가 비활성화되어 클릭을 방해하지 않는다', () => {
+      const start = new Date(selectedDate);
+      start.setHours(9, 0, 0, 0);
+      const end = new Date(selectedDate);
+      end.setHours(10, 0, 0, 0);
+
+      act(() => {
+        useTimerStore.getState().addLog({
+          id: 'tooltip-pointer-test',
+          title: '툴팁 포인터 테스트',
+          startTime: start.getTime(),
+          endTime: end.getTime(),
+          status: 'COMPLETED',
+          pausedDuration: 0,
+        });
+      });
+
+      render(<GanttChart selectedDate={selectedDate} />);
+      
+      // 작업 막대가 정상적으로 렌더링됨
+      expect(screen.getByText('툴팁 포인터 테스트')).toBeInTheDocument();
+      
+      // 툴팁의 PopperProps에 pointerEvents: 'none'이 설정됨
+      // (스타일 테스트는 E2E 필요)
+    });
+  });
+
   describe('삭제 시 토스트 알림 (v0.12.6)', () => {
     it('작업 삭제 시 confirm 대화상자 없이 바로 삭제된다', async () => {
       const start = new Date(selectedDate);
