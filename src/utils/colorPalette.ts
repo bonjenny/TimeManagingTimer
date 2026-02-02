@@ -69,7 +69,7 @@ export const COOLORS_PALETTES: Record<Exclude<PaletteType, 'custom'>, Omit<Palet
   // 브라운 그린 (브라운 → 그린 → 베이지 그라데이션)
   'beige-brown': {
     name: '브라운 그린',
-    colors: ['#582f0e', '#2d5a45', '#3d5a45', '#4a6b52', '#6b8e5a', '#7a9a30', '#556b2f', '#8b7355', '#936639', '#a68a64'],
+    colors: ['#582f0e', '#a68a64', '#6b8e5a', '#3d5a45', '#4a6b52', '#7a9a30', '#556b2f', '#8b7355', '#936639', '#7f4f24'],
     primary: '#582f0e',
     accent: '#6b8e5a',
   },
@@ -90,9 +90,9 @@ export const COOLORS_PALETTES: Record<Exclude<PaletteType, 'custom'>, Omit<Palet
   // 포레스트 그린 (짙은 그린 + 밝은 그린 분산)
   'forest-green': {
     name: '포레스트 그린',
-    colors: ['#0d2818', '#1a3a28', '#2d5a45', '#1a4030', '#3cb371', '#4a7c59', '#228b22', '#6b8e23', '#7a9a30', '#3a8a5a'],
+    colors: ['#2d5a45', '#20796c', '#3a8a6a', '#6b8e23', '#228b22', '#2e8b57', '#4a9a7a', '#556b2f', '#6b9a52', '#3d6b4a'],
     primary: '#2d5a45',
-    accent: '#3cb371',
+    accent: '#2e8b57',
   },
   // 핑크 스카이 (라벤더 → 스카이블루 → 핑크 → 딥블루 → 청록 → 베이지 그라데이션)
   'pink-sky': {

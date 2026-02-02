@@ -193,7 +193,11 @@ const WeeklySchedule: React.FC = () => {
       getProjectStartDate: (projectCode: string) => {
         const startTime = projectFirstStart.get(projectCode);
         if (startTime) {
-          return new Date(startTime).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric', weekday: 'short' });
+          const date = new Date(startTime);
+          const month = date.getMonth() + 1;
+          const day = date.getDate();
+          const weekday = ['일', '월', '화', '수', '목', '금', '토'][date.getDay()];
+          return `${month}/${day}(${weekday})`;
         }
         return '';
       }
