@@ -511,7 +511,89 @@ describe('TimerList 미완료 업무 표시 기능 (v0.13.0)', () => {
   });
 });
 
-describe('TimerList 버튼 기능', () => {
+  describe('TimerList 진행 중인 작업 수정 (v0.13.6)', () => {
+    describe('activeTimer 카테고리/프로젝트 수정', () => {
+      it('진행 중인 작업의 프로젝트 코드를 업데이트할 수 있다', () => {
+        const { result } = renderHook(() => useTimerStore());
+        
+        // activeTimer 시작 (title, projectCode, category, note)
+        act(() => {
+          result.current.startTimer('진행 중 작업', 'OLD001', '개발');
+        });
+        
+        // activeTimer가 설정되었는지 확인
+        expect(result.current.activeTimer).toBeDefined();
+        expect(result.current.activeTimer?.projectCode).toBe('OLD001');
+        
+        // updateActiveTimer로 프로젝트 코드 변경
+        act(() => {
+          result.current.updateActiveTimer({ projectCode: 'NEW002' });
+        });
+        
+        // 변경 확인
+        expect(result.current.activeTimer?.projectCode).toBe('NEW002');
+        
+        // 정리
+        act(() => {
+          result.current.completeTimer();
+        });
+      });
+
+      it('진행 중인 작업의 카테고리를 업데이트할 수 있다', () => {
+        const { result } = renderHook(() => useTimerStore());
+        
+        // activeTimer 시작 (title, projectCode, category, note)
+        act(() => {
+          result.current.startTimer('카테고리 수정 작업', undefined, '개발');
+        });
+        
+        expect(result.current.activeTimer?.category).toBe('개발');
+        
+        // updateActiveTimer로 카테고리 변경
+        act(() => {
+          result.current.updateActiveTimer({ category: '설계' });
+        });
+        
+        // 변경 확인
+        expect(result.current.activeTimer?.category).toBe('설계');
+        
+        // 정리
+        act(() => {
+          result.current.completeTimer();
+        });
+      });
+
+      it('진행 중인 작업의 여러 필드를 동시에 업데이트할 수 있다', () => {
+        const { result } = renderHook(() => useTimerStore());
+        
+        // activeTimer 시작 (title, projectCode, category, note)
+        act(() => {
+          result.current.startTimer('다중 수정 작업', 'P001', '개발');
+        });
+        
+        // 여러 필드 동시 변경
+        act(() => {
+          result.current.updateActiveTimer({
+            title: '수정된 작업명',
+            projectCode: 'P002',
+            category: '테스트',
+          });
+        });
+        
+        // 모든 변경 확인
+        expect(result.current.activeTimer?.title).toBe('수정된 작업명');
+        expect(result.current.activeTimer?.projectCode).toBe('P002');
+        expect(result.current.activeTimer?.category).toBe('테스트');
+        
+        // 정리
+        act(() => {
+          result.current.completeTimer();
+        });
+      });
+    });
+  });
+
+  describe('TimerList 버튼 기능', () => {
   beforeEach(() => {
     clearStore();
   });

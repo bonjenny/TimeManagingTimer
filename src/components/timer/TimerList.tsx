@@ -100,7 +100,7 @@ interface TaskGroup {
 }
 
 const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
-  const { logs, deleteLog, startTimer, updateLog, deleted_logs, restoreLog, permanentlyDeleteLog, emptyTrash, reopenTimer, activeTimer, pauseAndMoveToLogs, themeConfig } = useTimerStore();
+  const { logs, deleteLog, startTimer, updateLog, updateActiveTimer, deleted_logs, restoreLog, permanentlyDeleteLog, emptyTrash, reopenTimer, activeTimer, pauseAndMoveToLogs, themeConfig } = useTimerStore();
   const { getProjectName, projects } = useProjectStore();
   const [showCompleted, setShowCompleted] = useState(true);
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
@@ -378,14 +378,25 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
         return;
       }
       
-      updateLog(editingLog.id, {
-        title: editTitle,
-        projectCode: editProjectCode || undefined,
-        category: editCategory || undefined,
-        note: editNote.trim() || undefined,
-        startTime: newStartTime,
-        endTime: newEndTime
-      });
+      // 진행 중인 작업(activeTimer)인 경우 updateActiveTimer 사용
+      if (activeTimer && activeTimer.id === editingLog.id) {
+        updateActiveTimer({
+          title: editTitle,
+          projectCode: editProjectCode || undefined,
+          category: editCategory || undefined,
+          note: editNote.trim() || undefined,
+          startTime: newStartTime,
+        });
+      } else {
+        updateLog(editingLog.id, {
+          title: editTitle,
+          projectCode: editProjectCode || undefined,
+          category: editCategory || undefined,
+          note: editNote.trim() || undefined,
+          startTime: newStartTime,
+          endTime: newEndTime
+        });
+      }
       handleEditClose();
     }
   };
@@ -961,7 +972,10 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                       size="small"
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (task.sessions.length > 0) {
+                        // 진행 중인 작업(activeTimer)인 경우 activeTimer를 전달
+                        if (is_active_task && activeTimer) {
+                          handleEditClick(activeTimer);
+                        } else if (task.sessions.length > 0) {
                           handleEditClick(task.sessions[0]);
                         }
                       }}
