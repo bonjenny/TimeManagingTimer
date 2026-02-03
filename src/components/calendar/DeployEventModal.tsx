@@ -131,8 +131,17 @@ const DeployEventModal: React.FC<DeployEventModalProps> = ({
     handleSave();
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key !== 'Enter') return;
+    const target = e.target as HTMLElement;
+    if (target.closest('[role="listbox"]')) return;
+    e.preventDefault();
+    e.stopPropagation();
+    handleSave();
+  };
+
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth onKeyDown={handleKeyDown}>
       <form onSubmit={handleSubmit}>
         <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span>{event ? '이벤트 수정' : '이벤트 추가'} - {formatDateDisplay(date)}</span>
