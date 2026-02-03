@@ -29,7 +29,7 @@ step: Step 14 (patch)
 - **작업 라벨**: 패딩(8px 12px 10px 12px), border-spacing 6px로 라벨 간 margin, border-radius 6px, 말줄임표.
 - **바디 셀**: min-height/height 72px, 칸·라벨 좌우 padding 12px.
 - **휴일**: 빨간색(#ca3626) 텍스트, 가운데 정렬( td + div text-align: center ).
-- **전체**: wrapper border-radius 8px, 얇은 회색 테두리.
+- **전체**: table만 복사(최상위 div 제외). table에 border-radius 8px, 얇은 회색 테두리.
 
 ## 수정 파일
 
@@ -43,9 +43,9 @@ step: Step 14 (patch)
 ## 테스트
 
 - `src/__tests__/store/useDeployCalendarStore.test.ts` (14 tests, weeks_to_show 포함)
-- `src/__tests__/utils/calendar_export.test.ts` (18 tests, 휴일 가운데 정렬 검증 추가)
+- `src/__tests__/utils/calendar_export.test.ts` (19 tests, 휴일 가운데 정렬·table만 복사 검증)
 - `src/__tests__/components/pages/DeployCalendar.test.tsx` (9 tests)
-- 배포 캘린더 관련 총 41 tests
+- 배포 캘린더 관련 총 42 tests
 
 ## 다음 버전 예정
 
