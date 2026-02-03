@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -42,12 +42,6 @@ import JobColorManager from '../calendar/JobColorManager';
 // 드래그 시 활성화 거리(px) - 클릭과 구분
 const DRAG_ACTIVATION_DISTANCE = 8;
 const DROPPABLE_PREFIX = 'cell-';
-
-// ----------------------------------------------------------------------
-// Constants
-// ----------------------------------------------------------------------
-
-const WEEKS_TO_SHOW = 2; // 표시할 주 수
 
 // ----------------------------------------------------------------------
 // Draggable event chip (날짜 이동용)
@@ -115,6 +109,7 @@ interface DroppableCellProps {
   date: Date;
   week_idx: number;
   day_idx: number;
+  total_weeks: number;
   onCellClick: (date: Date) => void;
   children: React.ReactNode;
 }
@@ -123,6 +118,7 @@ const DroppableCell: React.FC<DroppableCellProps> = ({
   date,
   week_idx,
   day_idx,
+  total_weeks,
   onCellClick,
   children,
 }) => {
@@ -141,7 +137,7 @@ const DroppableCell: React.FC<DroppableCellProps> = ({
         p: 1,
         minWidth: 0,
         borderRight: day_idx < 4 ? '1px solid' : 'none',
-        borderBottom: week_idx < WEEKS_TO_SHOW - 1 ? '1px solid' : 'none',
+        borderBottom: week_idx < total_weeks - 1 ? '1px solid' : 'none',
         borderColor: 'divider',
         cursor: 'pointer',
         minHeight: 80,
@@ -160,13 +156,21 @@ const DroppableCell: React.FC<DroppableCellProps> = ({
 // ----------------------------------------------------------------------
 
 const DeployCalendar: React.FC = () => {
-  const { events, job_colors, getJobColor, updateEvent, deleteEvent } = useDeployCalendarStore();
-  
-  // 현재 표시 시작일: 저번주 월요일 (저번주~이번주 2주 표시)
+  const { events, job_colors, weeks_to_show, getJobColor, updateEvent, deleteEvent } = useDeployCalendarStore();
+
+  // 현재 표시 시작일: (weeks_to_show에 따라) 이번 주가 마지막에 오도록
   const [start_date, setStartDate] = useState<Date>(() =>
-    addDays(getMonday(new Date()), -7)
+    addDays(getMonday(new Date()), -7 * (weeks_to_show - 1))
   );
-  
+
+  const prev_weeks_to_show = React.useRef(weeks_to_show);
+  useEffect(() => {
+    if (prev_weeks_to_show.current !== weeks_to_show) {
+      prev_weeks_to_show.current = weeks_to_show;
+      setStartDate(addDays(getMonday(new Date()), -7 * (weeks_to_show - 1)));
+    }
+  }, [weeks_to_show]);
+
   // 모달 상태
   const [event_modal_open, setEventModalOpen] = useState(false);
   const [selected_date, setSelectedDate] = useState<string>('');
@@ -194,7 +198,7 @@ const DeployCalendar: React.FC = () => {
   // 표시할 날짜 범위 계산
   const date_range = useMemo(() => {
     const dates: Date[][] = [];
-    for (let week = 0; week < WEEKS_TO_SHOW; week++) {
+    for (let week = 0; week < weeks_to_show; week++) {
       const week_dates: Date[] = [];
       for (let day = 0; day < 5; day++) { // 월~금
         week_dates.push(addDays(start_date, week * 7 + day));
@@ -202,7 +206,7 @@ const DeployCalendar: React.FC = () => {
       dates.push(week_dates);
     }
     return dates;
-  }, [start_date]);
+  }, [start_date, weeks_to_show]);
   
   // 주차 계산 함수 (해당 주의 금요일 기준 월의 주차)
   const getWeekInfo = (week_start: Date): { year: number; month: number; week: number } => {
@@ -235,20 +239,18 @@ const DeployCalendar: React.FC = () => {
     return { year, month: month + 1, week: week_num };
   };
   
-  // 현재 표시 주차 정보
+  // 현재 표시 주차 정보 (첫 주 ~ 마지막 주)
   const display_month = useMemo(() => {
+    if (date_range.length === 0) return '';
     const first_week = getWeekInfo(date_range[0][0]);
-    const second_week = getWeekInfo(date_range[1][0]);
-    
-    if (first_week.year === second_week.year && first_week.month === second_week.month) {
-      // 같은 년/월
-      return `${first_week.year}년 ${first_week.month}월 ${first_week.week}주차 ~ ${second_week.week}주차`;
-    } else if (first_week.year === second_week.year) {
-      // 같은 년, 다른 월
-      return `${first_week.month}월 ${first_week.week}주차 ~ ${second_week.month}월 ${second_week.week}주차`;
+    const last_week = getWeekInfo(date_range[date_range.length - 1][0]);
+
+    if (first_week.year === last_week.year && first_week.month === last_week.month) {
+      return `${first_week.year}년 ${first_week.month}월 ${first_week.week}주차 ~ ${last_week.week}주차`;
+    } else if (first_week.year === last_week.year) {
+      return `${first_week.month}월 ${first_week.week}주차 ~ ${last_week.month}월 ${last_week.week}주차`;
     } else {
-      // 다른 년
-      return `${first_week.year}년 ${first_week.month}월 ${first_week.week}주차 ~ ${second_week.year}년 ${second_week.month}월 ${second_week.week}주차`;
+      return `${first_week.year}년 ${first_week.month}월 ${first_week.week}주차 ~ ${last_week.year}년 ${last_week.month}월 ${last_week.week}주차`;
     }
   }, [date_range]);
   
@@ -262,7 +264,7 @@ const DeployCalendar: React.FC = () => {
   };
   
   const handleToday = () => {
-    setStartDate(addDays(getMonday(new Date()), -7));
+    setStartDate(addDays(getMonday(new Date()), -7 * (weeks_to_show - 1)));
   };
   
   // 셀 클릭 - 이벤트 추가/수정
@@ -274,17 +276,17 @@ const DeployCalendar: React.FC = () => {
   
   // HTML 복사
   const handleCopyHtml = async () => {
-    const end_date = addDays(start_date, WEEKS_TO_SHOW * 7 - 1);
+    const end_date = addDays(start_date, weeks_to_show * 7 - 1);
     const start_str = formatDateToString(start_date);
     const end_str = formatDateToString(end_date);
-    
+
     const range_events = events.filter(e => e.date >= start_str && e.date <= end_str);
-    
+
     const html = generateCalendarHtml({
       events: range_events,
       job_colors,
       start_date,
-      weeks: WEEKS_TO_SHOW,
+      weeks: weeks_to_show,
     });
     
     const success = await copyHtmlToClipboard(html);
@@ -440,6 +442,7 @@ const DeployCalendar: React.FC = () => {
                     date={date}
                     week_idx={week_idx}
                     day_idx={day_idx}
+                    total_weeks={weeks_to_show}
                     onCellClick={handleCellClick}
                   >
                     {day_events.length === 0 ? (
