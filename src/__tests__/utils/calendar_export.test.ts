@@ -124,6 +124,18 @@ describe('calendar_export 유틸리티', () => {
       expect(html).toContain('</table>');
     });
 
+    it('table 요소만 포함하고 최상위 wrapper div를 포함하지 않는다', () => {
+      const html = generateCalendarHtml({
+        events: mock_events,
+        job_colors: mock_job_colors,
+        start_date: new Date(2026, 0, 26),
+        weeks: 1,
+      });
+
+      expect(html.trimStart().startsWith('<table')).toBe(true);
+      expect(html.trimEnd().endsWith('</table>')).toBe(true);
+    });
+
     it('colgroup으로 열 너비가 고정되어 붙여넣기 시 찌그러짐을 방지한다', () => {
       const html = generateCalendarHtml({
         events: mock_events,

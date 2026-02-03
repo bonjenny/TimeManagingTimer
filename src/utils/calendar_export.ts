@@ -117,7 +117,9 @@ export function generateCalendarHtml(options: GenerateHtmlOptions): string {
     'font-size: 13px',
     'font-weight: 400',
     'text-align: left',
-    'border: 0',
+    'border: 1px solid #e5e7eb',
+    'border-radius: 8px',
+    'overflow: hidden',
   ].join('; ');
 
   // 라벨 공통: 둥근 모서리, 말줄임표, 텍스트와 박스 가장자리 사이 패딩
@@ -134,8 +136,7 @@ export function generateCalendarHtml(options: GenerateHtmlOptions): string {
     'box-sizing: border-box',
   ].join('; ');
 
-  let html = '<div style="font-size: 13px; font-weight: 400; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">';
-  html += `<table cellspacing="0" cellpadding="0" style="${table_style}">`;
+  let html = `<table cellspacing="0" cellpadding="0" style="${table_style}">`;
   html += '<colgroup>';
   for (let i = 0; i < COL_COUNT; i++) {
     html += `<col style="width: ${COL_WIDTH_PX}px;">`;
@@ -186,7 +187,6 @@ export function generateCalendarHtml(options: GenerateHtmlOptions): string {
   html += '</thead>';
   html += '<tbody style="border: 0;"></tbody>';
   html += '</table>';
-  html += '</div>';
   return html;
 }
 
