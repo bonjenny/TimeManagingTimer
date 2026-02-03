@@ -1,0 +1,59 @@
+---
+version: 0.14.0
+date: 2026-02-03
+step: Step 14
+---
+
+# v0.14.0 릴리즈 노트
+
+## 주요 변경사항
+
+- 배포 캘린더 탭 추가 (월간 캘린더 뷰)
+- 잡별 고유 색상 설정 기능
+- HTML 테이블 클립보드 복사 기능 (웹에디터 붙여넣기 호환)
+
+## 새로운 기능
+
+### 배포 캘린더 (`Alt + 3`)
+
+- **월간 그리드 UI**: 월~금 5일 기준, 2주 단위로 표시
+- **이벤트 관리**: 셀 클릭으로 배포 이벤트 추가/수정/삭제
+- **프로젝트 코드 자동완성**: 기존 등록된 프로젝트 코드 활용
+- **진행상태 설정**: 스테이지, 수시, 테스트, 배포완료 등
+- **휴일 표시**: 빨간색 텍스트로 휴일/연차 표시
+
+### 잡 색상 설정
+
+- 잡(프로젝트)별로 고유 배경색 지정 가능
+- 12가지 프리셋 색상 + 커스텀 색상 선택
+- 새 잡 등록 시 자동으로 색상 할당
+
+### HTML 테이블 복사
+
+- "HTML 복사" 버튼으로 캘린더를 HTML 테이블로 클립보드 복사
+- ecount 웹에디터, Notion, Excel 등에 붙여넣기 가능
+- 잡별 배경색 및 휴일 빨간색 스타일 유지
+
+## 신규 파일
+
+- `src/store/useDeployCalendarStore.ts` - 캘린더 상태 관리
+- `src/components/pages/DeployCalendar.tsx` - 메인 캘린더 컴포넌트
+- `src/components/calendar/DeployEventModal.tsx` - 이벤트 추가/수정 모달
+- `src/components/calendar/JobColorManager.tsx` - 잡 색상 설정 다이얼로그
+- `src/utils/calendar_export.ts` - HTML 테이블 생성/복사 유틸리티
+
+## 수정 파일
+
+- `src/components/Layout.tsx` - 'monthly' 탭 추가
+- `src/App.tsx` - 배포 캘린더 페이지 렌더링 및 `Alt + 3` 단축키
+
+## 테스트
+
+- `src/__tests__/store/useDeployCalendarStore.test.ts` (10 tests)
+- `src/__tests__/utils/calendar_export.test.ts` (13 tests)
+- `src/__tests__/components/pages/DeployCalendar.test.tsx` (10 tests)
+
+## 다음 버전 예정
+
+- 캘린더 데이터 CSV/JSON 내보내기
+- 주간 일정과 배포 캘린더 데이터 연동
