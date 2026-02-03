@@ -1,20 +1,47 @@
 /**
  * v0.4.0 테스트: WeeklySchedule 컴포넌트 테스트 (주간 이동, 복사 템플릿)
  */
-import { render, screen, act } from '../../../test-utils';
+import { render, screen, act, waitFor } from '../../../test-utils';
 import userEvent from '@testing-library/user-event';
 import WeeklySchedule from '../../../components/pages/WeeklySchedule';
 import { useTimerStore } from '../../../store/useTimerStore';
 
-// 클립보드 모킹
-const mockClipboard = {
-  writeText: jest.fn().mockResolvedValue(undefined),
-};
-Object.assign(navigator, { clipboard: mockClipboard });
+// ClipboardItem 모킹 (jsdom 미지원)
+class MockClipboardItem {
+  private items: Record<string, Blob>;
+  constructor(items: Record<string, Blob>) {
+    this.items = items;
+  }
+  getType(type: string): Promise<Blob> {
+    return Promise.resolve(this.items[type]);
+  }
+}
+beforeAll(() => {
+  (global as unknown as { ClipboardItem: unknown }).ClipboardItem = MockClipboardItem;
+  if (typeof window !== 'undefined') {
+    (window as unknown as { ClipboardItem: unknown }).ClipboardItem = MockClipboardItem;
+  }
+});
 
 describe('WeeklySchedule', () => {
+  let clipboard_mock: { writeText: jest.Mock; write: jest.Mock };
+
   beforeEach(() => {
-    // 스토어 초기화
+    clipboard_mock = {
+      writeText: jest.fn().mockResolvedValue(undefined),
+      write: jest.fn().mockResolvedValue(undefined),
+    };
+    try {
+      delete (navigator as { clipboard?: unknown }).clipboard;
+    } catch {
+      /* ignore */
+    }
+    Object.defineProperty(navigator, 'clipboard', {
+      value: clipboard_mock,
+      configurable: true,
+      writable: true,
+      enumerable: true,
+    });
     const store = useTimerStore.getState();
     store.logs.forEach((log) => store.deleteLog(log.id));
     localStorage.clear();
@@ -91,7 +118,7 @@ describe('WeeklySchedule', () => {
 
     it('복사 버튼이 렌더링된다', () => {
       render(<WeeklySchedule />);
-      expect(screen.getByRole('button', { name: /복사/i })).toBeInTheDocument();
+      expect(screen.getByTestId('copy-header')).toBeInTheDocument();
     });
 
     it('데이터가 없으면 복사 버튼이 비활성화된다', () => {
@@ -100,13 +127,13 @@ describe('WeeklySchedule', () => {
       store.logs.forEach((log) => store.deleteLog(log.id));
 
       render(<WeeklySchedule />);
-      const copy_button = screen.getByRole('button', { name: /복사/i });
+      const copy_button = screen.getByTestId('copy-header');
       expect(copy_button).toBeDisabled();
     });
 
     it('데이터가 있으면 복사 버튼이 활성화된다', () => {
       render(<WeeklySchedule />);
-      const copy_button = screen.getByRole('button', { name: /복사/i });
+      const copy_button = screen.getByTestId('copy-header');
       expect(copy_button).not.toBeDisabled();
     });
   });
@@ -148,6 +175,102 @@ describe('WeeklySchedule', () => {
 
       render(<WeeklySchedule />);
       expect(screen.getByText('복사 미리보기')).toBeInTheDocument();
+    });
+
+    it('라벨형 선택 시에만 잡 색상 설정 버튼이 보인다', async () => {
+      const now = new Date();
+      const monday = new Date(now);
+      const day = monday.getDay();
+      const diff = day === 0 ? -6 : 1 - day;
+      monday.setDate(now.getDate() + diff);
+      monday.setHours(9, 0, 0, 0);
+
+      act(() => {
+        useTimerStore.getState().addLog({
+          id: 'job-color-btn-log',
+          title: '잡 색상 버튼 테스트',
+          projectCode: 'A26_00001',
+          category: '개발',
+          startTime: monday.getTime(),
+          endTime: monday.getTime() + 3600000,
+          status: 'COMPLETED',
+          pausedDuration: 0,
+        });
+      });
+
+      render(<WeeklySchedule />);
+
+      const label_btn = screen.getByRole('button', { name: /라벨형/i });
+      const simple_btn = screen.getByRole('button', { name: /간단형/i });
+
+      await userEvent.setup().click(label_btn);
+      expect(screen.getByRole('button', { name: /잡 색상 설정/i })).toBeInTheDocument();
+
+      await userEvent.setup().click(simple_btn);
+      expect(screen.queryByRole('button', { name: /잡 색상 설정/i })).not.toBeInTheDocument();
+    });
+
+    it('간단형 미리보기에서 잡별 업무목록에 들여쓰기가 포함된다', async () => {
+      const user = userEvent.setup();
+      const now = new Date();
+      const monday = new Date(now);
+      const day = monday.getDay();
+      const diff = day === 0 ? -6 : 1 - day;
+      monday.setDate(now.getDate() + diff);
+      monday.setHours(9, 0, 0, 0);
+
+      act(() => {
+        useTimerStore.getState().addLog({
+          id: 'indent-test-log',
+          title: '들여쓰기 확인용 작업',
+          projectCode: 'A26_00003',
+          category: '개발',
+          startTime: monday.getTime(),
+          endTime: monday.getTime() + 3600000,
+          status: 'COMPLETED',
+          pausedDuration: 0,
+        });
+      });
+
+      render(<WeeklySchedule />);
+
+      const simple_btn = screen.getByRole('button', { name: /간단형/i });
+      await user.click(simple_btn);
+
+      const preview = screen.getByTestId('copy-preview-content');
+      expect(preview.textContent).toMatch(/\s{2}> .*누적시간/);
+    });
+
+    it('미리보기 영역 복사(HTML) 버튼 클릭 시 성공 스낵바가 표시된다', async () => {
+      const user = userEvent.setup();
+      const now = new Date();
+      const monday = new Date(now);
+      const day = monday.getDay();
+      const diff = day === 0 ? -6 : 1 - day;
+      monday.setDate(now.getDate() + diff);
+      monday.setHours(9, 0, 0, 0);
+
+      act(() => {
+        useTimerStore.getState().addLog({
+          id: 'html-copy-log',
+          title: 'HTML 복사 테스트 작업',
+          projectCode: 'A25_07788',
+          category: '개발',
+          startTime: monday.getTime(),
+          endTime: monday.getTime() + 3600000,
+          status: 'COMPLETED',
+          pausedDuration: 0,
+        });
+      });
+
+      render(<WeeklySchedule />);
+      const htmlCopyBtn = screen.getByTestId('copy-preview');
+      expect(htmlCopyBtn).not.toBeDisabled();
+      await user.click(htmlCopyBtn);
+
+      await waitFor(() => {
+        expect(screen.getByText('클립보드에 복사되었습니다.')).toBeInTheDocument();
+      });
     });
   });
 

@@ -24,6 +24,8 @@ import { loadPaletteSettings, getAdjustedPalette } from '../../utils/colorPalett
 interface JobColorManagerProps {
   open: boolean;
   onClose: () => void;
+  /** 주간일정 등에서 사용 시, 표시할 잡 코드 목록(미제공 시 배포 캘린더 이벤트 기준) */
+  jobCodesOverride?: string[];
 }
 
 // 테마에 없는 경우 사용할 폴백 팔레트
@@ -48,7 +50,7 @@ const DEFAULT_JOB_COLORS = [
 // Component
 // ----------------------------------------------------------------------
 
-const JobColorManager: React.FC<JobColorManagerProps> = ({ open, onClose }) => {
+const JobColorManager: React.FC<JobColorManagerProps> = ({ open, onClose, jobCodesOverride }) => {
   const { job_colors, setJobColor, getUniqueJobCodes } = useDeployCalendarStore();
   const { getProjectName } = useProjectStore();
   const { themeConfig } = useTimerStore();
@@ -60,8 +62,8 @@ const JobColorManager: React.FC<JobColorManagerProps> = ({ open, onClose }) => {
     return palette.length > 0 ? palette : FALLBACK_PALETTE;
   }, [themeConfig.isDark]);
   
-  // 등록된 잡 코드 목록
-  const job_codes = getUniqueJobCodes();
+  // 표시할 잡 코드 목록 (override 있으면 사용, 없으면 배포 캘린더 이벤트 기준)
+  const job_codes = jobCodesOverride !== undefined ? jobCodesOverride : getUniqueJobCodes();
   
   // 잡 코드의 현재 색상 조회
   const getColor = (job_code: string): string => {
@@ -81,9 +83,9 @@ const JobColorManager: React.FC<JobColorManagerProps> = ({ open, onClose }) => {
       <DialogContent>
         {job_codes.length === 0 ? (
           <Typography color="text.secondary" sx={{ py: 2, textAlign: 'center' }}>
-            등록된 이벤트가 없습니다.
-            <br />
-            먼저 캘린더에 이벤트를 추가해주세요.
+            {jobCodesOverride !== undefined
+              ? '등록된 프로젝트가 없습니다. 프로젝트를 추가한 뒤 다시 시도해주세요.'
+              : '등록된 이벤트가 없습니다. 먼저 캘린더에 이벤트를 추가해주세요.'}
           </Typography>
         ) : (
           <List sx={{ py: 0 }}>

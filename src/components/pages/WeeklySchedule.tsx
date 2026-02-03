@@ -25,11 +25,27 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
+import PaletteIcon from '@mui/icons-material/Palette';
 import { useTimerStore, TimerLog } from '../../store/useTimerStore';
 import { useProjectStore } from '../../store/useProjectStore';
 import { useStatusStore } from '../../store/useStatusStore';
+import { useDeployCalendarStore } from '../../store/useDeployCalendarStore';
 import StatusSelect from '../common/StatusSelect';
+import JobColorManager from '../calendar/JobColorManager';
 import { formatDuration } from '../../utils/timeUtils';
+
+const DEFAULT_JOB_COLOR = '#e5e7eb';
+
+function escapeHtml(text: string): string {
+  const map: Record<string, string> = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  };
+  return text.replace(/[&<>"']/g, (ch) => map[ch] ?? ch);
+}
 
 // 요일 한글 표시
 const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토'];
@@ -63,6 +79,7 @@ const WeeklySchedule: React.FC = () => {
   const { logs } = useTimerStore();
   const { getProjectName, projects: projectList } = useProjectStore();
   const { getStatusLabel } = useStatusStore();
+  const getJobColor = useDeployCalendarStore((s) => s.getJobColor);
 
   // 선택된 주 (월요일 날짜)
   const [selectedWeekStart, setSelectedWeekStart] = useState<Date>(() => {
@@ -84,10 +101,10 @@ const WeeklySchedule: React.FC = () => {
     return localStorage.getItem('weeklyScheduleExcludedProject') || '';
   });
 
-  // 복사 미리보기 탭
-  const [copyFormat, setCopyFormat] = useState<'1' | '2'>(() => {
+  // 복사 미리보기 탭 (1: 간단형, 2: 상세형, 3: 라벨형)
+  const [copyFormat, setCopyFormat] = useState<'1' | '2' | '3'>(() => {
     const saved = localStorage.getItem('weeklyScheduleCopyFormat');
-    return (saved === '1' || saved === '2') ? saved : '1';
+    return saved === '2' || saved === '3' ? saved : '1';
   });
 
   // 확장된 프로젝트 상태
@@ -99,6 +116,8 @@ const WeeklySchedule: React.FC = () => {
   // 스낵바 상태
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
+  // 잡 색상 설정 모달
+  const [colorManagerOpen, setColorManagerOpen] = useState(false);
 
   // 이번 주인지 확인
   const isCurrentWeek = useMemo(() => {
@@ -310,6 +329,15 @@ const WeeklySchedule: React.FC = () => {
     };
   }, [logs, selectedWeekStart, weekDates, filterMode, excludedProject, getProjectName, calcCumulativeSeconds]);
 
+  // 잡 색상 설정에 노출할 잡 코드: localStorage 프로젝트 + 이번 주 로그에 등장한 잡 (배포 캘린더에 없는 잡도 설정 가능)
+  const job_codes_for_color_manager = useMemo(() => {
+    const set = new Set(projectList.map((p) => p.code));
+    weeklyData.allLogs.forEach((log) => {
+      if (log.projectCode) set.add(log.projectCode);
+    });
+    return Array.from(set);
+  }, [projectList, weeklyData.allLogs]);
+
   // 주 이동 핸들러
   const handlePrevWeek = () => {
     const prev = new Date(selectedWeekStart);
@@ -371,7 +399,7 @@ const WeeklySchedule: React.FC = () => {
     return project.projectName !== project.projectCode ? project.projectName : '';
   };
 
-  // 복사 템플릿 생성 (형식 1: 간단형 - 구분선 없음)
+  // 복사 템플릿 생성 (형식 1: 간단형 - 구분선 없음, 프로젝트/날짜 구간에 줄바꿈)
   const generateFormat1 = () => {
     let text = '';
 
@@ -384,12 +412,14 @@ const WeeklySchedule: React.FC = () => {
         const statusText = getStatusLabel(status);
         const displayName = getDisplayProjectName(project);
         const nameSection = displayName ? `${displayName} ` : '';
-        text += `[${project.projectCode}] ${nameSection}(진행상태: ${statusText}, 시작일자: ${project.startDate}, 누적시간: ${formatTimeHHMM(project.cumulativeSeconds)})\n`;
+        text += `[${project.projectCode}] ${nameSection} (진행상태: ${statusText}, 시작일자: ${project.startDate}, 누적시간: ${formatTimeHHMM(project.cumulativeSeconds)})\n`;
 
         project.tasks.forEach(task => {
-          text += `> ${task.title} (누적시간: ${formatTimeHHMM(task.cumulativeSeconds)})\n`;
+          text += `  > ${task.title} (누적시간: ${formatTimeHHMM(task.cumulativeSeconds)})\n`;
         });
+        text += '\n';
       });
+      text += '\n';
     });
 
     return text;
@@ -410,7 +440,7 @@ const WeeklySchedule: React.FC = () => {
         const statusText = getStatusLabel(status);
         const displayName = getDisplayProjectName(project);
         const nameSection = displayName ? `${displayName} ` : '';
-        text += `[${project.projectCode}] ${nameSection}(진행상태: ${statusText}, 시작일자: ${project.startDate}, 누적시간: ${formatTimeHHMM(project.cumulativeSeconds)})\n`;
+        text += `[${project.projectCode}] ${nameSection} (진행상태: ${statusText}, 시작일자: ${project.startDate}, 누적시간: ${formatTimeHHMM(project.cumulativeSeconds)})\n`;
 
         project.tasks.forEach(task => {
           text += `  · ${task.title} (누적시간: ${formatTimeHHMM(task.cumulativeSeconds)})\n`;
@@ -422,11 +452,86 @@ const WeeklySchedule: React.FC = () => {
     return text;
   };
 
-  // 클립보드 복사
+  // HTML 복사 템플릿 (상세형: span·br 기반, 잡 라벨에는 색상 미적용)
+  const generateFormatHtml = () => {
+    const parts: string[] = [];
+    const line40 = '─'.repeat(40);
+    weeklyData.days.forEach((day) => {
+      parts.push(`${escapeHtml(line40)}<br>`);
+      parts.push(`■ ${escapeHtml(day.dayLabel)}<br>`);
+      parts.push(`${escapeHtml(line40)}<br>`);
+
+      day.projects.forEach((project) => {
+        const projectKey = `${day.dateKey}-${project.projectCode}`;
+        const status = statusOverrides[projectKey] || project.status;
+        const statusText = getStatusLabel(status);
+        const displayName = getDisplayProjectName(project);
+        const nameSection = displayName ? ` ${escapeHtml(displayName)}` : '';
+        const labelHtml =
+          `<span style="font-weight: bold; font-size: 13px;">[${escapeHtml(project.projectCode)}]${nameSection}</span>`;
+        const metaHtml =
+          `<span style="font-size: 13px;">(진행상태: ${escapeHtml(statusText)}, 시작일자: ${escapeHtml(project.startDate)}, 누적시간: ${formatTimeHHMM(project.cumulativeSeconds)})</span>`;
+        parts.push(labelHtml + '&nbsp;' + metaHtml + '<br>');
+        project.tasks.forEach((task) => {
+          parts.push(
+            `&nbsp;&nbsp;· ${escapeHtml(task.title)} (누적시간: ${formatTimeHHMM(task.cumulativeSeconds)})<br>`
+          );
+        });
+        parts.push('<br>');
+      });
+    });
+    return parts.join('');
+  };
+
+  // HTML 복사 템플릿 (라벨형: 잡 라벨만 inline table td+bgcolor, 진행상태·작업은 span+br로 상세형과 동일한 줄맵)
+  const generateFormatHtmlTable = () => {
+    const parts: string[] = [];
+    const line40 = '─'.repeat(40);
+    const labelTableStyle = 'display: inline-table; border: 0; border-collapse: collapse;';
+
+    weeklyData.days.forEach((day) => {
+      parts.push(`${escapeHtml(line40)}<br>`);
+      parts.push(`■ ${escapeHtml(day.dayLabel)}<br>`);
+      parts.push(`${escapeHtml(line40)}<br>`);
+
+      day.projects.forEach((project) => {
+        const projectKey = `${day.dateKey}-${project.projectCode}`;
+        const status = statusOverrides[projectKey] || project.status;
+        const statusText = getStatusLabel(status);
+        const displayName = getDisplayProjectName(project);
+        const nameSection = displayName ? ` ${escapeHtml(displayName)}` : '';
+        const bgHex = getJobColor(project.projectCode) || DEFAULT_JOB_COLOR;
+
+        parts.push(
+          `<table cellspacing="0" cellpadding="0" border="0" style="${labelTableStyle}"><tbody><tr><td bgcolor="${escapeHtml(bgHex)}" style="background-color: ${bgHex}; font-weight: bold; font-size: 13px; color: #000000; border: 0;">[${escapeHtml(project.projectCode)}]${nameSection}</td></tr></tbody></table>`
+        );
+        parts.push(
+          `&nbsp;<span style="font-size: 13px;">(진행상태: ${escapeHtml(statusText)}, 시작일자: ${escapeHtml(project.startDate)}, 누적시간: ${formatTimeHHMM(project.cumulativeSeconds)})</span><br>`
+        );
+        project.tasks.forEach((task) => {
+          parts.push(
+            `&nbsp;&nbsp;· ${escapeHtml(task.title)} (누적시간: ${formatTimeHHMM(task.cumulativeSeconds)})<br>`
+          );
+        });
+        parts.push('<br>');
+      });
+    });
+    return parts.join('');
+  };
+
+  // 클립보드 복사 (선택한 형식: 간단형 텍스트, 상세형/라벨형 HTML+평문)
   const handleCopy = async () => {
-    const text = copyFormat === '1' ? generateFormat1() : generateFormat2();
     try {
-      await navigator.clipboard.writeText(text);
+      if (copyFormat === '1') {
+        await navigator.clipboard.writeText(generateFormat1());
+      } else {
+        const html = copyFormat === '3' ? generateFormatHtmlTable() : generateFormatHtml();
+        const plain = generateFormat2();
+        const blobHtml = new Blob([html], { type: 'text/html' });
+        const blobPlain = new Blob([plain], { type: 'text/plain' });
+        const item = new ClipboardItem({ 'text/html': blobHtml, 'text/plain': blobPlain });
+        await navigator.clipboard.write([item]);
+      }
       setSnackbarMessage('클립보드에 복사되었습니다.');
       setSnackbarOpen(true);
     } catch {
@@ -557,6 +662,7 @@ const WeeklySchedule: React.FC = () => {
               startIcon={<ContentCopyIcon />}
               onClick={handleCopy}
               disabled={weeklyData.allLogs.length === 0}
+              data-testid="copy-header"
             >
               복사
             </Button>
@@ -731,43 +837,85 @@ const WeeklySchedule: React.FC = () => {
               복사 미리보기
             </Typography>
 
-            <ToggleButtonGroup
-              value={copyFormat}
-              exclusive
-              onChange={(_, value) => {
-                if (value) {
-                  setCopyFormat(value);
-                  localStorage.setItem('weeklyScheduleCopyFormat', value);
-                }
-              }}
-              size="small"
-            >
-              <ToggleButton value="1" sx={{ px: 2 }}>
-                간단형
-              </ToggleButton>
-              <ToggleButton value="2" sx={{ px: 2 }}>
-                상세형
-              </ToggleButton>
-            </ToggleButtonGroup>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <ToggleButtonGroup
+                value={copyFormat}
+                exclusive
+                onChange={(_, value: '1' | '2' | '3' | null) => {
+                  if (value) {
+                    setCopyFormat(value);
+                    localStorage.setItem('weeklyScheduleCopyFormat', value);
+                  }
+                }}
+                size="small"
+              >
+                <ToggleButton value="1" sx={{ px: 2 }}>
+                  간단형
+                </ToggleButton>
+                <ToggleButton value="2" sx={{ px: 2 }}>
+                  상세형
+                </ToggleButton>
+                <ToggleButton value="3" sx={{ px: 2 }}>
+                  라벨형
+                </ToggleButton>
+              </ToggleButtonGroup>
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={handleCopy}
+                disabled={weeklyData.allLogs.length === 0}
+                sx={{ ml: 1 }}
+                data-testid="copy-preview"
+              >
+                복사
+              </Button>
+            </Box>
           </Box>
 
           <Paper
             variant="outlined"
+            data-testid="copy-preview-content"
             sx={{
               p: 2,
               bgcolor: 'var(--bg-primary)',
               maxHeight: 300,
               overflow: 'auto',
-              fontFamily: 'monospace',
+              fontFamily: copyFormat === '1' ? 'monospace' : 'inherit',
               fontSize: '0.8rem',
-              whiteSpace: 'pre-wrap',
+              whiteSpace: copyFormat === '1' ? 'pre-wrap' : 'normal',
               lineHeight: 1.6,
             }}
           >
-            {copyFormat === '1' ? generateFormat1() : generateFormat2()}
+            {copyFormat === '1' ? (
+              generateFormat1()
+            ) : copyFormat === '3' ? (
+              <div dangerouslySetInnerHTML={{ __html: generateFormatHtmlTable() }} />
+            ) : (
+              <div dangerouslySetInnerHTML={{ __html: generateFormatHtml() }} />
+            )}
           </Paper>
+
+          {copyFormat === '3' && (
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<PaletteIcon />}
+                onClick={() => setColorManagerOpen(true)}
+              >
+                잡 색상 설정
+              </Button>
+            </Box>
+          )}
         </Paper>
       )}
+
+      {/* 잡 색상 설정 모달 (배포 캘린더와 동일 스토어로 동기화, localStorage+주간 잡 포함) */}
+      <JobColorManager
+        open={colorManagerOpen}
+        onClose={() => setColorManagerOpen(false)}
+        jobCodesOverride={job_codes_for_color_manager}
+      />
 
       {/* 스낵바 */}
       <Snackbar
