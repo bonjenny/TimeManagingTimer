@@ -78,6 +78,39 @@ describe('GanttChart', () => {
         }
       }, { timeout: 1000 });
     });
+
+    it('드래그 시 클릭한 행(data-row-index)에 맞는 작업으로 세션 추가 모달이 열린다 (v0.14.4)', async () => {
+      const start = new Date(selectedDate);
+      start.setHours(8, 0, 0, 0);
+      const end = new Date(selectedDate);
+      end.setHours(9, 0, 0, 0);
+
+      act(() => {
+        ['드래그행0', '드래그행1', '드래그행2', '드래그행3', '드래그행4', '드래그행5', '드래그행6', '드래그행7'].forEach((title, i) => {
+          useTimerStore.getState().addLog({
+            id: `drag-row-log-${i}`,
+            title,
+            startTime: start.getTime() + i * 3600000,
+            endTime: end.getTime() + i * 3600000,
+            status: 'COMPLETED',
+            pausedDuration: 0,
+          });
+        });
+      });
+
+      render(<GanttChart selectedDate={selectedDate} />);
+
+      const row_7 = document.querySelector('[data-row-index="6"]');
+      if (!row_7) throw new Error('7th row (data-row-index=6) not found');
+
+      fireEvent.mouseDown(row_7, { clientX: 400, clientY: 300 });
+      fireEvent.mouseMove(row_7, { clientX: 500, clientY: 300 });
+      fireEvent.mouseUp(row_7);
+
+      await waitFor(() => {
+        expect(screen.getByText('드래그행6')).toBeInTheDocument();
+      }, { timeout: 2000 });
+    });
   });
 
   describe('충돌 알림 UX (v0.10.4)', () => {

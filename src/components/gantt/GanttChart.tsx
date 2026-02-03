@@ -728,14 +728,18 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
   };
 
   const getRowFromEvent = (e: React.MouseEvent) => {
+    // 클릭한 요소가 속한 행을 DOM으로 먼저 확인 (좌표 계산 오차·스크롤 등으로 인한 한 줄 밀림 방지)
+    const target = e.target as HTMLElement;
+    const row_el = target.closest('[data-row-index]');
+    if (row_el) {
+      const idx = parseInt(row_el.getAttribute('data-row-index') ?? '', 10);
+      if (!Number.isNaN(idx) && idx >= 0 && idx < uniqueRows.length) return idx;
+    }
     if (!containerRef.current) return uniqueRows.length;
     const rect = containerRef.current.getBoundingClientRect();
     const y = e.clientY - rect.top - HEADER_HEIGHT;
     const row = Math.floor(y / (ROW_HEIGHT + ROW_GAP));
-    // 음수(헤더 영역) 또는 기존 작업 행 범위 밖이면 새 작업 생성으로 처리
-    if (row < 0 || row >= uniqueRows.length) {
-      return uniqueRows.length; // uniqueRows.length는 새 작업 생성을 의미
-    }
+    if (row < 0 || row >= uniqueRows.length) return uniqueRows.length;
     return row;
   };
 
@@ -1454,6 +1458,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
           return (
             <Box
               key={row.title}
+              data-row-index={row_index}
               sx={{
                 position: 'absolute',
                 top: HEADER_HEIGHT + row_index * (ROW_HEIGHT + ROW_GAP),
