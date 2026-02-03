@@ -32,6 +32,18 @@ const FALLBACK_PALETTE = [
   '#b2dfdb', '#dcedc8', '#f5f5f5', '#ffe0b2', '#e1bee7', '#bbdefb',
 ];
 
+/** 잡 색상 설정 팔레트에 노출할 기본 색상 (파스텔 톤) */
+const DEFAULT_JOB_COLORS = [
+  '#f8bbd9', // 연한 핑크
+  '#fff9c4', // 연한 노랑
+  '#c8e6c9', // 민트 그린
+  '#b2dfdb', // 시안/청록
+  '#b3e5fc', // 스카이 블루
+  '#d1c4e9', // 연한 보라
+  '#ffccbc', // 연한 오렌지
+  '#d7ccc8', // 더스티 로즈/그레이
+];
+
 // ----------------------------------------------------------------------
 // Component
 // ----------------------------------------------------------------------
@@ -94,29 +106,60 @@ const JobColorManager: React.FC<JobColorManagerProps> = ({ open, onClose }) => {
                   <ListItemText
                     primary={job_code}
                     secondary={project_name !== job_code ? project_name : undefined}
-                    sx={{ flex: 1 }}
+                    sx={{ flex: 1, minWidth: 0 }}
                   />
-                  
-                  {/* 색상 선택 팔레트 */}
-                  <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', maxWidth: 200 }}>
-                    {color_palette.map((color) => (
-                      <Box
-                        key={color}
-                        onClick={() => handleColorChange(job_code, color)}
-                        sx={{
-                          width: 24,
-                          height: 24,
-                          bgcolor: color,
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                          border: current_color === color ? '2px solid #333' : '1px solid #ccc',
-                          '&:hover': {
-                            transform: 'scale(1.1)',
-                          },
-                          transition: 'transform 0.1s',
-                        }}
-                      />
-                    ))}
+
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, maxWidth: 280 }}>
+                    {/* 기본 색상 */}
+                    <Box>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                        기본 색상
+                      </Typography>
+                      <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                        {DEFAULT_JOB_COLORS.map((color) => (
+                          <Box
+                            key={color}
+                            onClick={() => handleColorChange(job_code, color)}
+                            sx={{
+                              width: 24,
+                              height: 24,
+                              bgcolor: color,
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              border: current_color === color ? '2px solid' : '1px solid',
+                              borderColor: current_color === color ? 'primary.main' : 'divider',
+                              '&:hover': { transform: 'scale(1.1)' },
+                              transition: 'transform 0.1s',
+                            }}
+                          />
+                        ))}
+                      </Box>
+                    </Box>
+                    {/* 테마 색상 */}
+                    <Box>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                        테마 색상
+                      </Typography>
+                      <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                        {color_palette.map((color) => (
+                          <Box
+                            key={color}
+                            onClick={() => handleColorChange(job_code, color)}
+                            sx={{
+                              width: 24,
+                              height: 24,
+                              bgcolor: color,
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              border: current_color === color ? '2px solid' : '1px solid',
+                              borderColor: current_color === color ? 'primary.main' : 'divider',
+                              '&:hover': { transform: 'scale(1.1)' },
+                              transition: 'transform 0.1s',
+                            }}
+                          />
+                        ))}
+                      </Box>
+                    </Box>
                   </Box>
                   
                   {/* 직접 입력 */}

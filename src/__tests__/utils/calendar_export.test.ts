@@ -124,6 +124,20 @@ describe('calendar_export 유틸리티', () => {
       expect(html).toContain('</table>');
     });
 
+    it('colgroup으로 열 너비가 고정되어 붙여넣기 시 찌그러짐을 방지한다', () => {
+      const html = generateCalendarHtml({
+        events: mock_events,
+        job_colors: mock_job_colors,
+        start_date: new Date(2026, 0, 26),
+        weeks: 1,
+      });
+
+      expect(html).toContain('<colgroup>');
+      expect(html).toContain('</colgroup>');
+      expect(html).toMatch(/table-layout:\s*fixed/);
+      expect(html).toMatch(/width:\s*835px/);
+    });
+
     it('날짜 헤더가 포함된다', () => {
       const html = generateCalendarHtml({
         events: mock_events,
@@ -171,6 +185,18 @@ describe('calendar_export 유틸리티', () => {
       });
 
       expect(html).toContain('color: #ca3626');
+      expect(html).toContain('연차');
+    });
+
+    it('휴일 이벤트명은 가운데 정렬로 출력된다', () => {
+      const html = generateCalendarHtml({
+        events: mock_events,
+        job_colors: mock_job_colors,
+        start_date: new Date(2026, 0, 26),
+        weeks: 1,
+      });
+
+      expect(html).toContain('text-align: center');
       expect(html).toContain('연차');
     });
 

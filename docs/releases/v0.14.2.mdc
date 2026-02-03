@@ -1,0 +1,53 @@
+---
+version: 0.14.2
+date: 2026-02-03
+step: Step 14 (patch)
+---
+
+# v0.14.2 릴리즈 노트
+
+## 주요 변경사항
+
+- 배포 캘린더 HTML 내보내기 스타일 개선 (열 너비·잡 색상·패딩·휴일 표시)
+- 이벤트 수정 팝업에서 잡 색상 편집 및 Enter 저장
+- 설정에서 배포 캘린더 표시 주 수(1~4주) 선택
+- 잡 색상 설정 팔레트에 기본 색상 구역 추가
+
+## 버그 수정 / 개선
+
+### 배포 캘린더
+
+- **표시 주 수**: 설정 > 배포 캘린더에서 1주 / 2주 / 3주 / 4주 선택 가능. 자동 저장.
+- **이벤트 모달**: 잡 색상(기본·테마·직접 선택) 편집 가능. Enter 키로 저장.
+- **잡 색상 팔레트**: 기본 색상(8색) + 테마 색상 구역으로 구분.
+
+### HTML 내보내기
+
+- **열 너비**: colgroup + table-layout: fixed, width: 835px로 붙여넣기 시 찌그러짐 방지.
+- **잡 색상**: 라벨을 내부 td + bgcolor/background-color로 출력해 에디터에서 색상 유지.
+- **날짜 헤더**: 옅은 회색(#f3f4f6), 가운데 정렬, height: 36px, 상하 패딩.
+- **작업 라벨**: 패딩(8px 12px 10px 12px), border-spacing 6px로 라벨 간 margin, border-radius 6px, 말줄임표.
+- **바디 셀**: min-height/height 72px, 칸·라벨 좌우 padding 12px.
+- **휴일**: 빨간색(#ca3626) 텍스트, 가운데 정렬( td + div text-align: center ).
+- **전체**: wrapper border-radius 8px, 얇은 회색 테두리.
+
+## 수정 파일
+
+- `src/store/useDeployCalendarStore.ts` - weeks_to_show, setWeeksToShow
+- `src/components/pages/DeployCalendar.tsx` - weeks_to_show 반영, 설정 변경 시 시작일 보정
+- `src/components/pages/SettingsPage.tsx` - 배포 캘린더 표시 주 수 섹션
+- `src/components/calendar/DeployEventModal.tsx` - 잡 색상 편집, Enter 저장, Dialog onKeyDown
+- `src/components/calendar/JobColorManager.tsx` - 기본 색상 구역 추가
+- `src/utils/calendar_export.ts` - HTML 스타일 전반 (헤더·셀·라벨·휴일)
+
+## 테스트
+
+- `src/__tests__/store/useDeployCalendarStore.test.ts` (14 tests, weeks_to_show 포함)
+- `src/__tests__/utils/calendar_export.test.ts` (18 tests, 휴일 가운데 정렬 검증 추가)
+- `src/__tests__/components/pages/DeployCalendar.test.tsx` (9 tests)
+- 배포 캘린더 관련 총 41 tests
+
+## 다음 버전 예정
+
+- 캘린더 데이터 CSV/JSON 내보내기
+- 주간 일정과 배포 캘린더 데이터 연동

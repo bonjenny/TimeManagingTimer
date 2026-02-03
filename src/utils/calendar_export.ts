@@ -48,8 +48,15 @@ export function addDays(date: Date, days: number): Date {
 }
 
 // ----------------------------------------------------------------------
-// HTML 테이블 생성
+// HTML 테이블 생성 (ecount 웹에디터 호환, 열 너비 유지 + 잡 색상 인라인 적용)
 // ----------------------------------------------------------------------
+
+/** 테이블 전체 너비(px). colgroup과 동일하게 사용 */
+const TABLE_WIDTH_PX = 835;
+/** 열 수 (월~금) */
+const COL_COUNT = 5;
+/** 열당 고정 너비(px) */
+const COL_WIDTH_PX = Math.floor(TABLE_WIDTH_PX / COL_COUNT);
 
 interface GenerateHtmlOptions {
   events: DeployEvent[];
@@ -59,88 +66,139 @@ interface GenerateHtmlOptions {
 }
 
 /**
- * 잡 코드로 색상 조회
+ * 잡 코드로 색상 조회 (항상 hex 반환)
  */
 function getColorForJob(job_code: string, job_colors: JobColor[]): string {
   const found = job_colors.find(jc => jc.job_code === job_code);
-  return found?.color || '#e0e0e0';
+  return found?.color || '#e5e7eb';
 }
 
 /**
- * 캘린더를 HTML 테이블로 생성 (ecount 웹에디터 호환)
+ * 캘린더를 HTML 테이블로 생성 (첨부 이미지와 동일한 비주얼).
+ * - 전체 그리드: 얇은 회색 테두리 + 둥근 모서리
+ * - 날짜 헤더: 옅은 회색 배경(#f3f4f6), 가운데 정렬
+ * - 라벨: 둥근 모서리, 텍스트와 박스 가장자리 사이 패딩, 말줄임표
  */
 export function generateCalendarHtml(options: GenerateHtmlOptions): string {
   const { events, job_colors, start_date, weeks } = options;
-  
-  // 시작일을 월요일로 맞춤
   const monday = getMonday(start_date);
-  
-  // 헤더 스타일
-  const header_style = `
-    background-color: rgb(210, 197, 193);
-    text-align: center;
-    font-weight: bold;
-    font-size: 13px;
-    border: 1px solid rgb(0, 0, 0);
-    padding: 6px;
-  `.replace(/\s+/g, ' ').trim();
-  
-  // 셀 스타일
-  const cell_style = `
-    border: 1px solid rgb(0, 0, 0);
-    padding: 6px;
-    vertical-align: top;
-    font-size: 13px;
-  `.replace(/\s+/g, ' ').trim();
-  
-  let html = `<table border="2" cellspacing="0" cellpadding="6" style="border-collapse: collapse; border-spacing: 0px; font-size: 13px; table-layout: fixed;">`;
-  
+
+  // 날짜 헤더: 옅은 회색 배경, 가운데 정렬, 명시적 높이
+  const header_row_height_px = 36;
+  const header_style = [
+    'background-color: #f3f4f6',
+    'border: 1px solid #e5e7eb',
+    'text-align: center',
+    'font-weight: 600',
+    'font-size: 13px',
+    'padding: 12px 10px',
+    'height: ' + header_row_height_px + 'px',
+    'color: #000000',
+  ].join('; ');
+
+  // 바디 셀: 칸과 라벨 사이 여백, 명시적 최소 높이
+  const body_cell_min_height_px = 72;
+  const cell_style = [
+    'border: 1px solid #e5e7eb',
+    'padding: 10px 12px',
+    'vertical-align: top',
+    'font-size: 13px',
+    'color: #000000',
+    'background-color: #ffffff',
+    'min-height: ' + body_cell_min_height_px + 'px',
+    'height: ' + body_cell_min_height_px + 'px',
+  ].join('; ');
+
+  const table_style = [
+    'border-collapse: collapse',
+    'border-spacing: 0',
+    'table-layout: fixed',
+    'width: ' + TABLE_WIDTH_PX + 'px',
+    'font-size: 13px',
+    'font-weight: 400',
+    'text-align: left',
+    'border: 0',
+  ].join('; ');
+
+  // 라벨 공통: 둥근 모서리, 말줄임표, 텍스트와 박스 가장자리 사이 패딩
+  const chip_base = [
+    'padding: 8px 12px 10px 12px',
+    'font-size: 13px',
+    'color: #000000',
+    'border: 0',
+    'border-radius: 6px',
+    'max-width: 100%',
+    'overflow: hidden',
+    'text-overflow: ellipsis',
+    'white-space: nowrap',
+    'box-sizing: border-box',
+  ].join('; ');
+
+  let html = '<div style="font-size: 13px; font-weight: 400; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">';
+  html += `<table cellspacing="0" cellpadding="0" style="${table_style}">`;
+  html += '<colgroup>';
+  for (let i = 0; i < COL_COUNT; i++) {
+    html += `<col style="width: ${COL_WIDTH_PX}px;">`;
+  }
+  html += '</colgroup>';
+  html += '<thead style="border: 0;">';
+
   for (let week = 0; week < weeks; week++) {
-    // 헤더 행 (날짜)
     html += '<tr>';
-    for (let day = 0; day < 5; day++) { // 월~금
+    for (let day = 0; day < COL_COUNT; day++) {
       const current_date = addDays(monday, week * 7 + day);
       const date_str = formatDateToDisplay(current_date);
       html += `<td style="${header_style}">${date_str}</td>`;
     }
     html += '</tr>';
-    
-    // 데이터 행 (이벤트)
     html += '<tr>';
-    for (let day = 0; day < 5; day++) {
+    for (let day = 0; day < COL_COUNT; day++) {
       const current_date = addDays(monday, week * 7 + day);
       const date_key = formatDateToString(current_date);
       const day_events = events.filter(e => e.date === date_key);
-      
+
       html += `<td style="${cell_style}">`;
-      
       if (day_events.length === 0) {
         html += '&nbsp;';
       } else {
-        const event_htmls = day_events.map(event => {
+        const inner_table_style = 'border: 0; border-collapse: separate; border-spacing: 6px 6px; width: 100%;';
+        html += '<div style="padding: 0 12px;">';
+        html += `<table cellspacing="0" cellpadding="0" border="0" style="${inner_table_style}">`;
+        day_events.forEach((event) => {
           if (event.is_holiday) {
-            // 휴일: 빨간색 텍스트, 가운데 정렬
-            return `<div style="text-align: center; color: #ca3626;">${event.job_name}</div>`;
+            html += `<tr><td style="${chip_base} text-align: center; color: #ca3626;"><div style="text-align: center;">${escapeHtml(event.job_name)}</div></td></tr>`;
           } else {
-            // 일반 이벤트: 배경색 적용
-            const bg_color = getColorForJob(event.job_code, job_colors);
-            const display_text = event.status 
+            const bg_hex = getColorForJob(event.job_code, job_colors);
+            const display_text = event.status
               ? `${event.job_name} ${event.status}`
               : event.job_name;
-            return `<span style="background-color: ${bg_color}; color: #000000; padding: 2px 4px;">${display_text}</span>`;
+            html += `<tr><td bgcolor="${bg_hex}" style="background-color: ${bg_hex}; ${chip_base}">${escapeHtml(display_text)}</td></tr>`;
           }
         });
-        html += event_htmls.join('<br>');
+        html += '</table>';
+        html += '</div>';
       }
-      
       html += '</td>';
     }
     html += '</tr>';
   }
-  
+
+  html += '</thead>';
+  html += '<tbody style="border: 0;"></tbody>';
   html += '</table>';
-  
+  html += '</div>';
   return html;
+}
+
+function escapeHtml(text: string): string {
+  const map: Record<string, string> = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  };
+  return text.replace(/[&<>"']/g, (ch) => map[ch] ?? ch);
 }
 
 // ----------------------------------------------------------------------

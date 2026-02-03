@@ -2,14 +2,14 @@
   "timekeeper-storage": {
     "state": {
       "activeTimer": {
-        "id": "f6643ecd-0cf4-451f-b7aa-13bdb88e4f7e",
-        "title": "주간일정 작성",
-        "projectCode": "A25_05591",
-        "category": "문서작업",
-        "startTime": 1770081547218,
+        "id": "7af3e961-6de2-4d08-9ef6-9114136a8814",
+        "title": "5) LifeCycleManager 추상화(class화 및 owner 별 상속구조 설계)",
+        "projectCode": "A26_00413",
+        "category": "설계",
+        "startTime": 1770084300000,
         "status": "RUNNING",
         "pausedDuration": 0,
-        "endTime": 1770082465238
+        "endTime": 1770084764341
       },
       "logs": [
         {
@@ -843,9 +843,52 @@
           "endTime": 1768882800000,
           "status": "COMPLETED",
           "pausedDuration": 0
+        },
+        {
+          "id": "f6643ecd-0cf4-451f-b7aa-13bdb88e4f7e",
+          "title": "주간일정 작성",
+          "projectCode": "A25_05591",
+          "category": "문서작업",
+          "startTime": 1770081547218,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1770083294391,
+          "lastPausedAt": 1770083294391
+        },
+        {
+          "id": "e37d3e78-af26-4d3b-bcc5-27b3cda00df0",
+          "title": "스테이지 푸시",
+          "projectCode": "A26_00603",
+          "category": "환경세팅",
+          "startTime": 1770083294391,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1770083700000
+        },
+        {
+          "id": "2cb225b8-ddc6-4e04-b4c6-daf087c9f8d1",
+          "title": "스테이지 푸시 (TP.15256)",
+          "projectCode": "A25_07788",
+          "category": "환경세팅",
+          "startTime": 1770083700000,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1770084300000
         }
       ],
       "deleted_logs": [
+        {
+          "id": "ac6fc7c2-fe5e-4b22-86b2-df432b9228c5",
+          "title": "5) LifeCycleManager 추상화(class화 및 owner 별 상속구조 설계)",
+          "projectCode": "A26_00413",
+          "category": "설계",
+          "startTime": 1770083603259,
+          "status": "PAUSED",
+          "pausedDuration": 0,
+          "endTime": 1770084714870,
+          "lastPausedAt": 1770084714870,
+          "deletedAt": 1770084716986
+        },
         {
           "id": "a493c6bd-6a9e-4a76-b070-70036fcaa307",
           "title": "5) LifeCycleManager 추상화(class화 및 owner 별 상속구조 설계)",
@@ -1496,7 +1539,7 @@
       "themeConfig": {
         "primaryColor": "#723d46",
         "accentColor": "#e26d5c",
-        "isDark": true
+        "isDark": false
       },
       "viewConfig": {
         "zoomLevel": 100
@@ -1548,9 +1591,11 @@
         "5) LifeCycleManager 추상화(class화 및 owner 별 상속구조 설계)": 43,
         "HTML영역 다크모드 적용TP": 44,
         "어플리케이션/페이지의 LifeCycle 관리": 45,
-        "시작": 46
+        "시작": 46,
+        "스테이지 푸시": 47,
+        "스테이지 푸시 (TP.15256)": 48
       },
-      "nextColorIndex": 47
+      "nextColorIndex": 49
     },
     "version": 0
   },
