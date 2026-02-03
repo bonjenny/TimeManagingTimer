@@ -1,0 +1,49 @@
+---
+version: 0.14.1
+date: 2026-02-03
+step: Step 14 (patch)
+---
+
+# v0.14.1 릴리즈 노트
+
+## 주요 변경사항
+
+- 배포 캘린더 및 UI 개선
+- 라이트/다크 모드 시 body 배경색 명시 적용
+- 잡 기본 색상을 테마(컬러 팔레트)에서 가져오도록 변경
+
+## 버그 수정 / 개선
+
+### 배포 캘린더
+
+- **기본 표시**: 저번주~이번주 2주가 기본 표시 (오늘 기준)
+- **주차 표시**: "2026년 2월 1주차 ~ 2주차" 형식으로 표시
+- **이번 주로 이동**: 클릭 시 저번주~이번주 뷰로 이동
+- **테이블 정렬**: 일자(헤더)와 잡 상태(바디) 열 너비 일치, 고정 너비 + 말줄임표
+- **다크모드 가독성**: 잡 상태 글씨색 검정(#000000) 고정으로 밝은 배경에서 가독성 확보
+- **잡 색상**: 새 잡 기본 색상 및 잡 색상 설정 팔레트를 테마(설정 > 컬러 팔레트)에서 사용
+
+### 전역 스타일
+
+- **body 배경**: 라이트 모드 시 `body`, `body::before`, `#root`에 `#fafafa !important` 적용
+- **다크 모드 body 배경**: `[data-theme="dark"]` 시 `body` 등에 `#121212 !important` 적용 (div가 아닌 body 자체에 배경)
+
+## 수정 파일
+
+- `index.html` - 라이트/다크 body 배경색 명시
+- `src/store/useDeployCalendarStore.ts` - 테마 팔레트 기반 기본 색상
+- `src/components/calendar/JobColorManager.tsx` - 테마 팔레트 색상 그리드
+- `src/components/pages/DeployCalendar.tsx` - 주차 표시, 기본 뷰, 그리드/말줄임, 글씨색
+- `src/utils/calendar_export.ts` - HTML 내보내기 시 글씨색 명시
+
+## 테스트
+
+- `src/__tests__/store/useDeployCalendarStore.test.ts` (11 tests, 테마 기반 기본 색상 검증 추가)
+- `src/__tests__/utils/calendar_export.test.ts` (13 tests)
+- `src/__tests__/components/pages/DeployCalendar.test.tsx` (10 tests)
+- 총 34 tests
+
+## 다음 버전 예정
+
+- 캘린더 데이터 CSV/JSON 내보내기
+- 주간 일정과 배포 캘린더 데이터 연동

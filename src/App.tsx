@@ -8,6 +8,7 @@ import TimerList from './components/timer/TimerList';
 import GanttChart from './components/gantt/GanttChart';
 import PresetPanel from './components/preset/PresetPanel';
 import WeeklySchedule from './components/pages/WeeklySchedule';
+import DeployCalendar from './components/pages/DeployCalendar';
 import SettingsPage from './components/pages/SettingsPage';
 import NewTaskModal from './components/modal/NewTaskModal';
 import { Box, Typography, IconButton, Tooltip, useMediaQuery, Snackbar } from '@mui/material';
@@ -217,6 +218,12 @@ function App() {
             handlePageChange('weekly');
             break;
 
+          // Alt + 3: 배포 캘린더 페이지
+          case '3':
+            e.preventDefault();
+            handlePageChange('monthly');
+            break;
+
           // Alt + T: 오늘로 이동 (일간 페이지에서)
           case 't':
             e.preventDefault();
@@ -404,6 +411,8 @@ function App() {
         return renderDailyPage();
       case 'weekly':
         return <WeeklySchedule />;
+      case 'monthly':
+        return <DeployCalendar />;
       case 'settings':
         return <SettingsPage />;
       default:

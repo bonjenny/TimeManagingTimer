@@ -80,6 +80,13 @@
         --highlight-hover: #2563EB;
       }
 
+      /* 다크 모드: body 자체에 배경색 명시 (div가 아닌 body) */
+      [data-theme="dark"] body,
+      [data-theme="dark"] body::before,
+      [data-theme="dark"] #root {
+        background-color: #121212 !important;
+      }
+
       /* 테마 프리셋 색상 */
       [data-theme-color="green"] {
         --primary-color: #10b981;
@@ -128,11 +135,17 @@
         background-color: var(--bg-primary);
         color: var(--text-primary);
         min-height: 100%;
-        /* 줌 시에도 배경색이 전체 영역을 커버하도록 */
         position: relative;
       }
       
-      /* 전체 화면 배경 레이어 (줌/스크롤 시에도 배경색 유지) */
+      /* 라이트 모드: body 자체에 배경색 명시 (div가 아닌 body) */
+      body,
+      body::before,
+      #root {
+        background-color: #fafafa !important;
+      }
+      
+      /* 전체 화면 배경 레이어 (줌/스크롤 시에도 배경 유지) */
       body::before {
         content: "";
         position: fixed;
@@ -140,13 +153,7 @@
         left: 0;
         right: 0;
         bottom: 0;
-        background-color: var(--bg-primary);
         z-index: -1;
-      }
-      
-      #root {
-        min-height: 100vh;
-        background-color: var(--bg-primary);
       }
 
       /* 스크롤바 스타일링 (선택적) */
@@ -168,7 +175,7 @@
         background: var(--text-secondary);
       }
     </style>
-    <script type="module" crossorigin src="./assets/index-CIsHDa8g.js"></script>
+    <script type="module" crossorigin src="./assets/index-D6WrGGjz.js"></script>
   </head>
   <body>
     <div id="root"></div>
