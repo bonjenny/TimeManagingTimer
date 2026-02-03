@@ -22,19 +22,28 @@ export interface JobColor {
   color: string;          // "#b3e5fc"
 }
 
+/** 배포 캘린더에 한 번에 표시할 주 수 (1~4) */
+export const DEPLOY_CALENDAR_WEEKS_MIN = 1;
+export const DEPLOY_CALENDAR_WEEKS_MAX = 4;
+export const DEPLOY_CALENDAR_WEEKS_DEFAULT = 2;
+
 interface DeployCalendarState {
   events: DeployEvent[];
   job_colors: JobColor[];
-  
+  /** 표시할 주 수 (1~4). 설정에서 변경 가능 */
+  weeks_to_show: number;
+
   // --- Actions ---
   addEvent: (event: Omit<DeployEvent, 'id'>) => string;
   updateEvent: (id: string, updates: Partial<DeployEvent>) => void;
   deleteEvent: (id: string) => void;
-  
+
+  setWeeksToShow: (weeks: number) => void;
+
   // 잡 색상 관리
   setJobColor: (job_code: string, color: string) => void;
   getJobColor: (job_code: string) => string | undefined;
-  
+
   // --- Selectors ---
   getEventsByDate: (date: string) => DeployEvent[];
   getEventsByDateRange: (start_date: string, end_date: string) => DeployEvent[];
@@ -63,7 +72,12 @@ export const useDeployCalendarStore = create<DeployCalendarState>()(
     (set, get) => ({
       events: [],
       job_colors: [],
-      
+      weeks_to_show: DEPLOY_CALENDAR_WEEKS_DEFAULT,
+
+      setWeeksToShow: (weeks) => set(() => ({
+        weeks_to_show: Math.max(DEPLOY_CALENDAR_WEEKS_MIN, Math.min(DEPLOY_CALENDAR_WEEKS_MAX, Math.floor(weeks))),
+      })),
+
       addEvent: (event) => {
         const id = uuidv4();
         const new_event: DeployEvent = { ...event, id };

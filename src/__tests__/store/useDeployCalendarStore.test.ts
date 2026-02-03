@@ -3,14 +3,18 @@
  * v0.14.0: 배포 캘린더 기능
  * v0.14.1: 테마 팔레트 기반 기본 색상
  */
-import { useDeployCalendarStore } from '../../store/useDeployCalendarStore';
+import {
+  useDeployCalendarStore,
+  DEPLOY_CALENDAR_WEEKS_DEFAULT,
+  DEPLOY_CALENDAR_WEEKS_MIN,
+  DEPLOY_CALENDAR_WEEKS_MAX,
+} from '../../store/useDeployCalendarStore';
 import { useTimerStore } from '../../store/useTimerStore';
 import { act } from '@testing-library/react';
 
 describe('useDeployCalendarStore', () => {
   beforeEach(() => {
-    // 스토어 초기화
-    useDeployCalendarStore.setState({ events: [], job_colors: [] });
+    useDeployCalendarStore.setState({ events: [], job_colors: [], weeks_to_show: DEPLOY_CALENDAR_WEEKS_DEFAULT });
     localStorage.clear();
   });
 
@@ -245,6 +249,33 @@ describe('useDeployCalendarStore', () => {
       expect(job_codes).toHaveLength(2);
       expect(job_codes).toContain('A25_07788');
       expect(job_codes).toContain('A26_00413');
+    });
+  });
+
+  describe('weeks_to_show', () => {
+    it('기본값은 DEPLOY_CALENDAR_WEEKS_DEFAULT(2)이다', () => {
+      const { weeks_to_show } = useDeployCalendarStore.getState();
+      expect(weeks_to_show).toBe(DEPLOY_CALENDAR_WEEKS_DEFAULT);
+    });
+
+    it('setWeeksToShow로 표시 주 수를 변경할 수 있다', () => {
+      const { setWeeksToShow } = useDeployCalendarStore.getState();
+
+      act(() => setWeeksToShow(4));
+      expect(useDeployCalendarStore.getState().weeks_to_show).toBe(4);
+
+      act(() => setWeeksToShow(1));
+      expect(useDeployCalendarStore.getState().weeks_to_show).toBe(1);
+    });
+
+    it('setWeeksToShow는 MIN~MAX 범위로 제한된다', () => {
+      const { setWeeksToShow } = useDeployCalendarStore.getState();
+
+      act(() => setWeeksToShow(0));
+      expect(useDeployCalendarStore.getState().weeks_to_show).toBe(DEPLOY_CALENDAR_WEEKS_MIN);
+
+      act(() => setWeeksToShow(99));
+      expect(useDeployCalendarStore.getState().weeks_to_show).toBe(DEPLOY_CALENDAR_WEEKS_MAX);
     });
   });
 

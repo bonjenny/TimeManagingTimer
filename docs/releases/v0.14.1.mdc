@@ -38,10 +38,10 @@ step: Step 14 (patch)
 
 ## 테스트
 
-- `src/__tests__/store/useDeployCalendarStore.test.ts` (11 tests, 테마 기반 기본 색상 검증 추가)
-- `src/__tests__/utils/calendar_export.test.ts` (13 tests)
-- `src/__tests__/components/pages/DeployCalendar.test.tsx` (10 tests)
-- 총 34 tests
+- `src/__tests__/store/useDeployCalendarStore.test.ts` (11 tests, 테마 기반 기본 색상 검증 포함)
+- `src/__tests__/utils/calendar_export.test.ts` (16 tests)
+- `src/__tests__/components/pages/DeployCalendar.test.tsx` (9 tests)
+- 총 36 tests
 
 ## 다음 버전 예정
 

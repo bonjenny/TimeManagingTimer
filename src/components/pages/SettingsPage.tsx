@@ -30,6 +30,7 @@ import AddIcon from '@mui/icons-material/Add';
 import RestoreIcon from '@mui/icons-material/Restore';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import ZoomInIcon from '@mui/icons-material/ZoomIn';
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import {
   DndContext,
   closestCenter,
@@ -64,6 +65,11 @@ import {
   getPaletteThemeColors,
 } from '../../utils/colorPalette';
 import { applyPaletteHighlight } from '../../styles/tokens';
+import {
+  useDeployCalendarStore,
+  DEPLOY_CALENDAR_WEEKS_MIN,
+  DEPLOY_CALENDAR_WEEKS_MAX,
+} from '../../store/useDeployCalendarStore';
 
 // 설정 저장 키
 const SETTINGS_STORAGE_KEY = 'timekeeper-settings';
@@ -171,6 +177,7 @@ const SettingsPage: React.FC = () => {
   const { setThemeConfig, themeConfig } = useTimerStore();
   const { categories, addCategory, removeCategory, reorderCategories, resetToDefault: resetCategories } = useCategoryStore();
   const { statuses, addStatus, removeStatus, reorderStatuses, resetToDefault: resetStatuses } = useStatusStore();
+  const { weeks_to_show, setWeeksToShow } = useDeployCalendarStore();
   
   // 카테고리 관리 상태
   const [newCategory, setNewCategory] = useState('');
@@ -573,6 +580,72 @@ const SettingsPage: React.FC = () => {
             label={`${Math.round(screen_scale * 100)}%`} 
             size="small" 
             color="primary" 
+            variant="outlined"
+          />
+        </Box>
+      </Paper>
+
+      {/* 배포 캘린더 표시 주 수 */}
+      <Paper variant="outlined" sx={{ p: 3, mb: 3 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+          <CalendarMonthIcon sx={{ color: 'text.secondary' }} />
+          <Typography variant="h6" sx={{ fontWeight: 600 }}>
+            배포 캘린더
+          </Typography>
+        </Box>
+
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+          배포 캘린더에서 한 번에 표시할 주 수를 선택합니다. 설정은 자동으로 저장됩니다.
+        </Typography>
+
+        <ToggleButtonGroup
+          value={weeks_to_show}
+          exclusive
+          onChange={(_, new_value: number | null) => {
+            if (new_value !== null && new_value >= DEPLOY_CALENDAR_WEEKS_MIN && new_value <= DEPLOY_CALENDAR_WEEKS_MAX) {
+              setWeeksToShow(new_value);
+            }
+          }}
+          aria-label="배포 캘린더 표시 주 수"
+          sx={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: 1,
+            '& .MuiToggleButton-root': {
+              minWidth: 64,
+              py: 1.5,
+              borderRadius: '8px !important',
+              border: '1px solid',
+              borderColor: 'divider',
+              '&.Mui-selected': {
+                bgcolor: 'primary.main',
+                color: 'primary.contrastText',
+                borderColor: 'primary.main',
+                '&:hover': {
+                  bgcolor: 'primary.dark',
+                },
+              },
+            },
+          }}
+        >
+          {Array.from(
+            { length: DEPLOY_CALENDAR_WEEKS_MAX - DEPLOY_CALENDAR_WEEKS_MIN + 1 },
+            (_, i) => DEPLOY_CALENDAR_WEEKS_MIN + i
+          ).map((n) => (
+            <ToggleButton key={n} value={n}>
+              {n}주
+            </ToggleButton>
+          ))}
+        </ToggleButtonGroup>
+
+        <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Typography variant="body2" color="text.secondary">
+            현재 표시:
+          </Typography>
+          <Chip
+            label={`${weeks_to_show}주`}
+            size="small"
+            color="primary"
             variant="outlined"
           />
         </Box>
