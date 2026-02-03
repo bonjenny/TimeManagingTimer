@@ -1,0 +1,36 @@
+---
+version: 0.14.3
+date: 2026-02-03
+step: Step 14 (patch)
+---
+
+# v0.14.3 릴리즈 노트
+
+## 주요 변경사항
+
+- 주간 일정 복사 미리보기: 잡 색상 설정·형식별 동작 정리 및 간단형 들여쓰기
+
+## 새로운 기능 / 개선
+
+### 주간 일정
+
+- **잡 색상 설정 대상**: 배포 캘린더에 없는 잡도 설정 가능. localStorage 프로젝트 목록 + 해당 주 로그에 등장한 잡 코드를 합쳐 잡 색상 설정 모달에 노출.
+- **상세형**: 복사 미리보기·복사본에서 잡 라벨에 배경색을 적용하지 않음 (텍스트만 강조).
+- **잡 색상 설정 버튼**: 복사 형식이 **라벨형**일 때만 미리보기 하단에 "잡 색상 설정" 버튼 노출. 간단형·상세형에서는 미노출.
+- **간단형 들여쓰기**: 잡별 업무목록(> 작업명 (누적시간: ...)) 앞에 공백 2칸 들여쓰기 적용.
+
+## 수정 파일
+
+- `src/components/pages/WeeklySchedule.tsx` - job_codes_for_color_manager, generateFormatHtml 색상 제거, copyFormat === '3' 시 버튼만 노출, generateFormat1 업무목록 들여쓰기, copy-preview-content testid
+- `src/__tests__/components/pages/WeeklySchedule.test.tsx` - 라벨형 시 버튼 노출·간단형 들여쓰기 테스트 추가
+
+## 테스트
+
+- `src/__tests__/components/pages/WeeklySchedule.test.tsx` (15 tests)
+  - 라벨형 선택 시에만 잡 색상 설정 버튼이 보인다
+  - 간단형 미리보기에서 잡별 업무목록에 들여쓰기가 포함된다
+
+## 다음 버전 예정
+
+- 캘린더 데이터 CSV/JSON 내보내기
+- 주간 일정과 배포 캘린더 데이터 연동
