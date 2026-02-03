@@ -1,0 +1,33 @@
+---
+version: 0.14.4
+date: 2026-02-03
+step: Step 14 (patch)
+---
+
+# v0.14.4 릴리즈 노트
+
+## 주요 변경사항
+
+- 간트 차트 드래그 앤 드롭 시 행 인덱스 한 줄 밀림 현상 수정
+
+## 버그 수정
+
+### 간트 차트
+
+- **드래그 행 인덱스**: 7번째 줄 이후에서 드래그 시 세션이 한 줄 아래 행에 추가되던 문제 수정.
+- **수정 방식**: Y 좌표만으로 행을 계산하던 방식을 변경해, **클릭한 DOM 요소의 `data-row-index`**를 우선 사용하도록 함. 각 작업 행 Box에 `data-row-index`를 부여하고, `getRowFromEvent`에서 `e.target.closest('[data-row-index]')`로 실제 클릭한 행을 사용해 좌표/스크롤/레이아웃에 따른 오차를 제거.
+
+## 수정 파일
+
+- `src/components/gantt/GanttChart.tsx` - getRowFromEvent에서 data-row-index 우선 사용, 행 Box에 data-row-index 추가
+- `src/__tests__/components/gantt/GanttChart.test.tsx` - 7번째 행 드래그 시 해당 행 작업으로 세션 추가 모달 열리는지 검증
+
+## 테스트
+
+- `src/__tests__/components/gantt/GanttChart.test.tsx`
+  - 드래그 시 클릭한 행(data-row-index)에 맞는 작업으로 세션 추가 모달이 열린다 (v0.14.4)
+
+## 다음 버전 예정
+
+- 캘린더 데이터 CSV/JSON 내보내기
+- 주간 일정과 배포 캘린더 데이터 연동
