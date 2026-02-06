@@ -769,6 +769,7 @@ const WeeklySchedule: React.FC = () => {
                             sx={{ 
                               height: 22, 
                               fontSize: '0.7rem',
+                              minWidth: 120,
                             }}
                           />
                         </Box>

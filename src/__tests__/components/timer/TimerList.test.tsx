@@ -676,15 +676,17 @@ describe('TimerList 미완료 업무 표시 기능 (v0.13.0)', () => {
       
       const completedLog = result.current.logs[0];
       expect(completedLog.status).toBe('COMPLETED');
+      const originalEndTime = completedLog.endTime;
       
       act(() => {
         result.current.reopenTimer(completedLog.id);
       });
       
       // reopenTimer는 COMPLETED → PAUSED로 상태만 변경 (activeTimer로 이동 안 함)
+      // endTime은 기존 값을 유지 (종료시간이 현재 시간으로 바뀌지 않도록)
       const reopenedLog = result.current.logs.find(l => l.id === completedLog.id);
       expect(reopenedLog?.status).toBe('PAUSED');
-      expect(reopenedLog?.endTime).toBeUndefined();
+      expect(reopenedLog?.endTime).toBe(originalEndTime);
     });
   });
 });

@@ -141,9 +141,10 @@ describe('v0.12.0 - 타이머 세션 관리', () => {
       });
 
       // 상태 확인 - PAUSED로 변경, activeTimer는 null 유지
+      // endTime은 기존 값 유지 (종료시간이 현재 시간으로 바뀌지 않도록)
       expect(result.current.activeTimer).toBeNull();
       expect(result.current.logs[0].status).toBe('PAUSED');
-      expect(result.current.logs[0].endTime).toBeUndefined();
+      expect(result.current.logs[0].endTime).toBeDefined();
     });
   });
 });

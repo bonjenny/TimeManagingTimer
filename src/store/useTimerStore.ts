@@ -318,11 +318,12 @@ export const useTimerStore = create<TimerState>()(
       emptyTrash: () => set({ deleted_logs: [] }),
 
       // 완료된 작업을 완료 취소 (COMPLETED → PAUSED로만 변경, 타이머 시작 안 함)
+      // endTime은 기존 값을 유지하여 종료시간이 변경되지 않도록 함
       reopenTimer: (id) => {
         set((state) => ({
           logs: state.logs.map(log => 
             log.id === id && log.status === 'COMPLETED'
-              ? { ...log, status: 'PAUSED' as const, endTime: undefined }
+              ? { ...log, status: 'PAUSED' as const }
               : log
           ),
         }));
