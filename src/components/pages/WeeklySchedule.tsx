@@ -713,7 +713,7 @@ const WeeklySchedule: React.FC = () => {
                       key={projectKey}
                       variant="outlined"
                       sx={{
-                        overflow: 'hidden',
+                        overflow: 'visible',
                         bgcolor: 'var(--card-bg)',
                         borderColor: 'var(--border-color)',
                       }}

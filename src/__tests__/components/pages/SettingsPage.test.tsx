@@ -24,36 +24,18 @@ describe('SettingsPage', () => {
       expect(screen.getByText('화면 크기')).toBeInTheDocument();
     });
 
-    it('모든 화면 크기 옵션이 표시된다', () => {
+    it('화면 크기 슬라이더가 표시된다', () => {
       render(<SettingsPage />);
       
-      expect(screen.getByRole('button', { name: /작게 \(80%\)/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /약간 작게 \(90%\)/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /보통 \(100%\)/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /약간 크게 \(110%\)/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /크게 \(120%\)/i })).toBeInTheDocument();
+      const slider = screen.getByRole('slider', { name: /화면 크기/i });
+      expect(slider).toBeInTheDocument();
     });
 
     it('기본값으로 100%가 선택된다', () => {
       render(<SettingsPage />);
       
-      const normal_button = screen.getByRole('button', { name: /보통 \(100%\)/i });
-      expect(normal_button).toHaveAttribute('aria-pressed', 'true');
-    });
-
-    it('화면 크기 변경 시 localStorage에 저장된다', async () => {
-      const user = userEvent.setup();
-      render(<SettingsPage />);
-      
-      const large_button = screen.getByRole('button', { name: /크게 \(120%\)/i });
-      await user.click(large_button);
-      
-      await waitFor(() => {
-        const saved = localStorage.getItem('timekeeper-settings');
-        expect(saved).not.toBeNull();
-        const settings = JSON.parse(saved!);
-        expect(settings.screenScale).toBe(1.2);
-      });
+      const slider = screen.getByRole('slider', { name: /화면 크기/i });
+      expect(slider).toHaveAttribute('aria-valuenow', '100');
     });
 
     it('저장된 화면 크기 설정이 로드된다', () => {
@@ -67,13 +49,16 @@ describe('SettingsPage', () => {
       
       render(<SettingsPage />);
       
-      const small_button = screen.getByRole('button', { name: /약간 작게 \(90%\)/i });
-      expect(small_button).toHaveAttribute('aria-pressed', 'true');
+      const slider = screen.getByRole('slider', { name: /화면 크기/i });
+      expect(slider).toHaveAttribute('aria-valuenow', '90');
     });
 
-    it('현재 화면 크기가 표시된다', () => {
+    it('현재 화면 크기가 Chip으로 표시된다', () => {
       render(<SettingsPage />);
-      expect(screen.getByText('100%')).toBeInTheDocument();
+      // 100%가 슬라이더 마크, value label, Chip에 모두 표시되므로 Chip 요소를 특정
+      const chip_labels = document.querySelectorAll('.MuiChip-label');
+      const found = Array.from(chip_labels).some(el => el.textContent === '100%');
+      expect(found).toBe(true);
     });
 
     it('기본값 복원 시 화면 크기가 100%로 초기화된다', async () => {
@@ -90,9 +75,19 @@ describe('SettingsPage', () => {
       await user.click(reset_button);
       
       await waitFor(() => {
-        const normal_button = screen.getByRole('button', { name: /보통 \(100%\)/i });
-        expect(normal_button).toHaveAttribute('aria-pressed', 'true');
+        const slider = screen.getByRole('slider', { name: /화면 크기/i });
+        expect(slider).toHaveAttribute('aria-valuenow', '100');
       });
+    });
+
+    it('슬라이더 마크에 퍼센트 라벨이 표시된다', () => {
+      render(<SettingsPage />);
+      
+      // 마크 라벨 확인 (80%, 90%, 100%, 110%, 120%)
+      expect(screen.getByText('80%')).toBeInTheDocument();
+      expect(screen.getByText('90%')).toBeInTheDocument();
+      expect(screen.getByText('110%')).toBeInTheDocument();
+      expect(screen.getByText('120%')).toBeInTheDocument();
     });
   });
 

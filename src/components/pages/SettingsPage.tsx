@@ -164,6 +164,12 @@ export const SCREEN_SCALE_OPTIONS = [
   { value: 1.2, label: '크게 (120%)' },
 ];
 
+// 슬라이더 마크 (퍼센트 표시)
+const SCREEN_SCALE_MARKS = SCREEN_SCALE_OPTIONS.map((opt) => ({
+  value: opt.value * 100,
+  label: `${Math.round(opt.value * 100)}%`,
+}));
+
 // 기본 설정값
 const DEFAULT_SETTINGS = {
   lunchStart: '12:00',
@@ -532,47 +538,36 @@ const SettingsPage: React.FC = () => {
           화면의 전체적인 크기를 조절합니다. 설정은 자동으로 저장됩니다.
         </Typography>
 
-        {/* 화면 크기 토글 버튼 그룹 */}
-        <ToggleButtonGroup
-          value={screen_scale}
-          exclusive
-          onChange={(_, new_value) => {
-            if (new_value !== null) {
-              setScreenScale(new_value);
-            }
-          }}
-          aria-label="화면 크기"
-          sx={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: 1,
-            '& .MuiToggleButton-root': {
-              flex: '1 1 auto',
-              minWidth: 100,
-              py: 1.5,
-              borderRadius: '8px !important',
-              border: '1px solid',
-              borderColor: 'divider',
-              '&.Mui-selected': {
-                bgcolor: 'primary.main',
-                color: 'primary.contrastText',
-                borderColor: 'primary.main',
-                '&:hover': {
-                  bgcolor: 'primary.dark',
-                },
+        {/* 화면 크기 슬라이더 */}
+        <Box sx={{ px: 2 }}>
+          <Slider
+            value={screen_scale * 100}
+            onChange={(_, new_value) => {
+              if (typeof new_value === 'number') {
+                setScreenScale(new_value / 100);
+              }
+            }}
+            min={50}
+            max={200}
+            step={5}
+            marks={SCREEN_SCALE_MARKS}
+            valueLabelDisplay="auto"
+            valueLabelFormat={(value) => `${value}%`}
+            aria-label="화면 크기"
+            sx={{
+              '& .MuiSlider-markLabel': {
+                fontSize: '0.75rem',
+                color: 'text.secondary',
               },
-            },
-          }}
-        >
-          {SCREEN_SCALE_OPTIONS.map((option) => (
-            <ToggleButton key={option.value} value={option.value}>
-              {option.label}
-            </ToggleButton>
-          ))}
-        </ToggleButtonGroup>
+              '& .MuiSlider-valueLabel': {
+                fontSize: '0.8rem',
+              },
+            }}
+          />
+        </Box>
 
         {/* 현재 설정 표시 */}
-        <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
           <Typography variant="body2" color="text.secondary">
             현재 화면 크기:
           </Typography>

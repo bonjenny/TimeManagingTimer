@@ -654,7 +654,7 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
         </Box>
       </Box>
 
-      <Paper variant="outlined" sx={{ borderRadius: 2, overflow: 'hidden' }}>
+      <Paper variant="outlined" sx={{ borderRadius: 2, overflow: 'visible' }}>
         {/* 헤더 */}
         <Box sx={{ 
           display: 'grid', 
@@ -912,7 +912,7 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                 </Box>
 
                 {/* 카테고리 */}
-                <Box sx={{ overflow: 'hidden' }} onClick={(e) => e.stopPropagation()}>
+                <Box sx={{ overflow: 'visible', position: 'relative' }} onClick={(e) => e.stopPropagation()}>
                   {editingInlineCategory === task.title ? (
                     <CategoryAutocomplete
                       value={inlineCategory}
