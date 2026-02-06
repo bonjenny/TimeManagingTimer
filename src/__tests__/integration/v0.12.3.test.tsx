@@ -124,7 +124,7 @@ describe('v0.12.3 버그 수정 테스트', () => {
   });
 
   describe('reopenTimer 완료 취소', () => {
-    it('COMPLETED 세션을 PAUSED로 변경하고 endTime을 제거한다', () => {
+    it('COMPLETED 세션을 PAUSED로 변경하고 endTime을 유지한다', () => {
       const { result } = renderHook(() => useTimerStore());
       const now = Date.now();
       
@@ -145,9 +145,10 @@ describe('v0.12.3 버그 수정 테스트', () => {
         result.current.reopenTimer('completed-session');
       });
       
+      // endTime은 기존 값 유지 (종료시간이 현재 시간으로 바뀌지 않도록)
       const reopenedLog = result.current.logs.find(l => l.id === 'completed-session');
       expect(reopenedLog?.status).toBe('PAUSED');
-      expect(reopenedLog?.endTime).toBeUndefined();
+      expect(reopenedLog?.endTime).toBe(now);
     });
 
     it('PAUSED 세션에는 영향을 주지 않는다', () => {

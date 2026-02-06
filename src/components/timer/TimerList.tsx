@@ -102,7 +102,10 @@ interface TaskGroup {
 const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
   const { logs, deleteLog, startTimer, updateLog, updateActiveTimer, deleted_logs, restoreLog, permanentlyDeleteLog, emptyTrash, reopenTimer, activeTimer, pauseAndMoveToLogs, themeConfig } = useTimerStore();
   const { getProjectName, projects } = useProjectStore();
-  const [showCompleted, setShowCompleted] = useState(true);
+  const [showCompleted, setShowCompleted] = useState(() => {
+    const saved = localStorage.getItem('timerlist-show-completed');
+    return saved !== null ? saved === 'true' : true;
+  });
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
   
   // 수정 모달 상태
@@ -627,7 +630,11 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
             control={
               <Switch 
                 checked={showCompleted} 
-                onChange={(e) => setShowCompleted(e.target.checked)} 
+                onChange={(e) => {
+                  const new_value = e.target.checked;
+                  setShowCompleted(new_value);
+                  localStorage.setItem('timerlist-show-completed', String(new_value));
+                }} 
                 size="small" 
               />
             }
