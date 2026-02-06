@@ -195,6 +195,7 @@ const StatusSelect: React.FC<StatusSelectProps> = ({
       onClose={handleClose}
       size={size}
       disableClearable
+      disablePortal
       slotProps={{
         popper: {
           modifiers: [

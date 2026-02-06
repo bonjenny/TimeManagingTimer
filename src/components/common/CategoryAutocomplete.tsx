@@ -407,7 +407,18 @@ const CategoryAutocomplete: React.FC<CategoryAutocompleteProps> = ({
           variant={variant}
           onKeyDown={onKeyDown}
           autoFocus={autoFocus}
-          onBlur={onBlur}
+          onBlur={() => {
+            // 추가 입력란에 포커스가 있으면 외부 onBlur를 호출하지 않음
+            if (isAddInputFocused.current || isDragging.current) {
+              return;
+            }
+            // 지연 후 확인 (포커스가 드롭다운 내부로 이동했는지)
+            setTimeout(() => {
+              if (!isAddInputFocused.current && !isDragging.current) {
+                onBlur?.();
+              }
+            }, 150);
+          }}
           InputProps={{
             ...params.InputProps,
             ...(disableUnderline && variant === 'standard' ? { disableUnderline: true } : {}),
