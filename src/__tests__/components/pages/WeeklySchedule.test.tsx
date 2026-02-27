@@ -351,6 +351,26 @@ describe('WeeklySchedule', () => {
       expect(preview.textContent).not.toContain('누적시간');
       expect(preview.textContent).toMatch(/\d{1,2}:\d{2}/);
     });
+
+    it('시간없이 토글 버튼이 렌더링된다', () => {
+      addTestLog();
+      render(<WeeklySchedule />);
+      expect(screen.getByRole('button', { name: '시간없이' })).toBeInTheDocument();
+    });
+
+    it('시간없이 모드에서 미리보기에 시간 정보가 표시되지 않는다', async () => {
+      const user = userEvent.setup();
+      addTestLog();
+      render(<WeeklySchedule />);
+
+      const none_btn = screen.getByRole('button', { name: '시간없이' });
+      await user.click(none_btn);
+
+      const preview = screen.getByTestId('copy-preview-content');
+      expect(preview.textContent).not.toContain('누적시간');
+      expect(preview.textContent).not.toMatch(/\d{2}:\d{2}/);
+      expect(preview.textContent).toContain('시간 토글 테스트 작업');
+    });
   });
 
   describe('dailyGroupKey 기반 누적시간 분리', () => {

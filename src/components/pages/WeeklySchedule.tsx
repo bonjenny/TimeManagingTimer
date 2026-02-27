@@ -496,6 +496,21 @@ const WeeklySchedule: React.FC = () => {
     return text;
   };
 
+  // HTML 프로젝트 메타 문자열 생성 (시간 포함 여부에 따라 분기)
+  const buildProjectMetaHtml = (statusText: string, startDate: string, project: ProjectGroup) => {
+    const time_str = formatTimePart(getProjectTime(project));
+    if (time_str) {
+      return `<span style="font-size: 13px;">(진행상태: ${escapeHtml(statusText)}, 시작일자: ${escapeHtml(startDate)}, ${time_str})</span>`;
+    }
+    return `<span style="font-size: 13px;">(진행상태: ${escapeHtml(statusText)}, 시작일자: ${escapeHtml(startDate)})</span>`;
+  };
+
+  // HTML 작업 시간 접미사 생성
+  const buildTaskTimeSuffixHtml = (task: ProjectGroup['tasks'][number]) => {
+    const time_str = formatTimePart(getTaskTime(task));
+    return time_str ? ` (${time_str})` : '';
+  };
+
   // HTML 복사 템플릿 (상세형: span·br 기반, 잡 라벨에는 색상 미적용)
   const generateFormatHtml = () => {
     const parts: string[] = [];
@@ -513,12 +528,11 @@ const WeeklySchedule: React.FC = () => {
         const nameSection = displayName ? ` ${escapeHtml(displayName)}` : '';
         const labelHtml =
           `<span style="font-weight: bold; font-size: 13px;">[${escapeHtml(project.projectCode)}]${nameSection}</span>`;
-        const metaHtml =
-          `<span style="font-size: 13px;">(진행상태: ${escapeHtml(statusText)}, 시작일자: ${escapeHtml(project.startDate)}, ${formatTimePart(getProjectTime(project))})</span>`;
+        const metaHtml = buildProjectMetaHtml(statusText, project.startDate, project);
         parts.push(labelHtml + '&nbsp;' + metaHtml + '<br>');
         project.tasks.forEach((task) => {
           parts.push(
-            `&nbsp;&nbsp;· ${escapeHtml(task.title)} (${formatTimePart(getTaskTime(task))})<br>`
+            `&nbsp;&nbsp;· ${escapeHtml(task.title)}${buildTaskTimeSuffixHtml(task)}<br>`
           );
         });
         parts.push('<br>');
@@ -549,12 +563,11 @@ const WeeklySchedule: React.FC = () => {
         parts.push(
           `<table cellspacing="0" cellpadding="0" border="0" style="${labelTableStyle}"><tbody><tr><td bgcolor="${escapeHtml(bgHex)}" style="background-color: ${bgHex}; font-weight: bold; font-size: 13px; color: #000000; border: 0;">[${escapeHtml(project.projectCode)}]${nameSection}</td></tr></tbody></table>`
         );
-        parts.push(
-          `&nbsp;<span style="font-size: 13px;">(진행상태: ${escapeHtml(statusText)}, 시작일자: ${escapeHtml(project.startDate)}, ${formatTimePart(getProjectTime(project))})</span><br>`
-        );
+        const metaHtml = buildProjectMetaHtml(statusText, project.startDate, project);
+        parts.push(`&nbsp;${metaHtml}<br>`);
         project.tasks.forEach((task) => {
           parts.push(
-            `&nbsp;&nbsp;· ${escapeHtml(task.title)} (${formatTimePart(getTaskTime(task))})<br>`
+            `&nbsp;&nbsp;· ${escapeHtml(task.title)}${buildTaskTimeSuffixHtml(task)}<br>`
           );
         });
         parts.push('<br>');
@@ -823,10 +836,12 @@ const WeeklySchedule: React.FC = () => {
                           시작일자: {project.startDate}
                         </Typography>
 
-                        {/* 시간 표시 (누적시간/당일시간) */}
-                        <Typography variant="body2" sx={{ fontWeight: 500, minWidth: 100, textAlign: 'right' }}>
-                          {formatTimePart(getProjectTime(project))}
-                        </Typography>
+                        {/* 시간 표시 (누적시간/당일시간/없음) */}
+                        {timeDisplayMode !== 'none' && (
+                          <Typography variant="body2" sx={{ fontWeight: 500, minWidth: 100, textAlign: 'right' }}>
+                            {formatTimePart(getProjectTime(project))}
+                          </Typography>
+                        )}
                       </Box>
 
                       {/* 하위 업무 목록 */}
@@ -850,9 +865,11 @@ const WeeklySchedule: React.FC = () => {
                               <Typography variant="body2" sx={{ flex: 1 }}>
                                 {task.title}
                               </Typography>
-                              <Typography variant="caption" color="text.secondary">
-                                ({formatTimePart(getTaskTime(task))})
-                              </Typography>
+                              {timeDisplayMode !== 'none' && (
+                                <Typography variant="caption" color="text.secondary">
+                                  ({formatTimePart(getTaskTime(task))})
+                                </Typography>
+                              )}
                             </Box>
                           ))}
                         </Box>
@@ -907,7 +924,7 @@ const WeeklySchedule: React.FC = () => {
               <ToggleButtonGroup
                 value={timeDisplayMode}
                 exclusive
-                onChange={(_, value: 'cumulative' | 'daily' | null) => {
+                onChange={(_, value: 'cumulative' | 'daily' | 'none' | null) => {
                   if (value) {
                     setTimeDisplayMode(value);
                     setStorageItem('weeklyScheduleTimeDisplayMode', value);
@@ -921,6 +938,9 @@ const WeeklySchedule: React.FC = () => {
                 </ToggleButton>
                 <ToggleButton value="daily" sx={{ px: 2 }}>
                   당일시간
+                </ToggleButton>
+                <ToggleButton value="none" sx={{ px: 2 }}>
+                  시간없이
                 </ToggleButton>
               </ToggleButtonGroup>
               <Button
