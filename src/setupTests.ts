@@ -1,5 +1,10 @@
 import '@testing-library/jest-dom';
 
+jest.mock('./lib/firebase', () => ({
+  db: {},
+  default: {},
+}));
+
 // Mock localStorage
 const localStorageMock = (() => {
   let store: Record<string, string> = {};

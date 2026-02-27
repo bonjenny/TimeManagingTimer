@@ -204,13 +204,19 @@ const WeeklySchedule: React.FC = () => {
       },
       
       // 특정 날짜까지의 업무 누적시간
-      getTaskCumulative: (projectCode: string, title: string, untilDate: Date) => {
+      // dailyGroupKey가 있는 로그는 같은 키끼리만 합산
+      getTaskCumulative: (projectCode: string, title: string, untilDate: Date, dailyGroupKey?: string) => {
         const dayEnd = new Date(untilDate);
         dayEnd.setDate(dayEnd.getDate() + 1);
         dayEnd.setHours(0, 0, 0, 0);
         
         return logs
-          .filter(log => (log.projectCode || '미지정') === projectCode && log.title === title && log.startTime < dayEnd.getTime())
+          .filter(log =>
+            (log.projectCode || '미지정') === projectCode &&
+            log.title === title &&
+            log.startTime < dayEnd.getTime() &&
+            (!dailyGroupKey || log.dailyGroupKey === dailyGroupKey)
+          )
           .reduce((sum, log) => sum + calcLogDuration(log), 0);
       },
       
@@ -304,10 +310,12 @@ const WeeklySchedule: React.FC = () => {
       });
 
       // 누적시간 계산 (해당 날짜까지의 전체 누적)
+      // dailyGroupKey가 있는 작업은 같은 키끼리만 합산
       projectMap.forEach((group) => {
         group.cumulativeSeconds = calcCumulativeSeconds.getProjectCumulative(group.projectCode, date);
         group.tasks.forEach(task => {
-          task.cumulativeSeconds = calcCumulativeSeconds.getTaskCumulative(group.projectCode, task.title, date);
+          const daily_key = task.logs[0]?.dailyGroupKey;
+          task.cumulativeSeconds = calcCumulativeSeconds.getTaskCumulative(group.projectCode, task.title, date, daily_key);
         });
       });
 

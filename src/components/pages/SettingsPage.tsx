@@ -183,6 +183,7 @@ const DEFAULT_SETTINGS = {
   lunchEnd: '13:00',
   lunchExcludeEnabled: true,
   autoCompleteEnabled: true,
+  presetDailyGroup: false,
   screenScale: 1.0,
 };
 
@@ -204,6 +205,7 @@ const SettingsPage: React.FC = () => {
   const [lunch_end, setLunchEnd] = useState(DEFAULT_SETTINGS.lunchEnd);
   const [lunch_exclude_enabled, setLunchExcludeEnabled] = useState(DEFAULT_SETTINGS.lunchExcludeEnabled);
   const [auto_complete_enabled, setAutoCompleteEnabled] = useState(DEFAULT_SETTINGS.autoCompleteEnabled);
+  const [preset_daily_group, setPresetDailyGroup] = useState(DEFAULT_SETTINGS.presetDailyGroup);
   const [screen_scale, setScreenScale] = useState(DEFAULT_SETTINGS.screenScale);
 
   // 컬러 팔레트 설정
@@ -237,6 +239,7 @@ const SettingsPage: React.FC = () => {
         setLunchEnd(settings.lunchEnd || DEFAULT_SETTINGS.lunchEnd);
         setLunchExcludeEnabled(settings.lunchExcludeEnabled ?? DEFAULT_SETTINGS.lunchExcludeEnabled);
         setAutoCompleteEnabled(settings.autoCompleteEnabled ?? DEFAULT_SETTINGS.autoCompleteEnabled);
+        setPresetDailyGroup(settings.presetDailyGroup ?? DEFAULT_SETTINGS.presetDailyGroup);
         setScreenScale(settings.screenScale ?? DEFAULT_SETTINGS.screenScale);
       }
       
@@ -268,6 +271,7 @@ const SettingsPage: React.FC = () => {
       lunchEnd: lunch_end,
       lunchExcludeEnabled: lunch_exclude_enabled,
       autoCompleteEnabled: auto_complete_enabled,
+      presetDailyGroup: preset_daily_group,
       screenScale: screen_scale,
     };
     setStorageItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
@@ -301,6 +305,7 @@ const SettingsPage: React.FC = () => {
     lunch_end, 
     lunch_exclude_enabled, 
     auto_complete_enabled, 
+    preset_daily_group,
     screen_scale,
     palette_type, 
     custom_colors, 
@@ -406,6 +411,7 @@ const SettingsPage: React.FC = () => {
     setLunchEnd(DEFAULT_SETTINGS.lunchEnd);
     setLunchExcludeEnabled(DEFAULT_SETTINGS.lunchExcludeEnabled);
     setAutoCompleteEnabled(DEFAULT_SETTINGS.autoCompleteEnabled);
+    setPresetDailyGroup(DEFAULT_SETTINGS.presetDailyGroup);
     setScreenScale(DEFAULT_SETTINGS.screenScale);
     
     // 컬러 팔레트 기본값 복원
@@ -988,6 +994,20 @@ const SettingsPage: React.FC = () => {
               }
               label="작업명 자동 완성 활성화"
             />
+          </Grid>
+          <Grid item xs={12}>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={preset_daily_group}
+                  onChange={(e) => setPresetDailyGroup(e.target.checked)}
+                />
+              }
+              label="프리셋 작업 일별 고유 관리"
+            />
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', ml: 4 }}>
+              활성화 시 프리셋으로 시작한 작업의 누적시간이 날짜별로 분리됩니다. 제목은 변경되지 않습니다.
+            </Typography>
           </Grid>
         </Grid>
 
