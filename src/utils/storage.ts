@@ -3,7 +3,7 @@ import { openDB, type IDBPDatabase } from 'idb';
 const DB_NAME = 'timekeeper-db';
 const DB_VERSION = 1;
 const STORE_NAME = 'kv';
-const MIGRATION_FLAG = '__ls_migrated';
+const MIGRATION_FLAG = '__ls_migrated_v2';
 
 const cache = new Map<string, string>();
 let db_instance: IDBPDatabase | null = null;
@@ -48,6 +48,11 @@ async function performInit(): Promise<void> {
     const migrated = await db.get(STORE_NAME, MIGRATION_FLAG);
     if (migrated !== 'true' && localStorage.length > 0) {
       await migrateFromLocalStorage(db);
+    }
+
+    const old_flag = await db.get(STORE_NAME, '__ls_migrated');
+    if (old_flag !== undefined) {
+      await db.delete(STORE_NAME, '__ls_migrated');
     }
 
     const tx = db.transaction(STORE_NAME, 'readonly');
