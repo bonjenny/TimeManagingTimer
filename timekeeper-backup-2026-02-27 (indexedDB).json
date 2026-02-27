@@ -1,0 +1,138 @@
+{
+  "timekeeper-deploy-calendar": {
+    "state": {
+      "events": [],
+      "job_colors": [
+        {
+          "job_code": "A26_00999",
+          "color": "#acd7ae"
+        },
+        {
+          "job_code": "A25_07788",
+          "color": "#b3e5fc"
+        },
+        {
+          "job_code": "A26_00413",
+          "color": "#c8e6c9"
+        },
+        {
+          "job_code": "A25_01846",
+          "color": "#b2dfdb"
+        }
+      ],
+      "weeks_to_show": 2
+    },
+    "version": 0
+  },
+  "timekeeper-feedback-posts": [],
+  "timekeeper-gantt-label-width": 180,
+  "timekeeper-manual-presets": [
+    {
+      "id": "ac91d7db-8b95-4644-8424-6eaed3ea7ef8",
+      "title": "5.6 프레임워크 FE",
+      "projectCode": "A25_01846",
+      "category": "개발"
+    },
+    {
+      "id": "7a9d41ac-3401-499f-a19d-f4745b675cb8",
+      "title": "주간일정 작성",
+      "projectCode": "A25_05591",
+      "category": "문서작업",
+      "color": "#8a9a8e"
+    },
+    {
+      "id": "f3b57825-e548-4a41-9883-35d0c902c1ca",
+      "title": "어플리케이션/페이지의 LifeCycle 관리",
+      "projectCode": "A26_00413",
+      "category": "환경세팅",
+      "note": "브랜치 최신화",
+      "color": "#a8a978"
+    },
+    {
+      "id": "3f248558-777a-432a-aa34-76cbfa2c0c22",
+      "title": "시간관리 입력",
+      "projectCode": "A25_05591",
+      "category": "문서작업",
+      "color": "#e9c46a"
+    },
+    {
+      "id": "673adf06-8eb5-479b-ad57-8966b213a206",
+      "title": "업무 기록 타이머 개발",
+      "projectCode": "A25_05591",
+      "category": "개발",
+      "color": "#e76f51",
+      "is_favorite": true
+    },
+    {
+      "id": "9e267c4e-773f-40ad-80ae-2a640eaf16a1",
+      "title": "HTML영역 다크모드 적용 TP",
+      "projectCode": "A25_07788",
+      "category": "테스트오류수정",
+      "color": "#e76f51"
+    },
+    {
+      "id": "4a711ed7-2d7b-4ff7-a057-e3b56151909e",
+      "title": "질의응답",
+      "projectCode": "A25_05591",
+      "category": "질의응답"
+    }
+  ],
+  "timekeeper-palette-settings": {
+    "type": "pastel-rainbow"
+  },
+  "timekeeper-projects": {
+    "state": {
+      "projects": [
+        {
+          "code": "A25_01846",
+          "name": "5.6 프레임워크 FE"
+        },
+        {
+          "code": "A26_00999",
+          "name": "3.0 페이지 라이프사이클 관리"
+        },
+        {
+          "code": "A25_07788",
+          "name": "HTML영역 다크모드 적용"
+        },
+        {
+          "code": "A25_05591",
+          "name": "관리업무"
+        },
+        {
+          "code": "A26_00413",
+          "name": "어플리케이션/페이지의 LifeCycle 관리"
+        }
+      ]
+    },
+    "version": 0
+  },
+  "timekeeper-settings": {
+    "lunchStart": "11:40",
+    "lunchEnd": "12:40",
+    "lunchExcludeEnabled": true,
+    "autoCompleteEnabled": true,
+    "presetDailyGroup": false,
+    "screenScale": 1
+  },
+  "timekeeper-storage": {
+    "state": {
+      "activeTimer": null,
+      "logs": [],
+      "deleted_logs": [],
+      "excludedTitles": [],
+      "themeConfig": {
+        "primaryColor": "#723d46",
+        "accentColor": "#e26d5c",
+        "isDark": false
+      },
+      "viewConfig": {
+        "zoomLevel": 100
+      },
+      "titleColorIndexMap": {},
+      "nextColorIndex": 0
+    },
+    "version": 0
+  },
+  "weeklyScheduleCopyFormat": 3
+}

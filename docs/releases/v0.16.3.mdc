@@ -1,0 +1,38 @@
+---
+version: 0.16.3
+date: 2026-02-27
+step: Step 16
+---
+
+# v0.16.3 릴리즈 노트
+
+## 주요 변경사항
+
+- v0.15.0~v0.16.1 사이 배포에서 발생한 IndexedDB 데이터 유실 문제 복구
+
+## 버그 수정
+
+### localStorage → IndexedDB 마이그레이션 데이터 복구
+
+- **증상**: IndexedDB에 데이터가 존재하지만 업무 기록이 표시되지 않고, 다크모드 등 설정도 초기화된 상태로 표시됨
+- **원인**: v0.16.2 이전의 타이밍 버그로 인해 Zustand 스토어가 기본값으로 초기화된 후, persist 미들웨어가 그 기본값을 IndexedDB에 덮어쓰기하여 마이그레이션된 원본 데이터가 소실됨. localStorage에는 원본 데이터가 그대로 보존되어 있었음.
+- **해결**: 마이그레이션 플래그를 `__ls_migrated_v2`로 버전업하여 강제 재마이그레이션 실행. v0.16.2의 Dynamic Import 방식 덕분에 이번에는 Zustand이 마이그레이션된 데이터를 정확히 읽어감.
+
+### 변경된 파일
+
+- `src/utils/storage.ts`
+  - `MIGRATION_FLAG` 값을 `'__ls_migrated'` → `'__ls_migrated_v2'`로 변경
+  - 기존 v1 플래그(`__ls_migrated`) 자동 정리 코드 추가
+
+## 새로운 기능
+
+- 없음
+
+## Breaking Changes
+
+- 없음
+
+## 다음 버전 예정
+
+- 캘린더 데이터 CSV/JSON 내보내기
+- 주간 일정과 배포 캘린더 데이터 연동
