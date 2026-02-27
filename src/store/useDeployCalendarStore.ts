@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
+import { idbStorage } from '../utils/storage';
 import { loadPaletteSettings, getAdjustedPalette } from '../utils/colorPalette';
 import { useTimerStore } from './useTimerStore';
 
@@ -144,7 +145,7 @@ export const useDeployCalendarStore = create<DeployCalendarState>()(
     }),
     {
       name: STORAGE_KEY,
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => idbStorage),
     }
   )
 );

@@ -60,6 +60,10 @@ const CustomPaper: React.FC<{
           }}
           onMouseDown={(e) => {
             e.stopPropagation();
+            e.preventDefault();
+            onInputFocus();
+            // preventDefault로 인해 자동 포커스가 안 되므로 수동 포커스
+            setTimeout(() => inputRef.current?.focus(), 0);
           }}
           onFocus={onInputFocus}
           onBlur={onInputBlur}
@@ -169,8 +173,13 @@ const StatusSelect: React.FC<StatusSelectProps> = ({
     if (isAddInputFocused.current) {
       return;
     }
-    // blur로 닫히려 할 때도 입력 필드 확인
-    if (reason === 'blur' && isAddInputFocused.current) {
+    // blur 이유로 닫힐 때는 지연 후 확인 (추가 입력란으로 포커스 이동 시간 확보)
+    if (reason === 'blur') {
+      setTimeout(() => {
+        if (!isAddInputFocused.current) {
+          setOpen(false);
+        }
+      }, 100);
       return;
     }
     setOpen(false);

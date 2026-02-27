@@ -1,7 +1,7 @@
 {
   "name": "work-project-scheduler",
   "private": true,
-  "version": "0.14.5",
+  "version": "0.15.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -23,6 +23,7 @@
     "@mui/x-date-pickers": "^8.26.0",
     "date-fns": "^3",
     "firebase": "^12.8.0",
+    "idb": "^8.0.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "uuid": "^9.0.1",

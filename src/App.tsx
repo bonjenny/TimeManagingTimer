@@ -19,6 +19,7 @@ import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import { useTimerStore } from './store/useTimerStore';
 import { applyThemeColors, applyPaletteHighlight } from './styles/tokens';
 import { loadPaletteSettings, getPalette, getAdjustedColor } from './utils/colorPalette';
+import { getItem } from './utils/storage';
 
 // 줌 레벨 상수
 const ZOOM_STEP = 10; // 10% 단위
@@ -128,7 +129,7 @@ function App() {
   useEffect(() => {
     try {
       // 테마 설정 적용 (구 버전 호환성)
-      const saved_settings = localStorage.getItem(SETTINGS_STORAGE_KEY);
+      const saved_settings = getItem(SETTINGS_STORAGE_KEY);
       if (saved_settings) {
         const settings = JSON.parse(saved_settings);
         if (settings.primaryColor && settings.accentColor) {

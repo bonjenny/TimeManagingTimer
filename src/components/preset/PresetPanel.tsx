@@ -47,6 +47,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { useTimerStore } from '../../store/useTimerStore';
 import { useProjectStore } from '../../store/useProjectStore';
 import { getAdjustedPalette, loadPaletteSettings } from '../../utils/colorPalette';
+import { getItem, setItem } from '../../utils/storage';
 import CategoryAutocomplete from '../common/CategoryAutocomplete';
 
 // 프리셋 데이터 타입
@@ -314,10 +315,9 @@ const PresetPanel: React.FC = () => {
     };
   }, [themeConfig.isDark]);
 
-  // 프리셋 목록 (LocalStorage에서 로드)
   const [presets, setPresets] = useState<PresetItem[]>(() => {
     try {
-      const saved = localStorage.getItem(PRESETS_STORAGE_KEY);
+      const saved = getItem(PRESETS_STORAGE_KEY);
       return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
@@ -353,9 +353,8 @@ const PresetPanel: React.FC = () => {
     })
   );
 
-  // 프리셋 변경 시 LocalStorage 저장
   useEffect(() => {
-    localStorage.setItem(PRESETS_STORAGE_KEY, JSON.stringify(presets));
+    setItem(PRESETS_STORAGE_KEY, JSON.stringify(presets));
   }, [presets]);
 
   // 드래그 종료 핸들러

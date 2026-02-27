@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import { idbStorage } from '../utils/storage';
 
 // ----------------------------------------------------------------------
 // Types
@@ -79,7 +80,7 @@ export const useCategoryStore = create<CategoryState>()(
     }),
     {
       name: STORAGE_KEY,
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => idbStorage),
     }
   )
 );

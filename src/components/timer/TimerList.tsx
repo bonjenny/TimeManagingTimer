@@ -38,6 +38,7 @@ import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import { useTimerStore, TimerLog, DeletedLog } from '../../store/useTimerStore';
 import { useProjectStore } from '../../store/useProjectStore';
 import { formatDuration, getDurationSecondsExcludingLunch } from '../../utils/timeUtils';
+import { getItem, setItem as setStorageItem } from '../../utils/storage';
 import CategoryAutocomplete from '../common/CategoryAutocomplete';
 
 // 하루 시작 기준 (06:00)
@@ -103,7 +104,7 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
   const { logs, deleteLog, startTimer, updateLog, updateActiveTimer, deleted_logs, restoreLog, permanentlyDeleteLog, emptyTrash, reopenTimer, activeTimer, pauseAndMoveToLogs, themeConfig } = useTimerStore();
   const { getProjectName, projects } = useProjectStore();
   const [showCompleted, setShowCompleted] = useState(() => {
-    const saved = localStorage.getItem('timerlist-show-completed');
+    const saved = getItem('timerlist-show-completed');
     return saved !== null ? saved === 'true' : true;
   });
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
@@ -633,7 +634,7 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                 onChange={(e) => {
                   const new_value = e.target.checked;
                   setShowCompleted(new_value);
-                  localStorage.setItem('timerlist-show-completed', String(new_value));
+                  setStorageItem('timerlist-show-completed', String(new_value));
                 }} 
                 size="small" 
               />

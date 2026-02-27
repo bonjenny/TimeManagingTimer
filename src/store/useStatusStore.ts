@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import { idbStorage } from '../utils/storage';
 
 const STORAGE_KEY = 'time-manager-statuses';
 
@@ -73,7 +74,7 @@ export const useStatusStore = create<StatusState>()(
     }),
     {
       name: STORAGE_KEY,
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => idbStorage),
     }
   )
 );

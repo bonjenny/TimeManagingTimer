@@ -106,24 +106,24 @@ export const COOLORS_PALETTES: Record<Exclude<PaletteType, 'custom'>, Omit<Palet
 // Storage Key
 export const PALETTE_STORAGE_KEY = 'timekeeper-palette-settings';
 
+import { getItem, setItem } from './storage';
+
 // 팔레트 설정 저장
 export const savePaletteSettings = (settings: PaletteSettings) => {
-  localStorage.setItem(PALETTE_STORAGE_KEY, JSON.stringify(settings));
-  // 이벤트 발생 (다른 컴포넌트 업데이트용)
+  setItem(PALETTE_STORAGE_KEY, JSON.stringify(settings));
   window.dispatchEvent(new Event('palette-changed'));
 };
 
 // 팔레트 설정 로드
 export const loadPaletteSettings = (): PaletteSettings => {
   try {
-    const saved = localStorage.getItem(PALETTE_STORAGE_KEY);
+    const saved = getItem(PALETTE_STORAGE_KEY);
     if (saved) {
       return JSON.parse(saved);
     }
   } catch {
     // ignore
   }
-  // 기본값
   return { type: 'navy-orange' };
 };
 

@@ -1,16 +1,7 @@
 {
   "timekeeper-storage": {
     "state": {
-      "activeTimer": {
-        "id": "7af3e961-6de2-4d08-9ef6-9114136a8814",
-        "title": "5) LifeCycleManager 추상화(class화 및 owner 별 상속구조 설계)",
-        "projectCode": "A26_00413",
-        "category": "설계",
-        "startTime": 1770084300000,
-        "status": "RUNNING",
-        "pausedDuration": 0,
-        "endTime": 1770084764341
-      },
+      "activeTimer": null,
       "logs": [
         {
           "id": "c5777e43-bcd7-4111-a354-99477922968d",
@@ -769,7 +760,7 @@
           "projectCode": "A26_00413",
           "category": "설계",
           "startTime": 1770080875739,
-          "status": "PAUSED",
+          "status": "COMPLETED",
           "pausedDuration": 0,
           "lastPausedAt": 1770081547218,
           "endTime": 1770081547218
@@ -874,9 +865,992 @@
           "status": "COMPLETED",
           "pausedDuration": 0,
           "endTime": 1770084300000
+        },
+        {
+          "id": "92838857-0503-443a-8a7a-710652cfd878",
+          "title": "TP.15363 배포서버에서 게시판 진입 시 빈화면으로만 나옵니다",
+          "projectCode": "A25_01846",
+          "category": "테스트오류수정",
+          "startTime": 1770084300000,
+          "endTime": 1770089040000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "59731f5a-8c9b-452c-865d-5bf09de77b98",
+          "title": "UrlService 변경사항 확인 및 이슈해결",
+          "projectCode": "A25_01846",
+          "category": "개발",
+          "startTime": 1770089040000,
+          "endTime": 1770098280000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "492a9bf3-188e-4912-942a-2d1ddd7a5322",
+          "title": "UrlService 관련 이슈 전달",
+          "projectCode": "A25_01846",
+          "category": "문서작업",
+          "startTime": 1770098280000,
+          "endTime": 1770099000000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "0aefc589-49d8-4d9f-8680-1a3928db7a28",
+          "title": "5.6 견적서입력 개발.12621 관련 3.0 선배포 브랜치최신화",
+          "projectCode": "A26_00603",
+          "category": "환경세팅",
+          "startTime": 1770099000000,
+          "endTime": 1770099780000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "9376d293-f46b-4459-8ad9-5c2627a782fe",
+          "title": "5.6 견적서입력 개발.12621 INFRA/5.6 5.0 브랜치 푸시",
+          "projectCode": "A26_00603",
+          "category": "환경세팅",
+          "startTime": 1770099780000,
+          "endTime": 1770100260000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "23f5159b-481a-4346-8738-066ba8f7f786",
+          "title": "주간일정 작성",
+          "projectCode": "A25_05591",
+          "category": "문서작업",
+          "startTime": 1770100260000,
+          "endTime": 1770101160000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "cf985565-ebe0-4270-9fa1-7b4723398b0a",
+          "title": "5) LifeCycleManager 추상화(class화 및 owner 별 상속구조 설계)",
+          "projectCode": "A26_00413",
+          "category": "개발",
+          "startTime": 1770101160000,
+          "endTime": 1770107580000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "27fd1e04-83bc-433b-82b7-7bf31cc90fe8",
+          "title": "5) LifeCycleManager 추상화(class화 및 owner 별 상속구조 설계)",
+          "projectCode": "A26_00413",
+          "category": "개발",
+          "startTime": 1770163200000,
+          "endTime": 1770168000000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "fe2a6ba3-0ea1-4bdd-ac3c-295cf565eb3c",
+          "title": "어플리케이션/페이지의 LifeCycle 관리 브랜치최신화",
+          "projectCode": "A26_00413",
+          "category": "환경세팅",
+          "startTime": 1770168000000,
+          "endTime": 1770169020000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "efc8be18-9ffc-414a-8293-057c7259ebf0",
+          "title": "채권채무 URL 관련 잡 간 배포 일정 논의",
+          "projectCode": "A25_01846",
+          "category": "회의",
+          "startTime": 1770169020000,
+          "endTime": 1770170220000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "444f9086-ebd4-4875-90d2-30071cf146b7",
+          "title": "A25_02861 채권채무 URL 관련 석현책임님과 처리 방안 논의",
+          "projectCode": "A25_01846",
+          "category": "회의",
+          "startTime": 1770170220000,
+          "endTime": 1770174000000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "c946baba-dd96-4443-ba5e-57f95a8bff9c",
+          "title": "UrlService 채권채무 /ecerp/v5 URL 관련 이슈 논의",
+          "projectCode": "A25_01846",
+          "category": "회의",
+          "startTime": 1770174000000,
+          "endTime": 1770175140000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "41050519-1b50-4882-8abe-5c499d200313",
+          "title": "UrlService 테스트케이스 작성 및 ec_api.js 변경사항 확인",
+          "projectCode": "A25_01846",
+          "category": "테스트오류수정",
+          "startTime": 1770175140000,
+          "endTime": 1770183180000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "4ac1ff75-da9c-42b1-aced-2f182554dbb8",
+          "title": "시간관리 입력 업무 환경 개선 제안",
+          "projectCode": "A25_05591",
+          "category": "문서작업",
+          "startTime": 1770183180000,
+          "endTime": 1770184860000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "790215cd-9a7d-4d0e-9d91-8ebbb6093c70",
+          "title": "EOD 종빈님 old 메뉴 세팅 관련 질문에 응답",
+          "projectCode": "A25_05591",
+          "category": "질의응답",
+          "startTime": 1770184860000,
+          "endTime": 1770185400000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "f05e4609-2d8d-412e-ac6a-9b6f057b7ce4",
+          "title": "dev.115897 이미지 삽입하여 발송한 메일 확인 시, 이미지 파일이 표시되지 않는 현상",
+          "projectCode": "A25_07788",
+          "category": "센터오류수정",
+          "startTime": 1770185400000,
+          "endTime": 1770186660000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "23e38581-99af-40ca-9774-b69458d90cdb",
+          "title": "__ec_v5_api.v1.js 권한설정 개발, 스테이지 푸시요청 / 스테이지 푸시",
+          "projectCode": "A26_00673",
+          "category": "개발",
+          "startTime": 1770186660000,
+          "endTime": 1770190500000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "26626eda-be06-4a24-b942-b65e50b00203",
+          "title": "시간관리 보고서 작성",
+          "projectCode": "A25_05591",
+          "category": "문서작업",
+          "startTime": 1770190500000,
+          "endTime": 1770191160000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "378f5ff4-7a00-48fc-80f7-6e34a5d00027",
+          "title": "주간일정 작성",
+          "projectCode": "A25_05591",
+          "category": "문서작업",
+          "startTime": 1770191160000,
+          "endTime": 1770191460000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "d6ebc8e2-8a22-491b-bec6-0373d6dd1c01",
+          "title": "5) LifeCycleManager 추상화(class화 및 owner 별 상속구조 설계)",
+          "projectCode": "A26_00413",
+          "category": "개발",
+          "startTime": 1770249600000,
+          "endTime": 1770270960000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "bb842ec1-57d9-484a-8941-7fef9ff09b6c",
+          "title": "EBC 예나님 __ec_v5_api.v1.js 관련 질문에 응답 외 2건",
+          "projectCode": "A25_05591",
+          "category": "질의응답",
+          "startTime": 1770270960000,
+          "endTime": 1770272880000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "8fb11deb-1a94-4dc9-8fdc-2222bd280195",
+          "title": "TP.15540 견적서입력/수정 > 중간 [거래내역보기(견적)] 버튼 클릭 시, 반응이 없습니다",
+          "projectCode": "A25_01846",
+          "category": "테스트오류수정",
+          "startTime": 1770272880000,
+          "endTime": 1770274620000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "47994f4e-50f1-449a-b235-6951a076f789",
+          "title": "관리업무 (지출결의서 결재 등)",
+          "projectCode": "A25_05591",
+          "category": "문서작업",
+          "startTime": 1770274620000,
+          "endTime": 1770276300000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "76291430-1e22-4388-9725-878c51d76177",
+          "title": "dev.115934 확인",
+          "projectCode": "A25_05591",
+          "category": "센터오류지원",
+          "startTime": 1770276300000,
+          "endTime": 1770276720000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "40af3244-1ccb-4aad-a5fe-38308cf52efc",
+          "title": "__ec_v5_api.v1.js 커밋 권한 제한 관련 공지 작성",
+          "projectCode": "A26_00673",
+          "category": "문서작업",
+          "startTime": 1770276720000,
+          "endTime": 1770279120000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "e01122bb-80a2-48d1-a101-be59b6d1dc74",
+          "title": "EOD 5.0 품질검사요청 stage 관련 커밋 지원",
+          "projectCode": "A26_00673",
+          "category": "질의응답",
+          "startTime": 1770279120000,
+          "endTime": 1770279600000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "49b4fa4a-5248-479e-abe5-51710cc51023",
+          "title": "시간관리 보고서 작성",
+          "projectCode": "A25_05591",
+          "category": "문서작업",
+          "startTime": 1770279600000,
+          "endTime": 1770280080000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "abfcded0-d7db-4242-8b78-6236b82656eb",
+          "title": "주간일정 작성",
+          "projectCode": "A25_05591",
+          "category": "문서작업",
+          "startTime": 1770280080000,
+          "endTime": 1770280320000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "060a6c9d-f99a-4370-bb3a-b43119720f36",
+          "title": "5) LifeCycleManager 추상화(class화 및 owner 별 상속구조 설계)",
+          "projectCode": "A26_00413",
+          "category": "개발",
+          "startTime": 1770336000000,
+          "endTime": 1770346920000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "e127574a-71df-402f-8849-2e23be3dfff8",
+          "title": "작업. 6921 웹메일 로그인 알림 alert창 확인요청",
+          "projectCode": "A25_05591",
+          "category": "질의응답",
+          "startTime": 1770346920000,
+          "endTime": 1770348360000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "f2f29184-5ff0-484c-82d5-a75f5738a759",
+          "title": "TP.15579 항목분류 팝업 진입 시 스크립트 오류나고 항목 표시 안됩니다",
+          "projectCode": "A25_01846",
+          "category": "테스트오류수정",
+          "startTime": 1770348360000,
+          "endTime": 1770351540000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "fc53e281-152c-4418-89eb-e190d42ac80a",
+          "title": "LifeCycleManager 추상화(class화 및 owner 별 상속구조 설계) 코드리뷰",
+          "projectCode": "A26_00413",
+          "category": "회의",
+          "startTime": 1770351540000,
+          "endTime": 1770356280000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "22758d4a-ee80-41f8-a81e-9bb3b53d51a4",
+          "title": "__ec_v5_api.v1.js 권한설정",
+          "projectCode": "A26_00673",
+          "category": "개발",
+          "startTime": 1770356280000,
+          "endTime": 1770363900000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "d6f7cda3-9de8-4047-aff9-6dd76dae2c19",
+          "title": "시간관리 보고서 작성",
+          "projectCode": "A25_05591",
+          "category": "문서작업",
+          "startTime": 1770363900000,
+          "endTime": 1770365340000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "a5776ceb-1e97-496d-a610-0ae85c52ad5d",
+          "title": "주간일정 작성",
+          "projectCode": "A25_05591",
+          "category": "문서작업",
+          "startTime": 1770365340000,
+          "endTime": 1770365640000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "b9116ebc-558f-40f0-b125-2cd330f99f22",
+          "title": "6) 페이지 LifeCycle 적용 - task별 에러 정책 설계 (abort, skip, fallback, retry)",
+          "projectCode": "A26_00413",
+          "category": "개발",
+          "startTime": 1770681600000,
+          "endTime": 1770685380000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "9682c143-d148-4dca-84f1-146a3d1b6ee2",
+          "title": "6) 페이지 LifeCycle 적용 - LifeCycleManager 외부 노출제거 (Event 발행 등)",
+          "projectCode": "A26_00413",
+          "category": "개발",
+          "startTime": 1770685380000,
+          "endTime": 1770692940000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "3bbd7cca-d840-4be1-b62d-55e2fce30d8a",
+          "title": "6) 페이지 LifeCycle 적용 - ViewerLifeCycleManager 개발",
+          "projectCode": "A26_00413",
+          "category": "개발",
+          "startTime": 1770692940000,
+          "endTime": 1770697800000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "ea45c6e3-aebc-4766-b281-62314fa630e6",
+          "title": "어플리케이션/페이지의 LifeCycle 관리 일정 산출",
+          "projectCode": "A26_00413",
+          "category": "문서작업",
+          "startTime": 1770697800000,
+          "endTime": 1770701460000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "fcbcd0c9-de29-447a-b9b4-e490276bbed8",
+          "title": "EMS 차상은님 CORS 관련 질문에 응답 외 2건",
+          "projectCode": "A25_05591",
+          "category": "질의응답",
+          "startTime": 1770701460000,
+          "endTime": 1770708000000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "4ba54b36-1117-40c5-b2a9-a4b00f211e48",
+          "title": "TP.15540 견적서입력/수정 재발생 확인(환경오류여부 확인)",
+          "projectCode": "A25_01846",
+          "category": "테스트오류수정",
+          "startTime": 1770708000000,
+          "endTime": 1770708660000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "426020f0-f75a-4d1c-b8f2-4fdc060ebfd6",
+          "title": "5.6 브랜치 최신화: UrlService 관련 최신화 오류 수정 (__ec_v5_api.v1.js)",
+          "projectCode": "A25_01846",
+          "category": "환경세팅",
+          "startTime": 1770708660000,
+          "endTime": 1770711840000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "6a6d57d9-506b-4bff-85fb-66ef221a803b",
+          "title": "시간관리 회의",
+          "projectCode": "A25_05591",
+          "category": "회의",
+          "startTime": 1770711840000,
+          "endTime": 1770713160000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "012ebbe9-dc5b-4c99-a17b-4b6ad44eb696",
+          "title": "5.0 푸시 안되는 문제 수정 확인",
+          "projectCode": "A26_00673",
+          "category": "센터오류수정",
+          "startTime": 1770713160000,
+          "endTime": 1770716040000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "636be22f-2209-4bab-bef2-7407cf563d5f",
+          "title": "시간관리 보고서 작성",
+          "projectCode": "A25_05591",
+          "category": "문서작업",
+          "startTime": 1770716040000,
+          "endTime": 1770717240000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "4da6a583-212e-4c24-97d4-81e32df90ea6",
+          "title": "주간일정 작성",
+          "projectCode": "A25_05591",
+          "category": "문서작업",
+          "startTime": 1770717240000,
+          "endTime": 1770717720000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "cabe0c02-65be-4c64-93d0-569cbe5eac20",
+          "title": "6) 페이지 LifeCycle 적용 - ViewerLifeCycleManager 개발",
+          "projectCode": "A26_00413",
+          "category": "개발",
+          "startTime": 1770768000000,
+          "endTime": 1770773040000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "826d9050-531e-4cfc-a8f1-dba1ae84c86e",
+          "title": "6) 페이지 LifeCycle 적용 - PageLifeCycleManager 개발",
+          "projectCode": "A26_00413",
+          "category": "개발",
+          "startTime": 1770773040000,
+          "endTime": 1770776580000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "ee9988e7-cdeb-43d8-8ab0-9586fa20a9a9",
+          "title": "6) 페이지 LifeCycle 적용 - LifeCycle > Phase, Viewer > Navigation, Navigation > Page(Viewer)로 명칭 수정",
+          "projectCode": "A26_00413",
+          "category": "개발",
+          "startTime": 1770776580000,
+          "endTime": 1770784560000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "563332ed-d322-4425-927c-86035f773b4b",
+          "title": "6) 페이지 LifeCycle 적용 - ViewerLifeCycle Phase 관련 로직 클래스 분리",
+          "projectCode": "A26_00413",
+          "category": "개발",
+          "startTime": 1770784560000,
+          "endTime": 1770786900000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "3cedb427-8431-4ee3-bbbc-39d900feecf3",
+          "title": "6) 페이지 LifeCycle 적용",
+          "projectCode": "A26_00413",
+          "category": "개발",
+          "startTime": 1770786900000,
+          "endTime": 1770791760000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "cb5aac8c-f648-491f-b38d-2b8ee5f185a9",
+          "title": "코드리뷰",
+          "projectCode": "A26_00413",
+          "category": "회의",
+          "startTime": 1770791760000,
+          "endTime": 1770799680000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "7d8b3558-34d5-4a06-92b0-a6811351c577",
+          "title": "동건님 MovePrevNextViewCommonUserAction 관련 문의 외 2건",
+          "projectCode": "A25_05591",
+          "category": "질의응답",
+          "startTime": 1770799680000,
+          "endTime": 1770802080000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "55d9c426-d041-4eee-b87a-4bef1e881973",
+          "title": "시간관리 보고서 작성",
+          "projectCode": "A25_05591",
+          "category": "문서작업",
+          "startTime": 1770802080000,
+          "endTime": 1770803280000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "bd1741bd-5636-4bf2-9ab4-4ac3fddd3938",
+          "title": "주간일정 작성",
+          "projectCode": "A25_05591",
+          "category": "문서작업",
+          "startTime": 1770803280000,
+          "endTime": 1770803760000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "304aa59e-d4ce-4814-8738-37b93d1b9ebf",
+          "title": "6) 페이지 LifeCycle 적용 - NavigationLifeCycleManager 리팩토링(코드리뷰 적용)",
+          "projectCode": "A26_00413",
+          "category": "개발",
+          "startTime": 1770854400000,
+          "endTime": 1770883200000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "5b07ac88-9fbb-4f5b-8c52-897cb884b94f",
+          "title": "6) 페이지 LifeCycle 적용 - NavigationLifeCycleManager 리팩토링(코드리뷰 적용)",
+          "projectCode": "A26_00413",
+          "category": "개발",
+          "startTime": 1770940800000,
+          "endTime": 1770967620000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "44003360-6ea8-4d75-97db-68b0d1f7cc60",
+          "title": "dev.116130 원격지원 - ECountEP 가면 해결될 문제(dev.115829 duplicated)",
+          "projectCode": "A25_05591",
+          "category": "센터오류지원",
+          "startTime": 1770967620000,
+          "endTime": 1770969540000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "bfdd1aec-4055-476e-b0c3-23bcc37f67f0",
+          "title": "6) 페이지 LifeCycle 적용 - NavigationLifeCycleManager 리팩토링(코드리뷰 적용)",
+          "projectCode": "A26_00413",
+          "category": "개발",
+          "startTime": 1771459200000,
+          "endTime": 1771468080000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "809642ec-2890-480a-b2c8-debbb1634774",
+          "title": "7) Framework 버전앱(3.0, 5.0, 5.6) 라이프사이클 적용",
+          "projectCode": "A26_00413",
+          "category": "개발",
+          "startTime": 1771468080000,
+          "endTime": 1771487280000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "e09909ac-b9b3-40c7-bb94-e83c4747ba90",
+          "title": "시간관리 보고서 작성",
+          "projectCode": "A25_05591",
+          "category": "문서작업",
+          "startTime": 1771487280000,
+          "endTime": 1771488000000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "e6263d93-cabd-47c8-82a0-53f7f8614fde",
+          "title": "7) Framework 버전앱(3.0, 5.0, 5.6) 라이프사이클 적용",
+          "projectCode": "A26_00413",
+          "category": "개발",
+          "startTime": 1771545600000,
+          "endTime": 1771567980000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "4e76061c-fffe-4b59-b42e-464f05a07cd2",
+          "title": "어플리케이션 LifeCycle 코드리뷰 준비",
+          "projectCode": "A26_00413",
+          "category": "문서작업",
+          "startTime": 1771567980000,
+          "endTime": 1771571700000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "f261fb3c-d6a1-4e01-91a4-7ba408298184",
+          "title": "어플리케이션 LifeCycle 코드리뷰",
+          "projectCode": "A26_00413",
+          "category": "회의",
+          "startTime": 1771571700000,
+          "endTime": 1771574340000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "4f85fe37-c0a8-4d71-9a25-55600885ac04",
+          "title": "시간관리 보고서 작성",
+          "projectCode": "A25_05591",
+          "category": "문서작업",
+          "startTime": 1771574340000,
+          "endTime": 1771575060000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "a3bf2642-ff15-4dc9-9369-39142640bc63",
+          "title": "테스트요청 작성",
+          "projectCode": "A26_00413",
+          "category": "문서작업",
+          "startTime": 1771804800000,
+          "endTime": 1771812540000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "e3e18d2b-236f-4ae7-8f16-3b129e1e989d",
+          "title": "EQC 서종현님 테스트 관련 질의에 응답",
+          "projectCode": "A26_00413",
+          "category": "질의응답",
+          "startTime": 1771812540000,
+          "endTime": 1771813740000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "d0d892ae-d3d5-4b25-9913-ff4d0d70b83e",
+          "title": "TP.16337 ERP > C-Portal 로그인 시 초기화면 렌더링 안됩니다",
+          "projectCode": "A26_00413",
+          "category": "테스트오류수정",
+          "startTime": 1771813740000,
+          "endTime": 1771817100000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "0f742c5b-bf3a-41cd-86f0-558fa22c57ee",
+          "title": "모바일 로그인 시 스크립트 오류 확인",
+          "projectCode": "A26_00413",
+          "category": "테스트오류수정",
+          "startTime": 1771817100000,
+          "endTime": 1771819200000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "92513167-fb35-49c2-ae37-729946934030",
+          "title": "메뉴 더블클릭 시 스크립트 오류 확인",
+          "projectCode": "A26_00413",
+          "category": "테스트오류수정",
+          "startTime": 1771819200000,
+          "endTime": 1771821960000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "e554dc31-f402-4341-8fa8-39d4ef6b3140",
+          "title": "5.6 getVersion 3.0 선배포 관련 확인",
+          "projectCode": "A25_01846",
+          "category": "회의",
+          "startTime": 1771821960000,
+          "endTime": 1771823400000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "c8fed44c-430e-4cdc-93ef-b198ed13824d",
+          "title": "5.6 브랜치 최신화 - url 매핑 관련",
+          "projectCode": "A25_01846",
+          "category": "환경세팅",
+          "startTime": 1771823400000,
+          "endTime": 1771826820000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "ade8b78b-4cd4-4fab-b83a-ca2ca623f41e",
+          "title": "EFE3 김민주님 movePrevNextUserAction 관련 질의에 응답 외 2건",
+          "projectCode": "A25_05591",
+          "category": "질의응답",
+          "startTime": 1771826820000,
+          "endTime": 1771831500000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "31d8bd2f-647d-46d6-85e5-d2b649539b7b",
+          "title": "주간일정 작성",
+          "projectCode": "A25_05591",
+          "category": "문서작업",
+          "startTime": 1771831500000,
+          "endTime": 1771832220000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "7879f976-747d-4ed0-8c93-662de1310d06",
+          "title": "시간관리 보고서 작성",
+          "projectCode": "A25_05591",
+          "category": "문서작업",
+          "startTime": 1771832220000,
+          "endTime": 1771833900000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "07422061-b861-402d-9eb3-1d62409f80d3",
+          "title": "브랜치 최신화 (아침, nol4 백건 이후, 병합충돌)",
+          "projectCode": "A26_00413",
+          "category": "환경세팅",
+          "startTime": 1771891200000,
+          "endTime": 1771892520000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "209f3413-aace-4e4d-9480-849b50c8e384",
+          "title": "zeus06 배포 및 config 수정",
+          "projectCode": "A26_00413",
+          "category": "환경세팅",
+          "startTime": 1771892520000,
+          "endTime": 1771893660000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "030ae0e3-61e1-413d-bec2-90d61cbca451",
+          "title": "모바일 로그인 시 스크립트 오류 확인",
+          "projectCode": "A26_00413",
+          "category": "테스트오류수정",
+          "startTime": 1771893660000,
+          "endTime": 1771895580000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "11832fea-c17f-4b08-82ae-cd22d71c0771",
+          "title": "모바일에서 페이지 이동 오류 시 얼럿 안 뜨는 문제 확인",
+          "projectCode": "A26_00413",
+          "category": "테스트오류수정",
+          "startTime": 1771895580000,
+          "endTime": 1771905900000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "b62b0f69-f5a9-4e12-9a7d-566064230dba",
+          "title": "5.0 App 초기화 중 오류 시 로그인 오류 발생 얼럿 안뜨는 문제 확인",
+          "projectCode": "A26_00413",
+          "category": "테스트오류수정",
+          "startTime": 1771905900000,
+          "endTime": 1771909020000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "850fe314-88cf-488a-a439-5cf46d5ccd2c",
+          "title": "모든 라이프사이클이 성공한 경우 로그 안남는 문제 확인",
+          "projectCode": "A26_00413",
+          "category": "테스트오류수정",
+          "startTime": 1771909020000,
+          "endTime": 1771909800000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "dc7c2791-0ceb-4074-b039-8ef751a57a03",
+          "title": "메뉴 더블클릭 시 스크립트 오류 확인",
+          "projectCode": "A26_00413",
+          "category": "테스트오류수정",
+          "startTime": 1771909800000,
+          "endTime": 1771911120000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "4dbc2a53-dc56-44f8-af67-5cffc1d8b2a4",
+          "title": "주간일정 작성",
+          "projectCode": "A25_05591",
+          "category": "문서작업",
+          "startTime": 1771911120000,
+          "endTime": 1771911840000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "7ebd0c3b-5cdc-496b-a1d7-0982210cc796",
+          "title": "시간관리 보고서 작성",
+          "projectCode": "A25_05591",
+          "category": "문서작업",
+          "startTime": 1771911840000,
+          "endTime": 1771913040000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "7e1fe250-4c6e-46dc-87ed-736573cd80e5",
+          "title": "TP.16456 5.0 조회 URL 확인",
+          "projectCode": "A26_00413",
+          "category": "테스트오류수정",
+          "startTime": 1771977600000,
+          "endTime": 1771978980000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "533282d2-9cd8-407d-9103-6f54f1464885",
+          "title": "브랜치최신화",
+          "projectCode": "A26_00413",
+          "category": "환경세팅",
+          "startTime": 1771978980000,
+          "endTime": 1771980180000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "e95a673b-86bd-4639-a65f-ce194d9ff460",
+          "title": "1) 3.0 페이지의 라이프사이클 분석 및 단계(Phase) 정의",
+          "projectCode": "A26_00999",
+          "category": "분석",
+          "startTime": 1771980180000,
+          "endTime": 1772004720000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "5db282f3-1a9f-4cea-b4ea-401e96b09e58",
+          "title": "주간일정 작성",
+          "projectCode": "A25_05591",
+          "category": "문서작업",
+          "startTime": 1772004720000,
+          "endTime": 1772005020000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "fdb63920-e1f7-4b01-9d88-bfa31ce69de7",
+          "title": "시간관리 보고서 작성",
+          "projectCode": "A25_05591",
+          "category": "문서작업",
+          "startTime": 1772005020000,
+          "endTime": 1772005620000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "efb11347-fdb4-49c4-accb-8db13336e634",
+          "title": "백종인 팀장님 CORS 문의에 응답",
+          "projectCode": "A25_05591",
+          "category": "질의응답",
+          "startTime": 1772005620000,
+          "endTime": 1772007060000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "802148d2-cb81-414c-98e9-0be5716e7135",
+          "title": "공정표 작성 및 대시보드 설계",
+          "projectCode": "A26_00999",
+          "category": "설계",
+          "startTime": 1772064000000,
+          "endTime": 1772073600000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "86916c8e-3817-49bc-9262-fc47f3be94e5",
+          "title": "2) V3PageLifeCycleManager 골격 설계 및 Navigation Policy Task 구현",
+          "projectCode": "A26_00999",
+          "category": "분석",
+          "startTime": 1772077200000,
+          "endTime": 1772095500000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "7e5e838c-61f6-49dc-a710-341c4a5563c0",
+          "title": "주간일정 작성",
+          "projectCode": "A25_05591",
+          "category": "문서작업",
+          "startTime": 1772095500000,
+          "endTime": 1772095800000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "2d6bfec2-1495-46ef-bc27-d2b6a482a48e",
+          "title": "시간관리 보고서 작성",
+          "projectCode": "A25_05591",
+          "category": "문서작업",
+          "startTime": 1772095800000,
+          "endTime": 1772096400000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "f5df9c7c-a7b4-44d8-a432-5229424fa841",
+          "title": "대시보드 설계",
+          "projectCode": "A26_00999",
+          "category": "개발",
+          "startTime": 1772157896515,
+          "status": "PAUSED",
+          "pausedDuration": 0,
+          "endTime": 1772157897522,
+          "lastPausedAt": 1772157897522
+        },
+        {
+          "id": "6aae85fb-a4db-4fa5-a9de-dd7b4e7c8c7e",
+          "title": "라이프사이클 로깅 회의",
+          "projectCode": "A26_00999",
+          "category": "회의",
+          "startTime": 1772156600402.4146,
+          "endTime": 1772157896515,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "4ec3af6e-b5b7-4797-b013-d3f4af37daa8",
+          "title": "대시보드 설계",
+          "projectCode": "A26_00999",
+          "category": "개발",
+          "startTime": 1772150400000,
+          "endTime": 1772156600402.4146,
+          "status": "COMPLETED",
+          "pausedDuration": 0
         }
       ],
       "deleted_logs": [
+        {
+          "id": "7af3e961-6de2-4d08-9ef6-9114136a8814",
+          "title": "5) LifeCycleManager 추상화(class화 및 owner 별 상속구조 설계)",
+          "projectCode": "A26_00413",
+          "category": "설계",
+          "startTime": 1770084300000,
+          "status": "PAUSED",
+          "pausedDuration": 0,
+          "endTime": 1772156365343,
+          "lastPausedAt": 1772156365343,
+          "deletedAt": 1772156368669
+        },
         {
           "id": "ac6fc7c2-fe5e-4b22-86b2-df432b9228c5",
           "title": "5) LifeCycleManager 추상화(class화 및 owner 별 상속구조 설계)",
@@ -1539,7 +2513,7 @@
       "themeConfig": {
         "primaryColor": "#723d46",
         "accentColor": "#e26d5c",
-        "isDark": false
+        "isDark": true
       },
       "viewConfig": {
         "zoomLevel": 100
@@ -1593,9 +2567,83 @@
         "어플리케이션/페이지의 LifeCycle 관리": 45,
         "시작": 46,
         "스테이지 푸시": 47,
-        "스테이지 푸시 (TP.15256)": 48
+        "스테이지 푸시 (TP.15256)": 48,
+        "TP.15363 배포서버에서 게시판 진입 시 빈화면으로만 나옵니다": 49,
+        "UrlService 변경사항 확인 및 관련 이슈 전달": 50,
+        "dev.115897 이미지 삽입하여 발송한 메일 확인 시, 이미지 파일이 표시되지 않는 현상": 51,
+        "__ec_v5_api.v1.js 권한설정": 52,
+        "__ec_v5_api.v1.js 권한설정 스테이지 푸시요청 / 스테이지 푸시": 53,
+        "UrlService 테스트케이스 작성 및 ec_api.js 변경사항 확인": 54,
+        "UrlService 채권채무 /ecerp/v5 URL 관련 이슈 논의": 55,
+        "A25_02861 채권채무 URL 관련 석현책임님과 처리 방안 논의": 56,
+        "채권채무 URL 관련 잡 간 배포 일정 논의": 57,
+        "LifeCycleManger 브랜치 최신화": 58,
+        "EOD 5.0 품질검사요청 stage 관련 커밋 지원 (__ec_v5_api.v1.js 커밋 권한 제한 관련)": 59,
+        "__ec_v5_api.v1.js 커밋 권한 제한 관련 공지 작성": 60,
+        "TP.15540 견적서입력/수정 > 중간 [거래내역보기(견적)] 버튼 클릭 시, 반응이 없습니다": 61,
+        "TP.15579 항목분류 팝업 진입 시 스크립트 오류나고 항목 표시 안됩니다": 62,
+        "LifeCycleManager 추상화(class화 및 owner 별 상속구조 설계) 코드리뷰": 63,
+        "TP.15540 견적서입력/수정 > 중간 [거래내역보기(견적)] 버튼 클릭 시, 반응이 없습니다. 재발생 확인": 64,
+        "5.6 브랜치 최신화: UrlService 관련 최신화 오류 수정 (__ec_v5_api.v1.js)": 65,
+        "5.0 푸시 안되는 문제 수정 확인": 66,
+        "어플리케이션/페이지의 LifeCycle 관리 일정 산출": 67,
+        "6) 페이지 LifeCycle 적용 - task별 에러 정책 설계 (abort, skip, fallback, retry)": 68,
+        "6) 페이지 LifeCycle 적용 - LifeCycleManager 외부 노출제거 (Event 발행 등)": 69,
+        "6) 페이지 LifeCycle 적용 - ViewerLifeCycleManager 개발": 70,
+        "6) 페이지 LifeCycle 적용 - PageLifeCycleManager 개발": 71,
+        "6) 페이지 LifeCycle 적용 - LifeCycle > Phase, Viewer > Navigation, Navigation > Page(Viewer)로 명칭 수정": 72,
+        "6) 페이지 LifeCycle 적용 - ViewerLifeCycle Phase 관련 로직 클래스 분리": 73,
+        "코드리뷰": 74,
+        "6) 페이지 LifeCycle 적용 - NavigationLifeCycleManager 리팩토링(코드리뷰 적용)": 75,
+        "dev.116130 원격지원 - ECountEP 가면 해결될 문제(dev.115829 duplicated)": 76,
+        "7) Framework 버전앱(3.0, 5.0, 5.6) 라이프사이클 적용": 77,
+        "어플리케이션 LifeCycle 코드리뷰 준비": 78,
+        "어플리케이션 LifeCycle 코드리뷰": 79,
+        "체크리스트 작성 및 테스트요청": 80,
+        "EQC 서종현님 테스트 관련 질의에 응답": 81,
+        "TP.16337 ERP > C-Portal 로그인 시 초기화면 렌더링 안됩니다": 82,
+        "모바일 로그인 시 스크립트 오류 확인": 83,
+        "메뉴 더블클릭 시 스크립트 오류 확인": 84,
+        "5.6 브랜치 최신화 - url 매핑 관련 - A26_00131 관련 견적조회메뉴 안나오는 문제": 85,
+        "브랜치 최신화 (아침, nol4 백건 이후, stage 이후 총 3번)": 86,
+        "zeus06 배포 및 config 수정": 87,
+        "모바일에서 페이지 이동 오류 시 얼럿 안 뜨는 문제 확인": 88,
+        "5.0 App 초기화 중 오류 시 로그인 오류 발생 얼럿 안뜨는 문제 확인": 89,
+        "모든 라이프사이클이 성공한 경우 로그 안남는 문제 확인": 90,
+        "TP.16456 5.0 조회 URL 확인": 91,
+        "브랜치 최신화": 92,
+        "1) 3.0 페이지의 라이프사이클 분석 및 단계(Phase) 정의": 93,
+        "UrlService 변경사항 확인 및 이슈해결": 49,
+        "UrlService 관련 이슈 전달": 50,
+        "5.6 견적서입력 개발.12621 INFRA/5.6 5.0 브랜치 푸시": 51,
+        "어플리케이션/페이지의 LifeCycle 관리 브랜치최신화": 52,
+        "시간관리 입력 업무 환경 개선 제안": 53,
+        "EOD 종빈님 old 메뉴 세팅 관련 질문에 응답": 54,
+        "__ec_v5_api.v1.js 권한설정 개발, 스테이지 푸시요청 / 스테이지 푸시": 55,
+        "시간관리 보고서 작성": 56,
+        "EBC 예나님 __ec_v5_api.v1.js 관련 질문에 응답 외 2건": 57,
+        "관리업무 (지출결의서 결재 등)": 58,
+        "dev.115934 확인": 59,
+        "EOD 5.0 품질검사요청 stage 관련 커밋 지원": 60,
+        "작업. 6921 웹메일 로그인 알림 alert창 확인요청": 61,
+        "EMS 차상은님 CORS 관련 질문에 응답 외 2건": 62,
+        "TP.15540 견적서입력/수정 재발생 확인(환경오류여부 확인)": 63,
+        "시간관리 회의": 64,
+        "6) 페이지 LifeCycle 적용": 65,
+        "동건님 MovePrevNextViewCommonUserAction 관련 문의 외 2건": 66,
+        "테스트요청 작성": 67,
+        "5.6 getVersion 3.0 선배포 관련 확인": 68,
+        "5.6 브랜치 최신화 - url 매핑 관련": 69,
+        "EFE3 김민주님 movePrevNextUserAction 관련 질의에 응답 외 2건": 70,
+        "브랜치 최신화 (아침, nol4 백건 이후, 병합충돌)": 71,
+        "브랜치최신화": 72,
+        "백종인 팀장님 CORS 문의에 응답": 73,
+        "공정표 작성 및 대시보드 설계": 74,
+        "2) V3PageLifeCycleManager 골격 설계 및 Navigation Policy Task 구현": 75,
+        "대시보드 설계": 76,
+        "라이프사이클 로깅 회의": 77
       },
-      "nextColorIndex": 49
+      "nextColorIndex": 78
     },
     "version": 0
   },
@@ -1642,8 +2690,7 @@
       "title": "HTML영역 다크모드 적용 TP",
       "projectCode": "A25_07788",
       "category": "테스트오류수정",
-      "color": "#e76f51",
-      "is_favorite": false
+      "color": "#e76f51"
     },
     {
       "id": "4a711ed7-2d7b-4ff7-a057-e3b56151909e",

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import { idbStorage } from '../utils/storage';
 
 // ----------------------------------------------------------------------
 // Types
@@ -86,7 +87,7 @@ export const useProjectStore = create<ProjectState>()(
     }),
     {
       name: STORAGE_KEY,
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => idbStorage),
       // 저장된 데이터 로드 시 잘못된 항목 필터링
       onRehydrateStorage: () => (state) => {
         if (state) {

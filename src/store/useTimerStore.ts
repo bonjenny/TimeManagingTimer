@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import { idbStorage } from '../utils/storage';
 
 // ----------------------------------------------------------------------
 // Types
@@ -382,7 +383,7 @@ export const useTimerStore = create<TimerState>()(
     }),
     {
       name: 'timekeeper-storage',
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => idbStorage),
     }
   )
 );
