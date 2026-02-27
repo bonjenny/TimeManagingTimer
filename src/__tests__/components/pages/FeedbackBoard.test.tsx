@@ -228,6 +228,7 @@ describe('FeedbackBoard (Firebase 연동)', () => {
 
       expect(screen.getByText('아이디어')).toBeInTheDocument();
       expect(screen.getByText('버그')).toBeInTheDocument();
+      expect(screen.getByText('릴리즈 노트')).toBeInTheDocument();
       expect(screen.getByText('기타')).toBeInTheDocument();
     });
 

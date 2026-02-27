@@ -50,6 +50,7 @@ const ADMIN_PASSWORD_HASH = simpleHash(getAdminPassword());
 const CATEGORY_LABELS: Record<string, { label: string; color: string }> = {
   idea: { label: '아이디어', color: '#10b981' },
   bug: { label: '버그', color: '#ef4444' },
+  release: { label: '릴리즈 노트', color: '#ffffff' },
   etc: { label: '기타', color: '#6b7280' },
 };
 
@@ -80,7 +81,7 @@ const FeedbackBoard: React.FC = () => {
   const [form_title, setFormTitle] = useState('');
   const [form_content, setFormContent] = useState('');
   const [form_password, setFormPassword] = useState('');
-  const [form_category, setFormCategory] = useState<'idea' | 'bug' | 'etc'>('idea');
+  const [form_category, setFormCategory] = useState<'idea' | 'bug' | 'release' | 'etc'>('idea');
   const [is_editing, setIsEditing] = useState(false);
 
   // 비밀번호 확인 모달
@@ -543,7 +544,13 @@ const FeedbackBoard: React.FC = () => {
                   <ListItemButton
                     onClick={() => handlePostClick(post)}
                     onContextMenu={(e) => handlePostContextMenu(post, e)}
-                    sx={{ py: 2 }}
+                    sx={{
+                      py: 2,
+                      ...(post.category === 'release' && {
+                        bgcolor: 'rgba(255, 235, 59, 0.15)',
+                        '&:hover': { bgcolor: 'rgba(255, 235, 59, 0.25)' },
+                      }),
+                    }}
                   >
                     <ListItemText
                       primary={
@@ -850,11 +857,14 @@ const FeedbackBoard: React.FC = () => {
               <Chip
                 key={key}
                 label={label}
-                onClick={() => setFormCategory(key as 'idea' | 'bug' | 'etc')}
+                onClick={() => setFormCategory(key as 'idea' | 'bug' | 'release' | 'etc')}
                 sx={{
                   bgcolor: form_category === key ? color : 'var(--bg-hover)',
-                  color: form_category === key ? '#fff' : 'text.primary',
+                  color: form_category === key
+                    ? (key === 'release' ? '#333' : '#fff')
+                    : 'text.primary',
                   cursor: 'pointer',
+                  border: form_category === key && key === 'release' ? '1px solid #bbb' : 'none',
                   '&:hover': { opacity: 0.8 },
                 }}
               />
