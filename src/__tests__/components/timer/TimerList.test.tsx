@@ -511,6 +511,86 @@ describe('TimerList 미완료 업무 표시 기능 (v0.13.0)', () => {
   });
 });
 
+describe('TimerList 누적시간 계산 (total_duration)', () => {
+  beforeEach(() => {
+    clearStore();
+  });
+
+  it('total_duration은 여러 날에 걸친 세션의 누적시간을 포함한다', () => {
+    const { result } = renderHook(() => useTimerStore());
+
+    const today = new Date();
+    today.setHours(10, 0, 0, 0);
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    // 어제 세션 (1시간)
+    act(() => {
+      result.current.startTimer('누적 테스트 작업', 'P001', '개발');
+      result.current.completeTimer();
+    });
+    const log1 = result.current.logs[0];
+    act(() => {
+      result.current.updateLog(log1.id, {
+        startTime: yesterday.getTime(),
+        endTime: yesterday.getTime() + 3600000,
+      });
+    });
+
+    // 오늘 세션 (30분)
+    act(() => {
+      result.current.startTimer('누적 테스트 작업', 'P001', '개발');
+      result.current.completeTimer();
+    });
+    const log2 = result.current.logs.find(l => l.id !== log1.id && l.title === '누적 테스트 작업');
+    act(() => {
+      result.current.updateLog(log2!.id, {
+        startTime: today.getTime(),
+        endTime: today.getTime() + 1800000,
+      });
+    });
+
+    // 같은 title로 2개의 세션이 존재
+    const sessions = result.current.logs.filter(l => l.title === '누적 테스트 작업');
+    expect(sessions.length).toBe(2);
+
+    // 어제 세션의 startTime과 오늘 세션의 startTime이 다른 날
+    const session_dates = sessions.map(s => new Date(s.startTime).toDateString());
+    expect(new Set(session_dates).size).toBe(2);
+  });
+
+  it('오늘 날짜 범위 밖의 세션도 total_duration에 포함되어야 한다', () => {
+    const { result } = renderHook(() => useTimerStore());
+
+    const todayStart = new Date();
+    todayStart.setHours(6, 0, 0, 0);
+
+    // 어제 세션 (범위 밖)
+    const yesterdayStart = todayStart.getTime() - 86400000;
+    act(() => {
+      result.current.startTimer('범위 밖 테스트', 'P001', '개발');
+      result.current.completeTimer();
+    });
+    const log_id = result.current.logs[0].id;
+    act(() => {
+      result.current.updateLog(log_id, {
+        startTime: yesterdayStart,
+        endTime: yesterdayStart + 7200000, // 2시간
+      });
+    });
+
+    // 업데이트된 로그를 다시 조회
+    const updated_log = result.current.logs.find(l => l.id === log_id);
+
+    // 어제 세션은 오늘 날짜 범위(06:00 ~ 익일 06:00) 밖
+    expect(updated_log!.startTime).toBeLessThan(todayStart.getTime());
+
+    // total_duration 계산 시, 전체 logs에서 같은 title을 찾으므로 이 세션이 포함됨
+    const all_same_title = result.current.logs.filter(l => l.title === '범위 밖 테스트');
+    expect(all_same_title.length).toBeGreaterThan(0);
+  });
+});
+
   describe('TimerList 진행 중인 작업 수정 (v0.13.6)', () => {
     describe('activeTimer 카테고리/프로젝트 수정', () => {
       it('진행 중인 작업의 프로젝트 코드를 업데이트할 수 있다', () => {

@@ -278,6 +278,17 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
       }
     });
 
+    // 총시간을 선택된 날짜까지의 전체 누적시간으로 재계산
+    groups.forEach(group => {
+      const all_sessions_for_title = logs.filter(log =>
+        log.title === group.title && log.startTime < date_range.end
+      );
+      group.total_duration = all_sessions_for_title.reduce((sum, log) => {
+        const effectiveEndTime = log.endTime || log.lastPausedAt || log.startTime;
+        return sum + getDurationSecondsExcludingLunch(log.startTime, effectiveEndTime, log.pausedDuration);
+      }, 0);
+    });
+
     // 정렬: 진행 중 우선 → 미완료 우선 → 프로젝트 코드 오름차순 → 작업명 오름차순
     return Array.from(groups.values()).sort((a, b) => {
       // 0. 현재 진행 중인 작업 (activeTimer) 최상위
@@ -306,9 +317,9 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
     });
   }, [logs, showCompleted, selectedDate, activeTimer, is_today]);
 
-  // 총 시간 합계 계산
+  // 총 시간 합계 계산 (상단 헤더는 오늘 시간 합계)
   const totalDurationSeconds = useMemo(() => {
-    return groupedTasks.reduce((sum, task) => sum + task.total_duration, 0);
+    return groupedTasks.reduce((sum, task) => sum + task.today_duration, 0);
   }, [groupedTasks]);
 
   const toggleExpand = (title: string) => {
