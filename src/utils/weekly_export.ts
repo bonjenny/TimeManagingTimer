@@ -42,10 +42,14 @@ export function generateWeeklyScheduleHtml(
   getJobColor: (projectCode: string) => string | undefined,
   getStatusLabel: (status: 'completed' | 'in_progress') => string,
   getDisplayProjectName: (project: ProjectGroupForHtml) => string,
-  timeDisplayMode: 'cumulative' | 'daily' = 'cumulative'
+  timeDisplayMode: 'cumulative' | 'daily' | 'none' = 'cumulative'
 ): string {
-  const time_label = timeDisplayMode === 'daily' ? '' : '누적시간';
-  const fmt = (seconds: number) => time_label ? `${time_label}: ${formatTimeHHMM(seconds)}` : formatTimeHHMM(seconds);
+  const time_label = timeDisplayMode === 'cumulative' ? '누적시간' : '';
+  const is_none = timeDisplayMode === 'none';
+  const fmt = (seconds: number) => {
+    if (is_none) return '';
+    return time_label ? `${time_label}: ${formatTimeHHMM(seconds)}` : formatTimeHHMM(seconds);
+  };
   const parts: string[] = [];
   days.forEach((day) => {
     day.projects.forEach((project) => {
@@ -56,15 +60,20 @@ export function generateWeeklyScheduleHtml(
       const nameSection = displayName ? ` ${escapeHtml(displayName)}` : '';
       const bgHex = getJobColor(project.projectCode) || DEFAULT_JOB_COLOR;
       const project_time = timeDisplayMode === 'daily' ? project.totalSeconds : project.cumulativeSeconds;
+      const time_str = fmt(project_time);
       const labelHtml =
         `<span style="font-weight: bold; font-size: 13px; background-color: ${bgHex}; color: #000000;">[${escapeHtml(project.projectCode)}]${nameSection}</span>`;
-      const metaHtml =
-        `<span style="font-size: 13px;">(진행상태: ${escapeHtml(statusText)}, 시작일자: ${escapeHtml(project.startDate)}, ${fmt(project_time)})</span>`;
+      const meta_content = time_str
+        ? `진행상태: ${escapeHtml(statusText)}, 시작일자: ${escapeHtml(project.startDate)}, ${time_str}`
+        : `진행상태: ${escapeHtml(statusText)}, 시작일자: ${escapeHtml(project.startDate)}`;
+      const metaHtml = `<span style="font-size: 13px;">(${meta_content})</span>`;
       parts.push(labelHtml + metaHtml);
       project.tasks.forEach((task) => {
         const task_time = timeDisplayMode === 'daily' ? task.seconds : task.cumulativeSeconds;
+        const task_time_str = fmt(task_time);
+        const task_suffix = task_time_str ? ` (${task_time_str})` : '';
         parts.push(
-          `&nbsp;&nbsp;· ${escapeHtml(task.title)} (${fmt(task_time)})<br>`
+          `&nbsp;&nbsp;· ${escapeHtml(task.title)}${task_suffix}<br>`
         );
       });
       parts.push('<br>');
