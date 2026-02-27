@@ -33,7 +33,7 @@ export interface FeedbackPost {
   password_hash: string;
   created_at: number;
   updated_at: number;
-  category: 'idea' | 'bug' | 'etc';
+  category: 'idea' | 'bug' | 'release' | 'etc';
   comments: Comment[];
   admin_status?: AdminStatus;     // 검토중 | 반려 | 완료
   completed_version?: string;     // 완료 시 버전 (예: "v2.0.4")

@@ -38,6 +38,44 @@ describe('SettingsPage', () => {
       expect(slider).toHaveAttribute('aria-valuenow', '100');
     });
 
+    it('프리셋 버튼이 표시된다', () => {
+      render(<SettingsPage />);
+      
+      expect(screen.getByRole('button', { name: /아주 작게 \(50%\)/ })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /작게 \(80%\)/ })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /약간 작게 \(90%\)/ })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /보통 \(100%\)/ })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /약간 크게 \(110%\)/ })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /크게 \(120%\)/ })).toBeInTheDocument();
+    });
+
+    it('프리셋 버튼 클릭으로 화면 크기가 변경된다', async () => {
+      const user = userEvent.setup();
+      render(<SettingsPage />);
+      
+      await user.click(screen.getByRole('button', { name: /작게 \(80%\)/ }));
+      
+      await waitFor(() => {
+        const slider = screen.getByRole('slider', { name: /화면 크기/i });
+        expect(slider).toHaveAttribute('aria-valuenow', '80');
+      });
+    });
+
+    it('100%가 아닌 경우 되돌리기 버튼이 표시된다', async () => {
+      const user = userEvent.setup();
+      render(<SettingsPage />);
+      
+      // 초기 100% 상태에서는 되돌리기 버튼 없음
+      expect(screen.queryByRole('button', { name: /100%로 되돌리기/ })).not.toBeInTheDocument();
+      
+      // 80%로 변경
+      await user.click(screen.getByRole('button', { name: /작게 \(80%\)/ }));
+      
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /100%로 되돌리기/ })).toBeInTheDocument();
+      });
+    });
+
     it('저장된 화면 크기 설정이 로드된다', () => {
       localStorage.setItem('timekeeper-settings', JSON.stringify({
         lunchStart: '12:00',
@@ -55,7 +93,6 @@ describe('SettingsPage', () => {
 
     it('현재 화면 크기가 Chip으로 표시된다', () => {
       render(<SettingsPage />);
-      // 100%가 슬라이더 마크, value label, Chip에 모두 표시되므로 Chip 요소를 특정
       const chip_labels = document.querySelectorAll('.MuiChip-label');
       const found = Array.from(chip_labels).some(el => el.textContent === '100%');
       expect(found).toBe(true);
@@ -70,7 +107,6 @@ describe('SettingsPage', () => {
       
       render(<SettingsPage />);
       
-      // 기본값 복원 버튼 클릭
       const reset_button = screen.getByRole('button', { name: /기본값 복원/i });
       await user.click(reset_button);
       
@@ -83,7 +119,6 @@ describe('SettingsPage', () => {
     it('슬라이더 마크에 퍼센트 라벨이 표시된다', () => {
       render(<SettingsPage />);
       
-      // 마크 라벨 확인 (80%, 90%, 100%, 110%, 120%)
       expect(screen.getByText('80%')).toBeInTheDocument();
       expect(screen.getByText('90%')).toBeInTheDocument();
       expect(screen.getByText('110%')).toBeInTheDocument();

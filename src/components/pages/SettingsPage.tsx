@@ -164,6 +164,7 @@ const SortableStatusChip: React.FC<SortableStatusChipProps> = ({ id, label, onDe
 
 // 화면 크기 옵션
 export const SCREEN_SCALE_OPTIONS = [
+  { value: 0.5, label: '아주 작게 (50%)' },
   { value: 0.8, label: '작게 (80%)' },
   { value: 0.9, label: '약간 작게 (90%)' },
   { value: 1.0, label: '보통 (100%)' },
@@ -525,6 +526,21 @@ const SettingsPage: React.FC = () => {
           화면의 전체적인 크기를 조절합니다. 설정은 자동으로 저장됩니다.
         </Typography>
 
+        {/* 프리셋 버튼 */}
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
+          {SCREEN_SCALE_OPTIONS.map((opt) => (
+            <Button
+              key={opt.value}
+              variant={screen_scale === opt.value ? 'contained' : 'outlined'}
+              size="small"
+              onClick={() => setScreenScale(opt.value)}
+              sx={{ minWidth: 80, fontSize: '0.8rem' }}
+            >
+              {opt.label}
+            </Button>
+          ))}
+        </Box>
+
         {/* 화면 크기 슬라이더 */}
         <Box sx={{ px: 2 }}>
           <Slider
@@ -534,8 +550,8 @@ const SettingsPage: React.FC = () => {
                 setScreenScale(new_value / 100);
               }
             }}
-            min={50}
-            max={200}
+            min={70}
+            max={150}
             step={5}
             marks={SCREEN_SCALE_MARKS}
             valueLabelDisplay="auto"
@@ -554,16 +570,28 @@ const SettingsPage: React.FC = () => {
         </Box>
 
         {/* 현재 설정 표시 */}
-        <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Typography variant="body2" color="text.secondary">
-            현재 화면 크기:
-          </Typography>
-          <Chip 
-            label={`${Math.round(screen_scale * 100)}%`} 
-            size="small" 
-            color="primary" 
-            variant="outlined"
-          />
+        <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography variant="body2" color="text.secondary">
+              현재 화면 크기:
+            </Typography>
+            <Chip 
+              label={`${Math.round(screen_scale * 100)}%`} 
+              size="small" 
+              color="primary" 
+              variant="outlined"
+            />
+          </Box>
+          {screen_scale !== 1.0 && (
+            <Button
+              size="small"
+              startIcon={<RestoreIcon />}
+              onClick={() => setScreenScale(1.0)}
+              sx={{ fontSize: '0.75rem' }}
+            >
+              100%로 되돌리기
+            </Button>
+          )}
         </Box>
       </Paper>
 
