@@ -5,6 +5,21 @@ jest.mock('./lib/firebase', () => ({
   default: {},
 }));
 
+jest.mock('./utils/env', () => ({
+  getAdminPassword: () => '0000',
+}));
+
+jest.mock('./services/feedbackService', () => ({
+  fetchPosts: jest.fn().mockResolvedValue([]),
+  createPost: jest.fn().mockResolvedValue(null),
+  updatePost: jest.fn().mockResolvedValue(false),
+  updatePostWithFieldDelete: jest.fn().mockResolvedValue(false),
+  deletePost: jest.fn().mockResolvedValue(false),
+  addComment: jest.fn().mockResolvedValue(false),
+  deleteComment: jest.fn().mockResolvedValue(false),
+  simpleHash: jest.fn((str: string) => String(str.length)),
+}));
+
 // Mock localStorage
 const localStorageMock = (() => {
   let store: Record<string, string> = {};

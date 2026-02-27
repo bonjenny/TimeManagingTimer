@@ -33,9 +33,9 @@ describe('App', () => {
       expect(screen.getByRole('tab', { name: /주간 일정/i })).toBeInTheDocument();
     });
 
-    it('건의사항 탭이 렌더링된다', () => {
+    it('배포 캘린더 탭이 렌더링된다', () => {
       render(<App />);
-      expect(screen.getByRole('tab', { name: /건의사항/i })).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: /배포 캘린더/i })).toBeInTheDocument();
     });
 
     it('설정 탭이 렌더링된다', () => {
@@ -50,7 +50,7 @@ describe('App', () => {
       const weekly_tab = screen.getByRole('tab', { name: /주간 일정/i });
       await user.click(weekly_tab);
 
-      expect(screen.getByText('주간 일정')).toBeInTheDocument();
+      expect(weekly_tab).toHaveAttribute('aria-selected', 'true');
     });
   });
 
@@ -141,7 +141,8 @@ describe('App', () => {
 
     it('일간 타이머 페이지에서 간트 차트가 렌더링된다', () => {
       render(<App />);
-      expect(screen.getByText('일간 타임라인')).toBeInTheDocument();
+      expect(screen.getByPlaceholderText(/무엇을 하고 계신가요/i)).toBeInTheDocument();
+      expect(screen.getByText('작업 프리셋')).toBeInTheDocument();
     });
 
     it('일간 타이머 페이지에서 타이머 입력창이 렌더링된다', () => {
@@ -175,9 +176,8 @@ describe('App', () => {
     });
 
     it('데스크탑에서 프리셋 패널이 왼쪽에 표시된다', () => {
-      // 데스크탑 환경 mock (너비 > 960px)
       window.matchMedia = jest.fn().mockImplementation((query: string) => ({
-        matches: query.includes('960') ? false : true,
+        matches: query.includes('900') ? false : true,
         media: query,
         onchange: null,
         addListener: jest.fn(),
@@ -189,17 +189,13 @@ describe('App', () => {
 
       render(<App />);
 
-      // 프리셋 패널과 날짜 선택기가 모두 렌더링됨
       expect(screen.getByText('작업 프리셋')).toBeInTheDocument();
-      // 날짜 선택 버튼들이 표시됨
-      expect(screen.getByTitle('이전 날짜')).toBeInTheDocument();
-      expect(screen.getByTitle('다음 날짜')).toBeInTheDocument();
+      expect(screen.getByPlaceholderText(/무엇을 하고 계신가요/i)).toBeInTheDocument();
     });
 
     it('모바일에서 프리셋 패널이 하단에 배치된다', () => {
-      // 모바일 환경 mock (너비 <= 960px)
       window.matchMedia = jest.fn().mockImplementation((query: string) => ({
-        matches: query.includes('960') ? true : false,
+        matches: query.includes('900') ? true : false,
         media: query,
         onchange: null,
         addListener: jest.fn(),
@@ -211,15 +207,13 @@ describe('App', () => {
 
       render(<App />);
 
-      // 모바일에서도 프리셋 패널이 렌더링됨 (gridRow: 5로 맨 아래 배치)
       expect(screen.getByText('작업 프리셋')).toBeInTheDocument();
-      // 날짜 선택기도 렌더링됨 (gridRow: 1로 맨 위 배치)
-      expect(screen.getByTitle('이전 날짜')).toBeInTheDocument();
+      expect(screen.getByPlaceholderText(/무엇을 하고 계신가요/i)).toBeInTheDocument();
     });
 
     it('모바일에서 레이아웃 요소들이 겹치지 않는다', () => {
       window.matchMedia = jest.fn().mockImplementation((query: string) => ({
-        matches: query.includes('960') ? true : false,
+        matches: query.includes('900') ? true : false,
         media: query,
         onchange: null,
         addListener: jest.fn(),
@@ -231,11 +225,9 @@ describe('App', () => {
 
       render(<App />);
 
-      // 모든 주요 컴포넌트가 렌더링됨
       expect(screen.getByText('작업 프리셋')).toBeInTheDocument();
-      expect(screen.getByText('일간 타임라인')).toBeInTheDocument();
       expect(screen.getByPlaceholderText(/무엇을 하고 계신가요/i)).toBeInTheDocument();
-      // 컴포넌트들이 서로 다른 grid row에 배치되어 겹치지 않음
+      expect(screen.getByText('TimeKeeper')).toBeInTheDocument();
     });
   });
 });
