@@ -44,7 +44,8 @@ export function generateWeeklyScheduleHtml(
   getDisplayProjectName: (project: ProjectGroupForHtml) => string,
   timeDisplayMode: 'cumulative' | 'daily' = 'cumulative'
 ): string {
-  const time_label = timeDisplayMode === 'daily' ? '당일시간' : '누적시간';
+  const time_label = timeDisplayMode === 'daily' ? '' : '누적시간';
+  const fmt = (seconds: number) => time_label ? `${time_label}: ${formatTimeHHMM(seconds)}` : formatTimeHHMM(seconds);
   const parts: string[] = [];
   days.forEach((day) => {
     day.projects.forEach((project) => {
@@ -58,12 +59,12 @@ export function generateWeeklyScheduleHtml(
       const labelHtml =
         `<span style="font-weight: bold; font-size: 13px; background-color: ${bgHex}; color: #000000;">[${escapeHtml(project.projectCode)}]${nameSection}</span>`;
       const metaHtml =
-        `<span style="font-size: 13px;">(진행상태: ${escapeHtml(statusText)}, 시작일자: ${escapeHtml(project.startDate)}, ${time_label}: ${formatTimeHHMM(project_time)})</span>`;
+        `<span style="font-size: 13px;">(진행상태: ${escapeHtml(statusText)}, 시작일자: ${escapeHtml(project.startDate)}, ${fmt(project_time)})</span>`;
       parts.push(labelHtml + metaHtml);
       project.tasks.forEach((task) => {
         const task_time = timeDisplayMode === 'daily' ? task.seconds : task.cumulativeSeconds;
         parts.push(
-          `&nbsp;&nbsp;· ${escapeHtml(task.title)} (${time_label}: ${formatTimeHHMM(task_time)})<br>`
+          `&nbsp;&nbsp;· ${escapeHtml(task.title)} (${fmt(task_time)})<br>`
         );
       });
       parts.push('<br>');

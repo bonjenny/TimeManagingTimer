@@ -413,13 +413,18 @@ const WeeklySchedule: React.FC = () => {
     return project.projectName !== project.projectCode ? project.projectName : '';
   };
 
-  const getTimeLabel = () => timeDisplayMode === 'daily' ? '당일시간' : '누적시간';
+  const getTimeLabel = () => timeDisplayMode === 'daily' ? '' : '누적시간';
 
   const getProjectTime = (project: ProjectGroup) =>
     timeDisplayMode === 'daily' ? project.totalSeconds : project.cumulativeSeconds;
 
   const getTaskTime = (task: ProjectGroup['tasks'][number]) =>
     timeDisplayMode === 'daily' ? task.seconds : task.cumulativeSeconds;
+
+  const formatTimePart = (seconds: number) => {
+    const label = getTimeLabel();
+    return label ? `${label}: ${formatTimeHHMM(seconds)}` : formatTimeHHMM(seconds);
+  };
 
   // 복사 템플릿 생성 (형식 1: 간단형 - 구분선 없음, 프로젝트/날짜 구간에 줄바꿈)
   const generateFormat1 = () => {
@@ -434,10 +439,10 @@ const WeeklySchedule: React.FC = () => {
         const statusText = getStatusLabel(status);
         const displayName = getDisplayProjectName(project);
         const nameSection = displayName ? `${displayName} ` : '';
-        text += `[${project.projectCode}] ${nameSection} (진행상태: ${statusText}, 시작일자: ${project.startDate}, ${getTimeLabel()}: ${formatTimeHHMM(getProjectTime(project))})\n`;
+        text += `[${project.projectCode}] ${nameSection} (진행상태: ${statusText}, 시작일자: ${project.startDate}, ${formatTimePart(getProjectTime(project))})\n`;
 
         project.tasks.forEach(task => {
-          text += `  > ${task.title} (${getTimeLabel()}: ${formatTimeHHMM(getTaskTime(task))})\n`;
+          text += `  > ${task.title} (${formatTimePart(getTaskTime(task))})\n`;
         });
         text += '\n';
       });
@@ -462,10 +467,10 @@ const WeeklySchedule: React.FC = () => {
         const statusText = getStatusLabel(status);
         const displayName = getDisplayProjectName(project);
         const nameSection = displayName ? `${displayName} ` : '';
-        text += `[${project.projectCode}] ${nameSection} (진행상태: ${statusText}, 시작일자: ${project.startDate}, ${getTimeLabel()}: ${formatTimeHHMM(getProjectTime(project))})\n`;
+        text += `[${project.projectCode}] ${nameSection} (진행상태: ${statusText}, 시작일자: ${project.startDate}, ${formatTimePart(getProjectTime(project))})\n`;
 
         project.tasks.forEach(task => {
-          text += `  · ${task.title} (${getTimeLabel()}: ${formatTimeHHMM(getTaskTime(task))})\n`;
+          text += `  · ${task.title} (${formatTimePart(getTaskTime(task))})\n`;
         });
         text += '\n';
       });
@@ -492,11 +497,11 @@ const WeeklySchedule: React.FC = () => {
         const labelHtml =
           `<span style="font-weight: bold; font-size: 13px;">[${escapeHtml(project.projectCode)}]${nameSection}</span>`;
         const metaHtml =
-          `<span style="font-size: 13px;">(진행상태: ${escapeHtml(statusText)}, 시작일자: ${escapeHtml(project.startDate)}, ${getTimeLabel()}: ${formatTimeHHMM(getProjectTime(project))})</span>`;
+          `<span style="font-size: 13px;">(진행상태: ${escapeHtml(statusText)}, 시작일자: ${escapeHtml(project.startDate)}, ${formatTimePart(getProjectTime(project))})</span>`;
         parts.push(labelHtml + '&nbsp;' + metaHtml + '<br>');
         project.tasks.forEach((task) => {
           parts.push(
-            `&nbsp;&nbsp;· ${escapeHtml(task.title)} (${getTimeLabel()}: ${formatTimeHHMM(getTaskTime(task))})<br>`
+            `&nbsp;&nbsp;· ${escapeHtml(task.title)} (${formatTimePart(getTaskTime(task))})<br>`
           );
         });
         parts.push('<br>');
@@ -528,11 +533,11 @@ const WeeklySchedule: React.FC = () => {
           `<table cellspacing="0" cellpadding="0" border="0" style="${labelTableStyle}"><tbody><tr><td bgcolor="${escapeHtml(bgHex)}" style="background-color: ${bgHex}; font-weight: bold; font-size: 13px; color: #000000; border: 0;">[${escapeHtml(project.projectCode)}]${nameSection}</td></tr></tbody></table>`
         );
         parts.push(
-          `&nbsp;<span style="font-size: 13px;">(진행상태: ${escapeHtml(statusText)}, 시작일자: ${escapeHtml(project.startDate)}, ${getTimeLabel()}: ${formatTimeHHMM(getProjectTime(project))})</span><br>`
+          `&nbsp;<span style="font-size: 13px;">(진행상태: ${escapeHtml(statusText)}, 시작일자: ${escapeHtml(project.startDate)}, ${formatTimePart(getProjectTime(project))})</span><br>`
         );
         project.tasks.forEach((task) => {
           parts.push(
-            `&nbsp;&nbsp;· ${escapeHtml(task.title)} (${getTimeLabel()}: ${formatTimeHHMM(getTaskTime(task))})<br>`
+            `&nbsp;&nbsp;· ${escapeHtml(task.title)} (${formatTimePart(getTaskTime(task))})<br>`
           );
         });
         parts.push('<br>');
@@ -803,7 +808,7 @@ const WeeklySchedule: React.FC = () => {
 
                         {/* 시간 표시 (누적시간/당일시간) */}
                         <Typography variant="body2" sx={{ fontWeight: 500, minWidth: 100, textAlign: 'right' }}>
-                          {getTimeLabel()}: {formatTimeHHMM(getProjectTime(project))}
+                          {formatTimePart(getProjectTime(project))}
                         </Typography>
                       </Box>
 
@@ -829,7 +834,7 @@ const WeeklySchedule: React.FC = () => {
                                 {task.title}
                               </Typography>
                               <Typography variant="caption" color="text.secondary">
-                                ({getTimeLabel()}: {formatTimeHHMM(getTaskTime(task))})
+                                ({formatTimePart(getTaskTime(task))})
                               </Typography>
                             </Box>
                           ))}
