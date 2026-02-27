@@ -312,7 +312,7 @@ describe('WeeklySchedule', () => {
       expect(cumulative_btn).toHaveAttribute('aria-pressed', 'true');
     });
 
-    it('당일시간 버튼 클릭 시 시간 라벨이 당일시간으로 변경된다', async () => {
+    it('당일시간 버튼 클릭 시 미리보기에서 누적시간 라벨이 사라진다', async () => {
       const user = userEvent.setup();
       addTestLog();
       render(<WeeklySchedule />);
@@ -321,7 +321,7 @@ describe('WeeklySchedule', () => {
       await user.click(daily_btn);
 
       const preview = screen.getByTestId('copy-preview-content');
-      expect(preview.textContent).toContain('당일시간');
+      expect(preview.textContent).not.toContain('누적시간');
     });
 
     it('누적시간 버튼 클릭 시 시간 라벨이 누적시간으로 변경된다', async () => {
@@ -339,7 +339,7 @@ describe('WeeklySchedule', () => {
       expect(preview.textContent).toContain('누적시간');
     });
 
-    it('당일시간 모드에서 미리보기 텍스트에 당일시간 라벨이 표시된다', async () => {
+    it('당일시간 모드에서 미리보기 텍스트에 누적시간 라벨이 없고 시간만 표시된다', async () => {
       const user = userEvent.setup();
       addTestLog();
       render(<WeeklySchedule />);
@@ -348,8 +348,8 @@ describe('WeeklySchedule', () => {
       await user.click(daily_btn);
 
       const preview = screen.getByTestId('copy-preview-content');
-      expect(preview.textContent).toContain('당일시간');
       expect(preview.textContent).not.toContain('누적시간');
+      expect(preview.textContent).toMatch(/\d{1,2}:\d{2}/);
     });
   });
 
