@@ -25,6 +25,32 @@ Object.defineProperty(window, 'localStorage', {
   value: localStorageMock,
 });
 
+jest.mock('./utils/storage', () => ({
+  initStorage: () => Promise.resolve(),
+  getItem: (key: string) => localStorage.getItem(key),
+  setItem: (key: string, value: string) => localStorage.setItem(key, value),
+  removeItem: (key: string) => localStorage.removeItem(key),
+  idbStorage: {
+    getItem: (name: string) => localStorage.getItem(name),
+    setItem: (name: string, value: string) => localStorage.setItem(name, value),
+    removeItem: (name: string) => localStorage.removeItem(name),
+  },
+  getStorageUsage: () => ({ usageKB: '0.0', usageMB: '0.00' }),
+  getAllItems: () => {
+    const items: Record<string, string> = {};
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key) items[key] = localStorage.getItem(key) || '';
+    }
+    return items;
+  },
+  batchSetItems: (items: Record<string, string>) => {
+    Object.entries(items).forEach(([key, value]) => localStorage.setItem(key, value));
+    return Promise.resolve();
+  },
+  clearAll: () => { localStorage.clear(); return Promise.resolve(); },
+}));
+
 // Mock crypto.randomUUID
 Object.defineProperty(window, 'crypto', {
   value: {
@@ -47,7 +73,6 @@ Object.defineProperty(window, 'matchMedia', {
   })),
 });
 
-// Clear localStorage before each test
 beforeEach(() => {
   localStorage.clear();
 });

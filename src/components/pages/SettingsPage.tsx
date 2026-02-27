@@ -70,6 +70,13 @@ import {
   DEPLOY_CALENDAR_WEEKS_MIN,
   DEPLOY_CALENDAR_WEEKS_MAX,
 } from '../../store/useDeployCalendarStore';
+import {
+  getItem,
+  setItem as setStorageItem,
+  getAllItems,
+  batchSetItems,
+  clearAll,
+} from '../../utils/storage';
 
 // 설정 저장 키
 const SETTINGS_STORAGE_KEY = 'timekeeper-settings';
@@ -223,7 +230,7 @@ const SettingsPage: React.FC = () => {
   // 저장된 설정 로드
   useEffect(() => {
     try {
-      const saved = localStorage.getItem(SETTINGS_STORAGE_KEY);
+      const saved = getItem(SETTINGS_STORAGE_KEY);
       if (saved) {
         const settings = JSON.parse(saved);
         setLunchStart(settings.lunchStart || DEFAULT_SETTINGS.lunchStart);
@@ -263,7 +270,7 @@ const SettingsPage: React.FC = () => {
       autoCompleteEnabled: auto_complete_enabled,
       screenScale: screen_scale,
     };
-    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+    setStorageItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
     
     // 화면 크기 즉시 적용
     document.documentElement.style.zoom = String(screen_scale);
@@ -411,53 +418,28 @@ const SettingsPage: React.FC = () => {
     setSnackbarOpen(true);
   };
 
-  // 모든 데이터 초기화
-  const handleResetAllData = () => {
+  const handleResetAllData = async () => {
     if (reset_confirm_text !== '초기화') return;
 
-    // 모든 LocalStorage 데이터 삭제
-    const keys_to_remove = [
-      'timekeeper-storage',
-      SETTINGS_STORAGE_KEY,
-      'timekeeper-preset-favorites',
-      'timekeeper-manual-presets',
-      'timekeeper-feedback-posts',
-      PALETTE_STORAGE_KEY,
-    ];
-
-    keys_to_remove.forEach(key => localStorage.removeItem(key));
+    await clearAll();
 
     setResetDialogOpen(false);
     setResetConfirmText('');
 
-    // 페이지 새로고침
     window.location.reload();
   };
 
-  // 데이터 내보내기
   const handleExportData = () => {
-    // 모든 관련 데이터 수집
+    const all_items = getAllItems();
     const export_data: Record<string, unknown> = {};
 
-    const keys_to_export = [
-      'timekeeper-storage',
-      SETTINGS_STORAGE_KEY,
-      'timekeeper-preset-favorites',
-      'timekeeper-manual-presets',
-      'timekeeper-feedback-posts',
-      PALETTE_STORAGE_KEY,
-    ];
-
-    keys_to_export.forEach(key => {
-      const data = localStorage.getItem(key);
-      if (data) {
-        try {
-          export_data[key] = JSON.parse(data);
-        } catch {
-          export_data[key] = data;
-        }
+    for (const [key, value] of Object.entries(all_items)) {
+      try {
+        export_data[key] = JSON.parse(value);
+      } catch {
+        export_data[key] = value;
       }
-    });
+    }
 
     const blob = new Blob([JSON.stringify(export_data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -474,20 +456,20 @@ const SettingsPage: React.FC = () => {
     setSnackbarOpen(true);
   };
 
-  // 데이터 가져오기
   const handleImportData = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onload = (e) => {
+      reader.onload = async (e) => {
         try {
           const content = e.target?.result as string;
           const data = JSON.parse(content);
 
-          // 각 키별로 데이터 복원
+          const items: Record<string, string> = {};
           Object.entries(data).forEach(([key, value]) => {
-            localStorage.setItem(key, typeof value === 'string' ? value : JSON.stringify(value));
+            items[key] = typeof value === 'string' ? value : JSON.stringify(value);
           });
+          await batchSetItems(items);
 
           setSnackbarMessage('데이터를 가져왔습니다. 새로고침합니다.');
           setSnackbarSeverity('success');
@@ -502,7 +484,6 @@ const SettingsPage: React.FC = () => {
       };
       reader.readAsText(file);
     }
-    // 파일 입력 초기화
     event.target.value = '';
   };
 

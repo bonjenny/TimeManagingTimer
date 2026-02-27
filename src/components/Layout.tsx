@@ -9,27 +9,13 @@ import DarkModeIcon from '@mui/icons-material/DarkMode';
 import CloseIcon from '@mui/icons-material/Close';
 import { useTimerStore } from '../store/useTimerStore';
 import FeedbackBoard from './pages/FeedbackBoard';
+import { getItem, getStorageUsage } from '../utils/storage';
 
-// 설정 저장 키
 const SETTINGS_STORAGE_KEY = 'timekeeper-settings';
 
-// 로컬스토리지 사용량 계산 함수
-const getLocalStorageUsage = (): { usageKB: string; usageMB: string } => {
-  let total = 0;
-  for (const key in localStorage) {
-    if (!Object.prototype.hasOwnProperty.call(localStorage, key)) continue;
-    total += ((localStorage[key].length + key.length) * 2); // UTF-16 기준
-  }
-  return {
-    usageKB: (total / 1024).toFixed(1),
-    usageMB: (total / (1024 * 1024)).toFixed(2)
-  };
-};
-
-// 저장된 화면 크기 설정 로드 및 적용
 const loadAndApplyScreenScale = () => {
   try {
-    const saved = localStorage.getItem(SETTINGS_STORAGE_KEY);
+    const saved = getItem(SETTINGS_STORAGE_KEY);
     if (saved) {
       const settings = JSON.parse(saved);
       const scale = settings.screenScale ?? 1.0;
@@ -60,8 +46,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, onPageChange }) 
   const current_tab_index = PAGE_MAP.findIndex(p => p.page === currentPage);
   const [openQnA, setOpenQnA] = useState(false);
   
-  // 로컬스토리지 사용량 (logs/deleted_logs 변경 시 재계산)
-  const storageUsage = useMemo(() => getLocalStorageUsage(), [logs.length, deleted_logs.length]);
+  const storageUsage = useMemo(() => getStorageUsage(), [logs.length, deleted_logs.length]);
 
   // 페이지 로드 시 저장된 화면 크기 설정 적용
   useEffect(() => {
@@ -187,8 +172,8 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, onPageChange }) 
         }}
       >
         <Typography variant="caption" sx={{ fontSize: '0.6rem', color: 'text.disabled', maxWidth: 900, px: 2, textAlign: 'center' }}>
-          모든 기록은 내 컴퓨터(브라우저)에 저장되며, 서버로 전송되지 않습니다. 
-          현재 저장 용량: <strong>{storageUsage.usageKB} KB</strong> ({storageUsage.usageMB} MB / 약 5MB 제한)
+          모든 기록은 내 컴퓨터(브라우저 IndexedDB)에 저장되며, 서버로 전송되지 않습니다. 
+          현재 저장 용량: <strong>{storageUsage.usageKB} KB</strong> ({storageUsage.usageMB} MB)
         </Typography>
         <Typography variant="caption" sx={{ fontSize: '0.65rem' }}>
           © {new Date().getFullYear()} TimeKeeper. Jihee Eom All rights reserved.

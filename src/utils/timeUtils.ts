@@ -14,15 +14,17 @@ export interface LunchTimeSettings {
   exclude_enabled: boolean;
 }
 
+import { getItem } from './storage';
+
 export const loadLunchTimeSettings = (): LunchTimeSettings => {
   try {
-    const saved = localStorage.getItem(SETTINGS_STORAGE_KEY);
+    const saved = getItem(SETTINGS_STORAGE_KEY);
     if (saved) {
       const settings = JSON.parse(saved);
       return {
         start: settings.lunchStart || DEFAULT_LUNCH_START,
         end: settings.lunchEnd || DEFAULT_LUNCH_END,
-        exclude_enabled: settings.lunchExcludeEnabled ?? true, // 기본값: 활성화
+        exclude_enabled: settings.lunchExcludeEnabled ?? true,
       };
     }
   } catch {

@@ -1,0 +1,89 @@
+---
+version: 0.15.0
+date: 2026-02-27
+step: Step 15
+---
+
+# v0.15.0 릴리즈 노트
+
+## 주요 변경사항
+
+- 스토리지 엔진을 localStorage에서 IndexedDB(idb)로 전면 교체
+- 중앙 스토리지 추상화 레이어(`src/utils/storage.ts`) 도입
+- 기존 localStorage 데이터 자동 마이그레이션 지원
+- Persistent Storage API 요청을 통한 데이터 영속성 강화
+
+## 새로운 기능
+
+### IndexedDB 기반 스토리지 (idb)
+
+- **대용량 저장**: localStorage의 5~10MB 제한을 벗어나 수백MB 이상 저장 가능
+- **안정성 향상**: IndexedDB는 브라우저에서 더 안정적으로 관리되며, 일반적인 캐시 삭제로 데이터가 날아가지 않음
+- **Persistent Storage**: 브라우저에 영구 저장 권한을 자동으로 요청하여 데이터 보호 강화
+- **자동 마이그레이션**: 기존 localStorage에 저장된 데이터가 있으면 앱 시작 시 자동으로 IndexedDB로 마이그레이션
+
+### 중앙 스토리지 추상화 레이어
+
+- `src/utils/storage.ts`에 통합 스토리지 API 구현
+- 인메모리 캐시 + IndexedDB 비동기 쓰기 전략으로 성능 최적화
+- 동기적 읽기(`getItem`) + 비동기적 쓰기(`setItem`) 패턴
+- Zustand persist 호환 `idbStorage` 어댑터 제공
+
+## 기술적 변경사항
+
+### 변경된 파일
+
+**새 파일**
+- `src/utils/storage.ts` - 중앙 스토리지 추상화 레이어 (IDB + 인메모리 캐시)
+
+**Zustand 스토어 (5개)**
+- `src/store/useTimerStore.ts` - `createJSONStorage(() => idbStorage)` 사용
+- `src/store/useProjectStore.ts` - 동일
+- `src/store/useStatusStore.ts` - 동일
+- `src/store/useCategoryStore.ts` - 동일
+- `src/store/useDeployCalendarStore.ts` - 동일
+
+**유틸리티**
+- `src/utils/colorPalette.ts` - `storage.getItem/setItem` 사용
+- `src/utils/timeUtils.ts` - `storage.getItem` 사용
+
+**컴포넌트**
+- `src/App.tsx` - `storage.getItem` 사용
+- `src/main.tsx` - `initStorage()` 호출 후 앱 렌더링
+- `src/components/Layout.tsx` - `storage.getStorageUsage` 사용, 푸터 문구 업데이트
+- `src/components/preset/PresetPanel.tsx` - `storage.getItem/setItem` 사용
+- `src/components/pages/SettingsPage.tsx` - `storage` 모듈 전면 사용 (내보내기/가져오기/초기화)
+- `src/components/pages/WeeklySchedule.tsx` - `storage.getItem/setItem` 사용
+- `src/components/gantt/GanttChart.tsx` - `storage.getItem/setItem` 사용
+- `src/components/timer/TimerList.tsx` - `storage.getItem/setItem` 사용
+
+**테스트**
+- `src/setupTests.ts` - `storage` 모듈 글로벌 mock 추가 (localStorage에 위임)
+
+## 아키텍처
+
+```
+App 시작
+  ↓
+initStorage() 호출
+  ↓
+IndexedDB 열기 + 스키마 생성
+  ↓
+localStorage 데이터 존재 & IDB 비어있음?
+  → 자동 마이그레이션 (localStorage → IDB)
+  ↓
+IDB 전체 데이터 → 인메모리 캐시 로드
+  ↓
+Persistent Storage 권한 요청
+  ↓
+앱 렌더링 시작
+```
+
+## Breaking Changes
+
+- 없음. 기존 localStorage 데이터는 자동 마이그레이션됨.
+
+## 다음 버전 예정
+
+- 캘린더 데이터 CSV/JSON 내보내기
+- 주간 일정과 배포 캘린더 데이터 연동

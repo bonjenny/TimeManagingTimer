@@ -28,6 +28,7 @@ import { useProjectStore } from '../../store/useProjectStore';
 import { formatTimeRange, formatDuration } from '../../utils/timeUtils';
 import CategoryAutocomplete from '../common/CategoryAutocomplete';
 import { getPalette, getAdjustedPalette, getColorByIndex, loadPaletteSettings } from '../../utils/colorPalette';
+import { getItem, setItem as setStorageItem } from '../../utils/storage';
 
 // Snackbar 슬라이드 트랜지션 (위에서 아래로 나타남, 위로 사라짐)
 const SlideTransition = (props: SlideProps) => {
@@ -92,7 +93,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
 
     // 점심시간 설정 로드
     try {
-      const saved = localStorage.getItem(SETTINGS_STORAGE_KEY);
+      const saved = getItem(SETTINGS_STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
         setLunchConfig({
@@ -235,10 +236,9 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
     severity: 'info' | 'warning' | 'success';
   }>({ open: false, message: '', severity: 'info' });
   
-  // 라벨 너비 상태 (localStorage에서 로드)
   const [labelWidth, setLabelWidth] = useState<number>(() => {
     try {
-      const saved = localStorage.getItem(LABEL_WIDTH_STORAGE_KEY);
+      const saved = getItem(LABEL_WIDTH_STORAGE_KEY);
       if (saved) {
         const value = parseInt(saved, 10);
         if (!isNaN(value) && value >= MIN_LABEL_WIDTH && value <= MAX_LABEL_WIDTH) {
@@ -256,9 +256,8 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
   const labelResizeStartX = useRef<number>(0);
   const labelResizeStartWidth = useRef<number>(DEFAULT_LABEL_WIDTH);
   
-  // 라벨 너비 변경 시 localStorage에 저장
   useEffect(() => {
-    localStorage.setItem(LABEL_WIDTH_STORAGE_KEY, String(labelWidth));
+    setStorageItem(LABEL_WIDTH_STORAGE_KEY, String(labelWidth));
   }, [labelWidth]);
   
   // 라벨 리사이저 드래그 핸들러
