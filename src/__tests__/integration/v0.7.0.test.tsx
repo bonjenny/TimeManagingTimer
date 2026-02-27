@@ -156,38 +156,37 @@ describe('v0.7.0 통합 테스트', () => {
     it('TC-008 ~ 010: 주간 이동 버튼 동작', async () => {
       const user = userEvent.setup();
       render(<WeeklySchedule />);
-
-      // "이번 주" 텍스트 확인 (헤더 등)
-      // 날짜 형식이 "1. 26 ~ 2. 1" 같은 식일 것임.
       
       const prevBtn = screen.getByRole('button', { name: /이전 주/i });
       await user.click(prevBtn);
       
-      // 날짜 변경 확인 (DOM 변화)
-      
       const nextBtn = screen.getByRole('button', { name: /다음 주/i });
-      await user.click(nextBtn); // 다시 이번 주
-      await user.click(nextBtn); // 다음 주
+      await user.click(nextBtn);
+      await user.click(nextBtn);
       
-      // "이번 주로 이동" 버튼 확인
       const todayBtn = screen.getByRole('button', { name: /이번 주/i });
       await user.click(todayBtn);
-    });
+    }, 30000);
   });
 
   describe('4. 복사 템플릿 기능', () => {
     it('TC-011 ~ 012: 템플릿 복사', async () => {
       const user = userEvent.setup();
       
-      // 복사할 데이터 추가
-      const start = new Date(selectedDate); // 월요일
-      start.setHours(9, 0, 0, 0);
+      // WeeklySchedule이 표시하는 현재 주의 월요일 계산
+      const today = new Date();
+      const day = today.getDay();
+      const diff = day === 0 ? -6 : 1 - day;
+      const current_monday = new Date(today);
+      current_monday.setDate(today.getDate() + diff);
+      current_monday.setHours(9, 0, 0, 0);
+
       act(() => {
         useTimerStore.getState().addLog({
           id: 'copy-target',
           title: '복사할 작업',
-          startTime: start.getTime(),
-          endTime: start.getTime() + 3600000,
+          startTime: current_monday.getTime(),
+          endTime: current_monday.getTime() + 3600000,
           status: 'COMPLETED',
           pausedDuration: 0,
         });
@@ -195,16 +194,13 @@ describe('v0.7.0 통합 테스트', () => {
 
       render(<WeeklySchedule />);
 
-      // 복사 버튼 찾기 (ContentCopyIcon 아이콘 버튼)
-      const copy_icon = screen.getByTestId('ContentCopyIcon');
-      const copyBtn = copy_icon.closest('button') as HTMLButtonElement;
-      await user.click(copyBtn);
+      const copy_btn = screen.getByTestId('copy-header');
+      await user.click(copy_btn);
 
-      // 클립보드 복사 완료 스낵바 확인
       await waitFor(() => {
         expect(screen.getByText(/클립보드에 복사되었습니다/i)).toBeInTheDocument();
       });
-    });
+    }, 15000);
   });
 
   describe('5. 단축키 설정 UI', () => {

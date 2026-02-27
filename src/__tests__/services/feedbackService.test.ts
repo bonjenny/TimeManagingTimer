@@ -2,16 +2,7 @@
  * v0.10.4 테스트: feedbackService (Firebase Firestore CRUD)
  * Firebase 모듈을 모킹하여 테스트
  */
-import {
-  FeedbackPost,
-  Comment,
-  simpleHash,
-} from '../../services/feedbackService';
-
-// Firebase 모킹
-jest.mock('../../lib/firebase', () => ({
-  db: {},
-}));
+jest.unmock('../../services/feedbackService');
 
 jest.mock('firebase/firestore', () => ({
   collection: jest.fn(),
@@ -20,12 +11,19 @@ jest.mock('firebase/firestore', () => ({
   addDoc: jest.fn(),
   updateDoc: jest.fn(),
   deleteDoc: jest.fn(),
+  deleteField: jest.fn(),
   query: jest.fn(),
   orderBy: jest.fn(),
   Timestamp: {
     now: () => ({ toMillis: () => Date.now() }),
   },
 }));
+
+import {
+  FeedbackPost,
+  Comment,
+  simpleHash,
+} from '../../services/feedbackService';
 
 describe('feedbackService', () => {
   describe('simpleHash', () => {
