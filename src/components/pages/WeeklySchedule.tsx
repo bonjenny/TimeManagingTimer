@@ -107,6 +107,12 @@ const WeeklySchedule: React.FC = () => {
     return saved === '2' || saved === '3' ? saved : '1';
   });
 
+  // 시간 표시 모드 (cumulative: 누적시간, daily: 당일시간)
+  const [timeDisplayMode, setTimeDisplayMode] = useState<'cumulative' | 'daily'>(() => {
+    const saved = getItem('weeklyScheduleTimeDisplayMode');
+    return saved === 'daily' ? 'daily' : 'cumulative';
+  });
+
   // 확장된 프로젝트 상태
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
 
@@ -399,6 +405,14 @@ const WeeklySchedule: React.FC = () => {
     return project.projectName !== project.projectCode ? project.projectName : '';
   };
 
+  const getTimeLabel = () => timeDisplayMode === 'daily' ? '당일시간' : '누적시간';
+
+  const getProjectTime = (project: ProjectGroup) =>
+    timeDisplayMode === 'daily' ? project.totalSeconds : project.cumulativeSeconds;
+
+  const getTaskTime = (task: ProjectGroup['tasks'][number]) =>
+    timeDisplayMode === 'daily' ? task.seconds : task.cumulativeSeconds;
+
   // 복사 템플릿 생성 (형식 1: 간단형 - 구분선 없음, 프로젝트/날짜 구간에 줄바꿈)
   const generateFormat1 = () => {
     let text = '';
@@ -412,10 +426,10 @@ const WeeklySchedule: React.FC = () => {
         const statusText = getStatusLabel(status);
         const displayName = getDisplayProjectName(project);
         const nameSection = displayName ? `${displayName} ` : '';
-        text += `[${project.projectCode}] ${nameSection} (진행상태: ${statusText}, 시작일자: ${project.startDate}, 누적시간: ${formatTimeHHMM(project.cumulativeSeconds)})\n`;
+        text += `[${project.projectCode}] ${nameSection} (진행상태: ${statusText}, 시작일자: ${project.startDate}, ${getTimeLabel()}: ${formatTimeHHMM(getProjectTime(project))})\n`;
 
         project.tasks.forEach(task => {
-          text += `  > ${task.title} (누적시간: ${formatTimeHHMM(task.cumulativeSeconds)})\n`;
+          text += `  > ${task.title} (${getTimeLabel()}: ${formatTimeHHMM(getTaskTime(task))})\n`;
         });
         text += '\n';
       });
@@ -440,10 +454,10 @@ const WeeklySchedule: React.FC = () => {
         const statusText = getStatusLabel(status);
         const displayName = getDisplayProjectName(project);
         const nameSection = displayName ? `${displayName} ` : '';
-        text += `[${project.projectCode}] ${nameSection} (진행상태: ${statusText}, 시작일자: ${project.startDate}, 누적시간: ${formatTimeHHMM(project.cumulativeSeconds)})\n`;
+        text += `[${project.projectCode}] ${nameSection} (진행상태: ${statusText}, 시작일자: ${project.startDate}, ${getTimeLabel()}: ${formatTimeHHMM(getProjectTime(project))})\n`;
 
         project.tasks.forEach(task => {
-          text += `  · ${task.title} (누적시간: ${formatTimeHHMM(task.cumulativeSeconds)})\n`;
+          text += `  · ${task.title} (${getTimeLabel()}: ${formatTimeHHMM(getTaskTime(task))})\n`;
         });
         text += '\n';
       });
@@ -470,11 +484,11 @@ const WeeklySchedule: React.FC = () => {
         const labelHtml =
           `<span style="font-weight: bold; font-size: 13px;">[${escapeHtml(project.projectCode)}]${nameSection}</span>`;
         const metaHtml =
-          `<span style="font-size: 13px;">(진행상태: ${escapeHtml(statusText)}, 시작일자: ${escapeHtml(project.startDate)}, 누적시간: ${formatTimeHHMM(project.cumulativeSeconds)})</span>`;
+          `<span style="font-size: 13px;">(진행상태: ${escapeHtml(statusText)}, 시작일자: ${escapeHtml(project.startDate)}, ${getTimeLabel()}: ${formatTimeHHMM(getProjectTime(project))})</span>`;
         parts.push(labelHtml + '&nbsp;' + metaHtml + '<br>');
         project.tasks.forEach((task) => {
           parts.push(
-            `&nbsp;&nbsp;· ${escapeHtml(task.title)} (누적시간: ${formatTimeHHMM(task.cumulativeSeconds)})<br>`
+            `&nbsp;&nbsp;· ${escapeHtml(task.title)} (${getTimeLabel()}: ${formatTimeHHMM(getTaskTime(task))})<br>`
           );
         });
         parts.push('<br>');
@@ -506,11 +520,11 @@ const WeeklySchedule: React.FC = () => {
           `<table cellspacing="0" cellpadding="0" border="0" style="${labelTableStyle}"><tbody><tr><td bgcolor="${escapeHtml(bgHex)}" style="background-color: ${bgHex}; font-weight: bold; font-size: 13px; color: #000000; border: 0;">[${escapeHtml(project.projectCode)}]${nameSection}</td></tr></tbody></table>`
         );
         parts.push(
-          `&nbsp;<span style="font-size: 13px;">(진행상태: ${escapeHtml(statusText)}, 시작일자: ${escapeHtml(project.startDate)}, 누적시간: ${formatTimeHHMM(project.cumulativeSeconds)})</span><br>`
+          `&nbsp;<span style="font-size: 13px;">(진행상태: ${escapeHtml(statusText)}, 시작일자: ${escapeHtml(project.startDate)}, ${getTimeLabel()}: ${formatTimeHHMM(getProjectTime(project))})</span><br>`
         );
         project.tasks.forEach((task) => {
           parts.push(
-            `&nbsp;&nbsp;· ${escapeHtml(task.title)} (누적시간: ${formatTimeHHMM(task.cumulativeSeconds)})<br>`
+            `&nbsp;&nbsp;· ${escapeHtml(task.title)} (${getTimeLabel()}: ${formatTimeHHMM(getTaskTime(task))})<br>`
           );
         });
         parts.push('<br>');
@@ -779,9 +793,9 @@ const WeeklySchedule: React.FC = () => {
                           시작일자: {project.startDate}
                         </Typography>
 
-                        {/* 누적시간 */}
+                        {/* 시간 표시 (누적시간/당일시간) */}
                         <Typography variant="body2" sx={{ fontWeight: 500, minWidth: 100, textAlign: 'right' }}>
-                          누적시간: {formatTimeHHMM(project.cumulativeSeconds)}
+                          {getTimeLabel()}: {formatTimeHHMM(getProjectTime(project))}
                         </Typography>
                       </Box>
 
@@ -807,7 +821,7 @@ const WeeklySchedule: React.FC = () => {
                                 {task.title}
                               </Typography>
                               <Typography variant="caption" color="text.secondary">
-                                (누적시간: {formatTimeHHMM(task.cumulativeSeconds)})
+                                ({getTimeLabel()}: {formatTimeHHMM(getTaskTime(task))})
                               </Typography>
                             </Box>
                           ))}
@@ -858,6 +872,25 @@ const WeeklySchedule: React.FC = () => {
                 </ToggleButton>
                 <ToggleButton value="3" sx={{ px: 2 }}>
                   라벨형
+                </ToggleButton>
+              </ToggleButtonGroup>
+              <ToggleButtonGroup
+                value={timeDisplayMode}
+                exclusive
+                onChange={(_, value: 'cumulative' | 'daily' | null) => {
+                  if (value) {
+                    setTimeDisplayMode(value);
+                    setStorageItem('weeklyScheduleTimeDisplayMode', value);
+                  }
+                }}
+                size="small"
+                data-testid="time-display-toggle"
+              >
+                <ToggleButton value="cumulative" sx={{ px: 2 }}>
+                  누적시간
+                </ToggleButton>
+                <ToggleButton value="daily" sx={{ px: 2 }}>
+                  당일시간
                 </ToggleButton>
               </ToggleButtonGroup>
               <Button

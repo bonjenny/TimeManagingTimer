@@ -274,6 +274,85 @@ describe('WeeklySchedule', () => {
     });
   });
 
+  describe('시간 표시 모드 토글 (누적시간/당일시간)', () => {
+    const addTestLog = () => {
+      const now = new Date();
+      const monday = new Date(now);
+      const day = monday.getDay();
+      const diff = day === 0 ? -6 : 1 - day;
+      monday.setDate(now.getDate() + diff);
+      monday.setHours(9, 0, 0, 0);
+
+      act(() => {
+        useTimerStore.getState().addLog({
+          id: 'time-toggle-log',
+          title: '시간 토글 테스트 작업',
+          projectCode: 'A26_00005',
+          category: '개발',
+          startTime: monday.getTime(),
+          endTime: monday.getTime() + 7200000, // 2시간
+          status: 'COMPLETED',
+          pausedDuration: 0,
+        });
+      });
+    };
+
+    it('누적시간/당일시간 토글 버튼이 렌더링된다', () => {
+      addTestLog();
+      render(<WeeklySchedule />);
+      expect(screen.getByTestId('time-display-toggle')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: '누적시간' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: '당일시간' })).toBeInTheDocument();
+    });
+
+    it('기본값은 누적시간 모드이다', () => {
+      addTestLog();
+      render(<WeeklySchedule />);
+      const cumulative_btn = screen.getByRole('button', { name: '누적시간' });
+      expect(cumulative_btn).toHaveAttribute('aria-pressed', 'true');
+    });
+
+    it('당일시간 버튼 클릭 시 시간 라벨이 당일시간으로 변경된다', async () => {
+      const user = userEvent.setup();
+      addTestLog();
+      render(<WeeklySchedule />);
+
+      const daily_btn = screen.getByRole('button', { name: '당일시간' });
+      await user.click(daily_btn);
+
+      const preview = screen.getByTestId('copy-preview-content');
+      expect(preview.textContent).toContain('당일시간');
+    });
+
+    it('누적시간 버튼 클릭 시 시간 라벨이 누적시간으로 변경된다', async () => {
+      const user = userEvent.setup();
+      addTestLog();
+      render(<WeeklySchedule />);
+
+      const daily_btn = screen.getByRole('button', { name: '당일시간' });
+      await user.click(daily_btn);
+
+      const cumulative_btn = screen.getByRole('button', { name: '누적시간' });
+      await user.click(cumulative_btn);
+
+      const preview = screen.getByTestId('copy-preview-content');
+      expect(preview.textContent).toContain('누적시간');
+    });
+
+    it('당일시간 모드에서 미리보기 텍스트에 당일시간 라벨이 표시된다', async () => {
+      const user = userEvent.setup();
+      addTestLog();
+      render(<WeeklySchedule />);
+
+      const daily_btn = screen.getByRole('button', { name: '당일시간' });
+      await user.click(daily_btn);
+
+      const preview = screen.getByTestId('copy-preview-content');
+      expect(preview.textContent).toContain('당일시간');
+      expect(preview.textContent).not.toContain('누적시간');
+    });
+  });
+
   describe('pausedDuration 계산', () => {
     it('pausedDuration이 전체 duration보다 크면 전체 시간으로 표시된다', async () => {
       const now = new Date();

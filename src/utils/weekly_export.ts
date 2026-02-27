@@ -26,8 +26,9 @@ export interface ProjectGroupForHtml {
   projectName: string;
   status: 'completed' | 'in_progress';
   startDate: string;
+  totalSeconds: number;
   cumulativeSeconds: number;
-  tasks: { title: string; cumulativeSeconds: number }[];
+  tasks: { title: string; seconds: number; cumulativeSeconds: number }[];
 }
 
 export interface DayDataForHtml {
@@ -40,8 +41,10 @@ export function generateWeeklyScheduleHtml(
   statusOverrides: Record<string, 'completed' | 'in_progress'>,
   getJobColor: (projectCode: string) => string | undefined,
   getStatusLabel: (status: 'completed' | 'in_progress') => string,
-  getDisplayProjectName: (project: ProjectGroupForHtml) => string
+  getDisplayProjectName: (project: ProjectGroupForHtml) => string,
+  timeDisplayMode: 'cumulative' | 'daily' = 'cumulative'
 ): string {
+  const time_label = timeDisplayMode === 'daily' ? '당일시간' : '누적시간';
   const parts: string[] = [];
   days.forEach((day) => {
     day.projects.forEach((project) => {
@@ -51,14 +54,16 @@ export function generateWeeklyScheduleHtml(
       const displayName = getDisplayProjectName(project);
       const nameSection = displayName ? ` ${escapeHtml(displayName)}` : '';
       const bgHex = getJobColor(project.projectCode) || DEFAULT_JOB_COLOR;
+      const project_time = timeDisplayMode === 'daily' ? project.totalSeconds : project.cumulativeSeconds;
       const labelHtml =
         `<span style="font-weight: bold; font-size: 13px; background-color: ${bgHex}; color: #000000;">[${escapeHtml(project.projectCode)}]${nameSection}</span>`;
       const metaHtml =
-        `<span style="font-size: 13px;">(진행상태: ${escapeHtml(statusText)}, 시작일자: ${escapeHtml(project.startDate)}, 누적시간: ${formatTimeHHMM(project.cumulativeSeconds)})</span>`;
+        `<span style="font-size: 13px;">(진행상태: ${escapeHtml(statusText)}, 시작일자: ${escapeHtml(project.startDate)}, ${time_label}: ${formatTimeHHMM(project_time)})</span>`;
       parts.push(labelHtml + metaHtml);
       project.tasks.forEach((task) => {
+        const task_time = timeDisplayMode === 'daily' ? task.seconds : task.cumulativeSeconds;
         parts.push(
-          `&nbsp;&nbsp;· ${escapeHtml(task.title)} (누적시간: ${formatTimeHHMM(task.cumulativeSeconds)})<br>`
+          `&nbsp;&nbsp;· ${escapeHtml(task.title)} (${time_label}: ${formatTimeHHMM(task_time)})<br>`
         );
       });
       parts.push('<br>');
