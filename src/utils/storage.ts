@@ -8,6 +8,7 @@ const MIGRATION_FLAG = '__ls_migrated';
 const cache = new Map<string, string>();
 let db_instance: IDBPDatabase | null = null;
 let initialized = false;
+let init_promise: Promise<void> | null = null;
 
 async function getDB(): Promise<IDBPDatabase> {
   if (db_instance) return db_instance;
@@ -41,9 +42,7 @@ async function migrateFromLocalStorage(db: IDBPDatabase): Promise<void> {
   await tx.done;
 }
 
-export async function initStorage(): Promise<void> {
-  if (initialized) return;
-
+async function performInit(): Promise<void> {
   const db = await getDB();
 
   const migrated = await db.get(STORE_NAME, MIGRATION_FLAG);
@@ -69,6 +68,12 @@ export async function initStorage(): Promise<void> {
   requestPersistentStorage();
 }
 
+export function initStorage(): Promise<void> {
+  if (init_promise) return init_promise;
+  init_promise = performInit();
+  return init_promise;
+}
+
 export function getItem(key: string): string | null {
   return cache.get(key) ?? null;
 }
@@ -84,7 +89,10 @@ export function removeItem(key: string): void {
 }
 
 export const idbStorage = {
-  getItem: (name: string): string | null => getItem(name),
+  getItem: (name: string): string | null | Promise<string | null> => {
+    if (initialized) return cache.get(name) ?? null;
+    return initStorage().then(() => cache.get(name) ?? null);
+  },
   setItem: (name: string, value: string): void => setItem(name, value),
   removeItem: (name: string): void => removeItem(name),
 };
