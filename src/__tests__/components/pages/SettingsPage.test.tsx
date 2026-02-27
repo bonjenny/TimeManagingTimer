@@ -281,4 +281,32 @@ describe('SettingsPage', () => {
       expect(add_buttons.length).toBeGreaterThan(0);
     });
   });
+
+  describe('프리셋 일별 고유 관리 설정', () => {
+    it('프리셋 작업 일별 고유 관리 Switch가 렌더링된다', () => {
+      render(<SettingsPage />);
+      expect(screen.getByText('프리셋 작업 일별 고유 관리')).toBeInTheDocument();
+    });
+
+    it('기본값은 비활성 상태이다', () => {
+      render(<SettingsPage />);
+      const switch_el = screen.getByRole('checkbox', { name: /프리셋 작업 일별 고유 관리/i });
+      expect(switch_el).not.toBeChecked();
+    });
+
+    it('저장된 설정이 로드된다', () => {
+      localStorage.setItem('timekeeper-settings', JSON.stringify({
+        lunchStart: '12:00',
+        lunchEnd: '13:00',
+        lunchExcludeEnabled: true,
+        autoCompleteEnabled: true,
+        presetDailyGroup: true,
+        screenScale: 1.0,
+      }));
+
+      render(<SettingsPage />);
+      const switch_el = screen.getByRole('checkbox', { name: /프리셋 작업 일별 고유 관리/i });
+      expect(switch_el).toBeChecked();
+    });
+  });
 });

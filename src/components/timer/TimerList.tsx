@@ -279,9 +279,12 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
     });
 
     // 총시간을 선택된 날짜까지의 전체 누적시간으로 재계산
+    // dailyGroupKey가 있는 작업은 같은 키끼리만 합산
     groups.forEach(group => {
+      const reference_daily_key = group.sessions[0]?.dailyGroupKey;
       const all_sessions_for_title = logs.filter(log =>
-        log.title === group.title && log.startTime < date_range.end
+        log.title === group.title && log.startTime < date_range.end &&
+        (!reference_daily_key || log.dailyGroupKey === reference_daily_key)
       );
       group.total_duration = all_sessions_for_title.reduce((sum, log) => {
         const effectiveEndTime = log.endTime || log.lastPausedAt || log.startTime;
@@ -334,8 +337,8 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
     });
   };
 
-  const handleRestart = (title: string, projectCode?: string, category?: string, note?: string) => {
-    startTimer(title, projectCode, category, note);
+  const handleRestart = (title: string, projectCode?: string, category?: string, note?: string, dailyGroupKey?: string) => {
+    startTimer(title, projectCode, category, note, dailyGroupKey);
   };
 
   const getDuration = (log: TimerLog) => {
@@ -795,10 +798,10 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                                 pauseAndMoveToLogs();
                               } else if (all_completed && task.sessions.length > 0) {
                                 // 완료된 항목 → 완료 취소 후 새 타이머 시작
-                                handleRestart(task.title, task.projectCode, task.category, task.note);
+                                handleRestart(task.title, task.projectCode, task.category, task.note, task.sessions[0]?.dailyGroupKey);
                               } else {
                                 // 미완료 항목 → 새 타이머 시작
-                                handleRestart(task.title, task.projectCode, task.category, task.note);
+                                handleRestart(task.title, task.projectCode, task.category, task.note, task.sessions[0]?.dailyGroupKey);
                               }
                             }}
                             sx={{ 
@@ -1186,7 +1189,7 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                                       onClick={() => {
                                         // 기존 activeTimer는 startTimer 내부에서 자동으로 logs로 이동됨
                                         // 새 세션을 현재 시간으로 시작
-                                        startTimer(session.title, session.projectCode, session.category, session.note);
+                                        startTimer(session.title, session.projectCode, session.category, session.note, session.dailyGroupKey);
                                       }}
                                       sx={{ p: 0.25, color: 'success.main' }}
                                       aria-label="재진행"

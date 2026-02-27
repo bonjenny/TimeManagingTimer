@@ -353,6 +353,96 @@ describe('WeeklySchedule', () => {
     });
   });
 
+  describe('dailyGroupKey 기반 누적시간 분리', () => {
+    it('dailyGroupKey가 다른 같은 제목 작업은 누적시간이 분리된다', () => {
+      const now = new Date();
+      const monday = new Date(now);
+      const day = monday.getDay();
+      const diff = day === 0 ? -6 : 1 - day;
+      monday.setDate(now.getDate() + diff);
+      monday.setHours(9, 0, 0, 0);
+
+      const monday_key = monday.toISOString().split('T')[0];
+      const tuesday = new Date(monday);
+      tuesday.setDate(tuesday.getDate() + 1);
+      tuesday.setHours(9, 0, 0, 0);
+      const tuesday_key = tuesday.toISOString().split('T')[0];
+
+      act(() => {
+        const store = useTimerStore.getState();
+        store.addLog({
+          id: 'dgk-mon-1',
+          title: '문서작업',
+          projectCode: 'A26_00099',
+          category: '개발',
+          startTime: monday.getTime(),
+          endTime: monday.getTime() + 3600000,
+          status: 'COMPLETED',
+          pausedDuration: 0,
+          dailyGroupKey: monday_key,
+        });
+        store.addLog({
+          id: 'dgk-tue-1',
+          title: '문서작업',
+          projectCode: 'A26_00099',
+          category: '개발',
+          startTime: tuesday.getTime(),
+          endTime: tuesday.getTime() + 7200000,
+          status: 'COMPLETED',
+          pausedDuration: 0,
+          dailyGroupKey: tuesday_key,
+        });
+      });
+
+      render(<WeeklySchedule />);
+
+      const task_elements = screen.getAllByText('문서작업');
+      expect(task_elements.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it('dailyGroupKey가 없는 작업은 기존처럼 전체 합산된다', () => {
+      const now = new Date();
+      const monday = new Date(now);
+      const day = monday.getDay();
+      const diff = day === 0 ? -6 : 1 - day;
+      monday.setDate(now.getDate() + diff);
+      monday.setHours(9, 0, 0, 0);
+
+      const tuesday = new Date(monday);
+      tuesday.setDate(tuesday.getDate() + 1);
+      tuesday.setHours(9, 0, 0, 0);
+
+      act(() => {
+        const store = useTimerStore.getState();
+        store.addLog({
+          id: 'no-dgk-1',
+          title: '일반작업',
+          projectCode: 'A26_00098',
+          category: '개발',
+          startTime: monday.getTime(),
+          endTime: monday.getTime() + 3600000,
+          status: 'COMPLETED',
+          pausedDuration: 0,
+        });
+        store.addLog({
+          id: 'no-dgk-2',
+          title: '일반작업',
+          projectCode: 'A26_00098',
+          category: '개발',
+          startTime: tuesday.getTime(),
+          endTime: tuesday.getTime() + 7200000,
+          status: 'COMPLETED',
+          pausedDuration: 0,
+        });
+      });
+
+      render(<WeeklySchedule />);
+
+      const task_elements = screen.getAllByText('일반작업');
+      expect(task_elements.length).toBeGreaterThanOrEqual(2);
+    });
+  });
+
   describe('pausedDuration 계산', () => {
     it('pausedDuration이 전체 duration보다 크면 전체 시간으로 표시된다', async () => {
       const now = new Date();

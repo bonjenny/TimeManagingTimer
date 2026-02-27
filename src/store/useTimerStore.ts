@@ -26,6 +26,9 @@ export interface TimerLog {
   
   // 마지막으로 일시정지 시작한 시각
   lastPausedAt?: number; 
+
+  // 프리셋 일별 고유 관리용 (YYYY-MM-DD)
+  dailyGroupKey?: string;
 }
 
 // 삭제된 로그 타입 (휴지통용)
@@ -57,7 +60,7 @@ interface TimerState {
   nextColorIndex: number; // 다음에 할당할 색상 인덱스
 
   // --- Actions ---
-  startTimer: (title: string, projectCode?: string, category?: string, note?: string) => void;
+  startTimer: (title: string, projectCode?: string, category?: string, note?: string, dailyGroupKey?: string) => void;
   pauseTimer: () => void;
   resumeTimer: () => void;
   stopTimer: () => void;
@@ -166,7 +169,7 @@ export const useTimerStore = create<TimerState>()(
         return result.slice(0, 30); // 최대 30개
       },
 
-      startTimer: (title, projectCode, category, note) => {
+      startTimer: (title, projectCode, category, note, dailyGroupKey) => {
         const now = Date.now();
         const { logs } = get();
         
@@ -182,6 +185,7 @@ export const useTimerStore = create<TimerState>()(
           startTime: now,
           status: 'RUNNING',
           pausedDuration: 0,
+          dailyGroupKey,
         };
 
         // 기존 activeTimer가 있다면 미완료 상태로 logs에 이동

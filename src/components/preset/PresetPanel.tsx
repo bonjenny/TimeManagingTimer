@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Box,
   Paper,
@@ -285,9 +285,21 @@ const SortablePresetItem: React.FC<SortablePresetItemProps> = ({
   );
 };
 
+const SETTINGS_STORAGE_KEY = 'timekeeper-settings';
+
 const PresetPanel: React.FC = () => {
   const { startTimer, logs, themeConfig } = useTimerStore();
   const { projects, addProject, getProjectName } = useProjectStore();
+
+  const preset_daily_group = useMemo(() => {
+    try {
+      const saved = getItem(SETTINGS_STORAGE_KEY);
+      if (saved) {
+        return JSON.parse(saved).presetDailyGroup ?? false;
+      }
+    } catch { /* ignore */ }
+    return false;
+  }, []);
 
   // 컬러 팔레트 로드 (다크모드일 때 색상 보정 적용)
   const [colorPalette, setColorPalette] = useState<string[]>(() => {
@@ -396,8 +408,11 @@ const PresetPanel: React.FC = () => {
 
   const handleStartPreset = useCallback((preset: PresetItem, e: React.MouseEvent) => {
     e.stopPropagation();
-    startTimer(preset.title, preset.projectCode, preset.category, preset.note);
-  }, [startTimer]);
+    const daily_key = preset_daily_group
+      ? new Date().toISOString().split('T')[0]
+      : undefined;
+    startTimer(preset.title, preset.projectCode, preset.category, preset.note, daily_key);
+  }, [startTimer, preset_daily_group]);
 
   const handleOpenAddMenu = (event: React.MouseEvent<HTMLElement>) => {
     setAddMenuAnchor(event.currentTarget);

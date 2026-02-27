@@ -114,6 +114,37 @@ describe('PresetPanel', () => {
     });
   });
 
+  describe('프리셋 일별 고유 관리', () => {
+    it('presetDailyGroup 설정이 비활성이면 dailyGroupKey 없이 startTimer가 호출된다', async () => {
+      localStorage.setItem('timekeeper-settings', JSON.stringify({
+        presetDailyGroup: false,
+      }));
+
+      localStorage.setItem('timekeeper-manual-presets', JSON.stringify([
+        { id: 'dgk-test-1', title: '프리셋작업', projectCode: '', category: '', note: '' }
+      ]));
+
+      const start_timer_spy = jest.spyOn(useTimerStore.getState(), 'startTimer');
+
+      const user = userEvent.setup();
+      render(<PresetPanel />);
+
+      await waitFor(() => {
+        expect(screen.getByText('프리셋작업')).toBeInTheDocument();
+      });
+
+      const play_buttons = screen.getAllByLabelText(/시작/i);
+      if (play_buttons.length > 0) {
+        await user.click(play_buttons[0]);
+        expect(start_timer_spy).toHaveBeenCalledWith(
+          '프리셋작업', '', '', '', undefined
+        );
+      }
+
+      start_timer_spy.mockRestore();
+    });
+  });
+
   describe('푸터 안내 문구', () => {
     it('올바른 안내 문구가 표시된다', () => {
       render(<PresetPanel />);
