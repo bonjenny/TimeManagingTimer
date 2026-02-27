@@ -7,7 +7,6 @@ const MIGRATION_FLAG = '__ls_migrated';
 
 const cache = new Map<string, string>();
 let db_instance: IDBPDatabase | null = null;
-let initialized = false;
 let init_promise: Promise<void> | null = null;
 
 async function getDB(): Promise<IDBPDatabase> {
@@ -43,29 +42,31 @@ async function migrateFromLocalStorage(db: IDBPDatabase): Promise<void> {
 }
 
 async function performInit(): Promise<void> {
-  const db = await getDB();
+  try {
+    const db = await getDB();
 
-  const migrated = await db.get(STORE_NAME, MIGRATION_FLAG);
-  if (migrated !== 'true' && localStorage.length > 0) {
-    await migrateFromLocalStorage(db);
-  }
-
-  const tx = db.transaction(STORE_NAME, 'readonly');
-  const store = tx.objectStore(STORE_NAME);
-  const all_keys = await store.getAllKeys();
-
-  for (const key of all_keys) {
-    if (key === MIGRATION_FLAG) continue;
-    const value = await store.get(key);
-    if (value !== undefined) {
-      cache.set(String(key), String(value));
+    const migrated = await db.get(STORE_NAME, MIGRATION_FLAG);
+    if (migrated !== 'true' && localStorage.length > 0) {
+      await migrateFromLocalStorage(db);
     }
+
+    const tx = db.transaction(STORE_NAME, 'readonly');
+    const store = tx.objectStore(STORE_NAME);
+    const all_keys = await store.getAllKeys();
+
+    for (const key of all_keys) {
+      if (key === MIGRATION_FLAG) continue;
+      const value = await store.get(key);
+      if (value !== undefined) {
+        cache.set(String(key), String(value));
+      }
+    }
+
+    await tx.done;
+    requestPersistentStorage();
+  } catch (err) {
+    console.error('[TimeKeeper] IndexedDB initialization failed:', err);
   }
-
-  await tx.done;
-  initialized = true;
-
-  requestPersistentStorage();
 }
 
 export function initStorage(): Promise<void> {
@@ -89,10 +90,7 @@ export function removeItem(key: string): void {
 }
 
 export const idbStorage = {
-  getItem: (name: string): string | null | Promise<string | null> => {
-    if (initialized) return cache.get(name) ?? null;
-    return initStorage().then(() => cache.get(name) ?? null);
-  },
+  getItem: (name: string): string | null => cache.get(name) ?? null,
   setItem: (name: string, value: string): void => setItem(name, value),
   removeItem: (name: string): void => removeItem(name),
 };

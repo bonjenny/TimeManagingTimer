@@ -1,0 +1,37 @@
+---
+version: 0.16.2
+date: 2026-02-27
+step: Step 16
+---
+
+# v0.16.2 릴리즈 노트
+
+## 주요 변경사항
+
+- IndexedDB 스토어 하이드레이션 타이밍 문제 근본 수정 (Dynamic Import 방식 도입)
+
+## 버그 수정
+
+### IndexedDB 데이터 로딩 실패 문제 해결
+
+- **증상**: v0.15.0 배포 후 페이지 새로고침 시 데이터가 IndexedDB에 존재함에도 UI에 표시되지 않음
+- **원인**: `main.tsx`에서 `App`을 정적 import하여 Zustand 스토어 모듈이 `initStorage()` 완료 전에 로드됨. 비동기 Promise 체인의 실행 순서가 배포 환경에서 보장되지 않아 스토어 하이드레이션과 React 렌더링 간 타이밍 경합 발생
+- **해결**: `App` 및 모든 React 모듈을 Dynamic Import로 변경하여, IndexedDB 캐시 완전 준비 후에만 스토어가 로드/하이드레이션되도록 보장
+
+### 변경된 파일
+
+- `src/main.tsx` - 모든 import를 `initStorage()` 완료 후 동적으로 수행하도록 변경
+- `src/utils/storage.ts` - `idbStorage.getItem`을 동기 전용으로 단순화 (Promise 분기 제거), `performInit()`에 try-catch 에러 핸들링 추가, 불필요한 `initialized` 변수 제거
+
+## 새로운 기능
+
+- 없음
+
+## Breaking Changes
+
+- 없음 (내부 로딩 순서만 변경, API 변경 없음)
+
+## 다음 버전 예정
+
+- 캘린더 데이터 CSV/JSON 내보내기
+- 주간 일정과 배포 캘린더 데이터 연동

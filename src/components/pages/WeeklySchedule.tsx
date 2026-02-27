@@ -107,10 +107,11 @@ const WeeklySchedule: React.FC = () => {
     return saved === '2' || saved === '3' ? saved : '1';
   });
 
-  // 시간 표시 모드 (cumulative: 누적시간, daily: 당일시간)
-  const [timeDisplayMode, setTimeDisplayMode] = useState<'cumulative' | 'daily'>(() => {
+  // 시간 표시 모드 (cumulative: 누적시간, daily: 당일시간, none: 시간 없이)
+  const [timeDisplayMode, setTimeDisplayMode] = useState<'cumulative' | 'daily' | 'none'>(() => {
     const saved = getItem('weeklyScheduleTimeDisplayMode');
-    return saved === 'daily' ? 'daily' : 'cumulative';
+    if (saved === 'daily' || saved === 'none') return saved;
+    return 'cumulative';
   });
 
   // 확장된 프로젝트 상태
@@ -413,7 +414,7 @@ const WeeklySchedule: React.FC = () => {
     return project.projectName !== project.projectCode ? project.projectName : '';
   };
 
-  const getTimeLabel = () => timeDisplayMode === 'daily' ? '' : '누적시간';
+  const getTimeLabel = () => timeDisplayMode === 'cumulative' ? '누적시간' : '';
 
   const getProjectTime = (project: ProjectGroup) =>
     timeDisplayMode === 'daily' ? project.totalSeconds : project.cumulativeSeconds;
@@ -422,8 +423,24 @@ const WeeklySchedule: React.FC = () => {
     timeDisplayMode === 'daily' ? task.seconds : task.cumulativeSeconds;
 
   const formatTimePart = (seconds: number) => {
+    if (timeDisplayMode === 'none') return '';
     const label = getTimeLabel();
     return label ? `${label}: ${formatTimeHHMM(seconds)}` : formatTimeHHMM(seconds);
+  };
+
+  // 프로젝트 메타 문자열 생성 (시간 포함 여부에 따라 분기)
+  const buildProjectMeta = (statusText: string, startDate: string, project: ProjectGroup) => {
+    const time_str = formatTimePart(getProjectTime(project));
+    if (time_str) {
+      return `(진행상태: ${statusText}, 시작일자: ${startDate}, ${time_str})`;
+    }
+    return `(진행상태: ${statusText}, 시작일자: ${startDate})`;
+  };
+
+  // 작업 시간 문자열 생성 (시간 없이 모드면 빈 문자열)
+  const buildTaskTimeSuffix = (task: ProjectGroup['tasks'][number]) => {
+    const time_str = formatTimePart(getTaskTime(task));
+    return time_str ? ` (${time_str})` : '';
   };
 
   // 복사 템플릿 생성 (형식 1: 간단형 - 구분선 없음, 프로젝트/날짜 구간에 줄바꿈)
@@ -439,10 +456,10 @@ const WeeklySchedule: React.FC = () => {
         const statusText = getStatusLabel(status);
         const displayName = getDisplayProjectName(project);
         const nameSection = displayName ? `${displayName} ` : '';
-        text += `[${project.projectCode}] ${nameSection} (진행상태: ${statusText}, 시작일자: ${project.startDate}, ${formatTimePart(getProjectTime(project))})\n`;
+        text += `[${project.projectCode}] ${nameSection} ${buildProjectMeta(statusText, project.startDate, project)}\n`;
 
         project.tasks.forEach(task => {
-          text += `  > ${task.title} (${formatTimePart(getTaskTime(task))})\n`;
+          text += `  > ${task.title}${buildTaskTimeSuffix(task)}\n`;
         });
         text += '\n';
       });
@@ -467,10 +484,10 @@ const WeeklySchedule: React.FC = () => {
         const statusText = getStatusLabel(status);
         const displayName = getDisplayProjectName(project);
         const nameSection = displayName ? `${displayName} ` : '';
-        text += `[${project.projectCode}] ${nameSection} (진행상태: ${statusText}, 시작일자: ${project.startDate}, ${formatTimePart(getProjectTime(project))})\n`;
+        text += `[${project.projectCode}] ${nameSection} ${buildProjectMeta(statusText, project.startDate, project)}\n`;
 
         project.tasks.forEach(task => {
-          text += `  · ${task.title} (${formatTimePart(getTaskTime(task))})\n`;
+          text += `  · ${task.title}${buildTaskTimeSuffix(task)}\n`;
         });
         text += '\n';
       });
