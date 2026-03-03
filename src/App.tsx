@@ -9,6 +9,7 @@ import GanttChart from './components/gantt/GanttChart';
 import PresetPanel from './components/preset/PresetPanel';
 import WeeklySchedule from './components/pages/WeeklySchedule';
 import DeployCalendar from './components/pages/DeployCalendar';
+import ProjectAnalysis from './components/pages/ProjectAnalysis';
 import SettingsPage from './components/pages/SettingsPage';
 import NewTaskModal from './components/modal/NewTaskModal';
 import { Box, Typography, IconButton, Tooltip, useMediaQuery, Snackbar } from '@mui/material';
@@ -225,6 +226,12 @@ function App() {
             handlePageChange('monthly');
             break;
 
+          // Alt + 4: 프로젝트 분석 페이지
+          case '4':
+            e.preventDefault();
+            handlePageChange('analysis');
+            break;
+
           // Alt + T: 오늘로 이동 (일간 페이지에서)
           case 't':
             e.preventDefault();
@@ -414,6 +421,8 @@ function App() {
         return <WeeklySchedule />;
       case 'monthly':
         return <DeployCalendar />;
+      case 'analysis':
+        return <ProjectAnalysis />;
       case 'settings':
         return <SettingsPage />;
       default:
