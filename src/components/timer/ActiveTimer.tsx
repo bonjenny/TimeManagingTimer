@@ -1,8 +1,9 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
-import { Box, Typography, Button, Paper, Chip, IconButton, TextField, Autocomplete, ClickAwayListener } from '@mui/material';
+import { Box, Typography, Button, Paper, Chip, IconButton, TextField, Autocomplete, ClickAwayListener, Collapse } from '@mui/material';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import PauseIcon from '@mui/icons-material/Pause';
 import CheckIcon from '@mui/icons-material/Check';
+import SkipNextIcon from '@mui/icons-material/SkipNext';
 import { useTimerStore } from '../../store/useTimerStore';
 import { useProjectStore } from '../../store/useProjectStore';
 import { useTimerLogic } from '../../hooks/useTimerLogic';
@@ -13,7 +14,12 @@ const ActiveTimer: React.FC = () => {
   const { activeTimer, elapsedSeconds, showSeconds } = useTimerLogic();
   const { logs, resumeTimer, completeTimer, updateActiveTimer, pauseAndMoveToLogs } = useTimerStore();
   const { projects, getProjectName } = useProjectStore();
-  
+
+  // 완료 시 메모 입력 상태
+  const [show_note_input, setShowNoteInput] = useState(false);
+  const [completion_note, setCompletionNote] = useState('');
+  const note_input_ref = useRef<HTMLInputElement>(null);
+
   // 제목 편집 상태
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editTitle, setEditTitle] = useState('');
@@ -80,6 +86,33 @@ const ActiveTimer: React.FC = () => {
       titleInputRef.current.select();
     }
   }, [isEditingTitle]);
+
+  // 메모 입력창이 나타나면 포커스
+  useEffect(() => {
+    if (show_note_input && note_input_ref.current) {
+      note_input_ref.current.focus();
+    }
+  }, [show_note_input]);
+
+  const handleCompleteClick = () => {
+    setShowNoteInput(true);
+    setCompletionNote('');
+  };
+
+  const handleCompleteWithNote = () => {
+    if (completion_note.trim()) {
+      updateActiveTimer({ note: completion_note.trim() });
+    }
+    setShowNoteInput(false);
+    setCompletionNote('');
+    setTimeout(() => completeTimer(), 0);
+  };
+
+  const handleSkipNote = () => {
+    setShowNoteInput(false);
+    setCompletionNote('');
+    completeTimer();
+  };
 
   if (!activeTimer) {
     return null;
@@ -327,7 +360,8 @@ const ActiveTimer: React.FC = () => {
           <Button 
             variant="contained" 
             startIcon={<CheckIcon />} 
-            onClick={completeTimer}
+            onClick={handleCompleteClick}
+            disabled={show_note_input}
             sx={{ 
                 bgcolor: 'var(--primary-color)', 
                 color: 'white', 
@@ -338,6 +372,36 @@ const ActiveTimer: React.FC = () => {
           </Button>
         </Box>
       </Box>
+
+      {/* 완료 시 메모 입력 */}
+      <Collapse in={show_note_input}>
+        <Box sx={{ mt: 2, pt: 2, borderTop: '1px dashed var(--border-color)', display: 'flex', alignItems: 'center', gap: 1 }}>
+          <TextField
+            inputRef={note_input_ref}
+            size="small"
+            fullWidth
+            placeholder="이 작업에 대한 메모를 남겨보세요 (선택사항)"
+            value={completion_note}
+            onChange={(e) => setCompletionNote(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleCompleteWithNote();
+              }
+              if (e.key === 'Escape') handleSkipNote();
+            }}
+            sx={{ '& .MuiInputBase-input': { fontSize: '0.85rem' } }}
+          />
+          <Button variant="contained" size="small" onClick={handleCompleteWithNote} startIcon={<CheckIcon />}
+            sx={{ bgcolor: 'var(--primary-color)', color: 'white', whiteSpace: 'nowrap', '&:hover': { bgcolor: 'var(--accent-color)' } }}>
+            저장
+          </Button>
+          <Button variant="outlined" size="small" onClick={handleSkipNote} startIcon={<SkipNextIcon />}
+            sx={{ whiteSpace: 'nowrap' }}>
+            건너뛰기
+          </Button>
+        </Box>
+      </Collapse>
     </Paper>
   );
 };

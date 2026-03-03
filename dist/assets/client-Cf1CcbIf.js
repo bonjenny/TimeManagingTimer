@@ -1,1 +1,0 @@
-import{r as o}from"./index-4RBvwEu9.js";var t,e=o;t=e.createRoot,e.hydrateRoot;const a=Object.freeze(Object.defineProperty({__proto__:null,get createRoot(){return t}},Symbol.toStringTag,{value:"Module"}));export{a as c};

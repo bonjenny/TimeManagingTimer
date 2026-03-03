@@ -3,6 +3,7 @@ import { AppBar, Toolbar, Typography, Tabs, Tab, Box, Container, IconButton, Too
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import EventNoteIcon from '@mui/icons-material/EventNote';
+import AssessmentIcon from '@mui/icons-material/Assessment';
 import SettingsIcon from '@mui/icons-material/Settings';
 import LightModeIcon from '@mui/icons-material/LightMode';
 import DarkModeIcon from '@mui/icons-material/DarkMode';
@@ -26,7 +27,7 @@ const loadAndApplyScreenScale = () => {
   }
 };
 
-export type PageType = 'daily' | 'weekly' | 'monthly' | 'settings';
+export type PageType = 'daily' | 'weekly' | 'monthly' | 'analysis' | 'settings';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -38,6 +39,7 @@ const PAGE_MAP: { page: PageType; label: string; icon: React.ReactNode }[] = [
   { page: 'daily', label: '일간 타이머', icon: <AccessTimeIcon sx={{ fontSize: 20, mr: 1, mb: '0px !important' }} /> },
   { page: 'weekly', label: '주간 일정', icon: <CalendarMonthIcon sx={{ fontSize: 20, mr: 1, mb: '0px !important' }} /> },
   { page: 'monthly', label: '배포 캘린더', icon: <EventNoteIcon sx={{ fontSize: 20, mr: 1, mb: '0px !important' }} /> },
+  { page: 'analysis', label: '프로젝트 분석', icon: <AssessmentIcon sx={{ fontSize: 20, mr: 1, mb: '0px !important' }} /> },
   { page: 'settings', label: '설정', icon: <SettingsIcon sx={{ fontSize: 20, mr: 1, mb: '0px !important' }} /> },
 ];
 

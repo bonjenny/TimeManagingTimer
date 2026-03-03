@@ -22,9 +22,67 @@
     },
     "version": 0
   },
+  "timekeeper-categories": {
+    "state": {
+      "categories": [
+        "분석",
+        "개발",
+        "개발자테스트",
+        "테스트오류수정",
+        "센터오류수정",
+        "환경세팅",
+        "회의",
+        "기타",
+        "질의응답",
+        "문서작업"
+      ]
+    },
+    "version": 0
+  },
   "timekeeper-deploy-calendar": {
     "state": {
-      "events": [],
+      "events": [
+        {
+          "date": "2026-02-23",
+          "job_code": "A26_00413",
+          "job_name": "어플리케이션/페이지의 LifeCycle 관리",
+          "status": "테스트요청/테스트시작",
+          "is_holiday": false,
+          "id": "d8ea27be-a18b-4217-a02d-130db143fb73"
+        },
+        {
+          "date": "2026-02-25",
+          "job_code": "A26_00413",
+          "job_name": "어플리케이션/페이지의 LifeCycle 관리",
+          "status": "테스트완료",
+          "is_holiday": false,
+          "id": "bde74b90-3869-4bb7-a0c9-de8655627588"
+        },
+        {
+          "date": "2026-03-04",
+          "job_code": "A26_00413",
+          "job_name": "어플리케이션/페이지의 LifeCycle 관리",
+          "status": "스테이지",
+          "is_holiday": false,
+          "id": "89c9822d-b9f6-44f1-a5c1-9d955bcd40b8"
+        },
+        {
+          "date": "2026-03-05",
+          "job_code": "A26_00413",
+          "job_name": "어플리케이션/페이지의 LifeCycle 관리",
+          "status": "수시",
+          "is_holiday": false,
+          "id": "89804abe-c9b9-4235-a96a-f6db36ddd2ba"
+        },
+        {
+          "date": "2026-03-02",
+          "job_code": "",
+          "job_name": "공휴일",
+          "status": "",
+          "is_holiday": true,
+          "id": "6f4f8ae8-b9c0-4030-b9d9-d024d7a11853"
+        }
+      ],
       "job_colors": [
         {
           "job_code": "A26_00999",
@@ -48,56 +106,28 @@
     "version": 0
   },
   "timekeeper-feedback-posts": [],
-  "timekeeper-gantt-label-width": 180,
+  "timekeeper-gantt-label-width": 213,
   "timekeeper-manual-presets": [
     {
-      "id": "ac91d7db-8b95-4644-8424-6eaed3ea7ef8",
-      "title": "5.6 프레임워크 FE",
-      "projectCode": "A25_01846",
-      "category": "개발"
+      "id": "d99630f7-c32f-4caf-a665-8dd4078bcbef",
+      "title": "시간관리 보고서 작성",
+      "projectCode": "A25_05591",
+      "category": "문서작업",
+      "color": "#a69082"
     },
     {
-      "id": "7a9d41ac-3401-499f-a19d-f4745b675cb8",
+      "id": "8debd37a-83d0-42d8-b2ff-1715abf6fcea",
       "title": "주간일정 작성",
       "projectCode": "A25_05591",
       "category": "문서작업",
       "color": "#8a9a8e"
     },
     {
-      "id": "f3b57825-e548-4a41-9883-35d0c902c1ca",
-      "title": "어플리케이션/페이지의 LifeCycle 관리",
-      "projectCode": "A26_00413",
-      "category": "환경세팅",
-      "note": "브랜치 최신화",
-      "color": "#a8a978"
-    },
-    {
-      "id": "3f248558-777a-432a-aa34-76cbfa2c0c22",
-      "title": "시간관리 입력",
-      "projectCode": "A25_05591",
-      "category": "문서작업",
-      "color": "#e9c46a"
-    },
-    {
-      "id": "673adf06-8eb5-479b-ad57-8966b213a206",
-      "title": "업무 기록 타이머 개발",
-      "projectCode": "A25_05591",
-      "category": "개발",
-      "color": "#e76f51",
-      "is_favorite": true
-    },
-    {
-      "id": "9e267c4e-773f-40ad-80ae-2a640eaf16a1",
-      "title": "HTML영역 다크모드 적용 TP",
-      "projectCode": "A25_07788",
-      "category": "테스트오류수정",
-      "color": "#e76f51"
-    },
-    {
-      "id": "4a711ed7-2d7b-4ff7-a057-e3b56151909e",
+      "id": "cb6f43c6-603b-407b-806d-dff4ef5393eb",
       "title": "질의응답",
       "projectCode": "A25_05591",
-      "category": "질의응답"
+      "category": "질의응답",
+      "color": "#a8a978"
     }
   ],
   "timekeeper-palette-settings": {
@@ -107,24 +137,16 @@
     "state": {
       "projects": [
         {
-          "code": "A25_01846",
-          "name": "5.6 프레임워크 FE"
+          "code": "A26_00413",
+          "name": "어플리케이션/페이지의 LifeCycle 관리"
         },
         {
           "code": "A26_00999",
           "name": "3.0 페이지 라이프사이클 관리"
         },
         {
-          "code": "A25_07788",
-          "name": "HTML영역 다크모드 적용"
-        },
-        {
           "code": "A25_05591",
           "name": "관리업무"
-        },
-        {
-          "code": "A26_00413",
-          "name": "어플리케이션/페이지의 LifeCycle 관리"
         }
       ]
     },
@@ -135,12 +157,21 @@
     "lunchEnd": "12:40",
     "lunchExcludeEnabled": true,
     "autoCompleteEnabled": true,
-    "presetDailyGroup": false,
+    "presetDailyGroup": true,
     "screenScale": 1
   },
   "timekeeper-storage": {
     "state": {
-      "activeTimer": null,
+      "activeTimer": {
+        "id": "79e33518-aff2-4010-8985-486a83c6d9c5",
+        "title": "시간관리 회고보고서 작성",
+        "projectCode": "A25_05591",
+        "category": "문서작업",
+        "startTime": 1772509200000,
+        "status": "RUNNING",
+        "pausedDuration": 0,
+        "endTime": 1772510216921
+      },
       "logs": [
         {
           "id": "c5777e43-bcd7-4111-a354-99477922968d",
@@ -888,7 +919,7 @@
           "projectCode": "A25_07788",
           "category": "문서작업",
           "startTime": 1770080874493,
-          "status": "PAUSED",
+          "status": "COMPLETED",
           "pausedDuration": 0,
           "endTime": 1770080875739,
           "lastPausedAt": 1770080875739
@@ -1951,9 +1982,9 @@
           "projectCode": "A26_00999",
           "category": "개발",
           "startTime": 1772157896515,
-          "status": "PAUSED",
+          "status": "COMPLETED",
           "pausedDuration": 0,
-          "endTime": 1772157897522,
+          "endTime": 1772160000000,
           "lastPausedAt": 1772157897522
         },
         {
@@ -1975,9 +2006,187 @@
           "endTime": 1772156600402.4146,
           "status": "COMPLETED",
           "pausedDuration": 0
+        },
+        {
+          "id": "682a1e02-68db-442d-b554-7c8dd42bba70",
+          "title": "LifeCycle JSON으로 콘솔 출력 가능하게끔",
+          "projectCode": "A26_00999",
+          "category": "개발",
+          "startTime": 1772163600000,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1772178282554,
+          "lastPausedAt": 1772178282554
+        },
+        {
+          "id": "92316f00-d230-4c82-8e6e-57d738ef1b14",
+          "title": "2) V3PageLifeCycleManager 골격 설계 및 Navigation Policy Task 구현",
+          "projectCode": "A26_00999",
+          "category": "개발",
+          "startTime": 1772178282554,
+          "status": "PAUSED",
+          "pausedDuration": 0,
+          "lastPausedAt": 1772181572868,
+          "endTime": 1772181893444.3289
+        },
+        {
+          "id": "81f46ffc-58cd-4caa-9f23-c7d2fdd6384d",
+          "title": "시간관리 보고서 작성",
+          "projectCode": "A25_05591",
+          "category": "문서작업",
+          "startTime": 1772496900000,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "dailyGroupKey": "2026-03-03",
+          "endTime": 1772498134206,
+          "lastPausedAt": 1772498134206
+        },
+        {
+          "id": "45be785c-c3ee-4482-aaf3-5a7123124841",
+          "title": "주간일정 작성",
+          "projectCode": "A25_05591",
+          "category": "문서작업",
+          "startTime": 1772496000000,
+          "endTime": 1772496900000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "e4a5d2bb-f58c-48e7-a887-459641e5f8e1",
+          "title": "월근태입력 및 시간외근무수당 청구 기안",
+          "projectCode": "A25_05591",
+          "category": "문서작업",
+          "startTime": 1772498202122,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1772498203202,
+          "lastPausedAt": 1772498203202
+        },
+        {
+          "id": "ce8cfffc-5da1-46f1-8e4c-0dfcb7cccd52",
+          "title": "월근태입력 및 시간외근무수당 청구 기안",
+          "projectCode": "A25_05591",
+          "category": "문서작업",
+          "startTime": 1772498206125,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1772498917274,
+          "lastPausedAt": 1772498917274
+        },
+        {
+          "id": "2804f6dc-87e6-4f1a-a1d7-f1befeb633b0",
+          "title": "비용내역 입력 및 가지급 청구 기안",
+          "projectCode": "A25_05591",
+          "startTime": 1772498942418,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1772500600476.6326,
+          "category": "문서작업"
+        },
+        {
+          "id": "d35bf3b8-d780-4934-b667-033b0f0cf360",
+          "title": "시간관리 회고보고서 작성",
+          "projectCode": "A25_05591",
+          "category": "문서작업",
+          "startTime": 1772500600476.6326,
+          "status": "PAUSED",
+          "pausedDuration": 0,
+          "endTime": 1772502136609,
+          "lastPausedAt": 1772502136609
+        },
+        {
+          "id": "6bde73e1-bd18-4be6-87af-f495229172de",
+          "title": "배포일정 조율 및 동기화시 문제 없을지 확인",
+          "projectCode": "A26_00413",
+          "category": "문서작업",
+          "startTime": 1772502152227,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1772504967377,
+          "lastPausedAt": 1772504967377
+        },
+        {
+          "id": "7f48f426-fbe8-4dbf-ac8c-74c26374817e",
+          "title": "시간관리 회고보고서 작성",
+          "projectCode": "A25_05591",
+          "category": "문서작업",
+          "startTime": 1772504969376,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1772505600000
         }
       ],
       "deleted_logs": [
+        {
+          "id": "8a99d37b-fa93-4eec-aa8d-342637e8eced",
+          "title": "주간일정 작성",
+          "projectCode": "A25_05591",
+          "category": "문서작업",
+          "startTime": 1772498137915,
+          "status": "PAUSED",
+          "pausedDuration": 0,
+          "dailyGroupKey": "2026-03-03",
+          "endTime": 1772498437915,
+          "lastPausedAt": 1772498146294,
+          "deletedAt": 1772498148450
+        },
+        {
+          "id": "965d44df-ed72-44be-a3c3-0db147e78f2b",
+          "title": ".",
+          "projectCode": "A26_00413",
+          "category": "테스트오류수정",
+          "startTime": 1772181572868,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1772181597803,
+          "deletedAt": 1772181604448
+        },
+        {
+          "id": "b7fddee3-a61d-4b33-9783-4f6d0aa3f5c7",
+          "title": "대시보드 설계",
+          "projectCode": "A26_00999",
+          "category": "개발",
+          "startTime": 1772163600000,
+          "status": "PAUSED",
+          "pausedDuration": 0,
+          "endTime": 1772170331945,
+          "lastPausedAt": 1772170331945,
+          "deletedAt": 1772170345936
+        },
+        {
+          "id": "e4fe6305-b79c-48bc-9131-beef1553b7a7",
+          "title": "주간일정 작성",
+          "projectCode": "A25_05591",
+          "category": "문서작업",
+          "startTime": 1772169823612,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "dailyGroupKey": "2026-02-27",
+          "endTime": 1772169825167,
+          "deletedAt": 1772169827641
+        },
+        {
+          "id": "667e8ec4-f90e-49c9-b63a-1b598979502c",
+          "title": "주간일정 작성",
+          "projectCode": "A25_05591",
+          "category": "문서작업",
+          "startTime": 1772169810353,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1772169813333,
+          "deletedAt": 1772169815250
+        },
+        {
+          "id": "1fdccb37-7a2c-46d2-bf58-6a963b8a3c93",
+          "title": "주간일정 작성",
+          "projectCode": "A25_05591",
+          "category": "문서작업",
+          "startTime": 1772169766296,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1772169770344,
+          "deletedAt": 1772169777092
+        },
         {
           "id": "7af3e961-6de2-4d08-9ef6-9114136a8814",
           "title": "5) LifeCycleManager 추상화(class화 및 owner 별 상속구조 설계)",
@@ -2652,7 +2861,7 @@
       "themeConfig": {
         "primaryColor": "#264653",
         "accentColor": "#e76f51",
-        "isDark": true
+        "isDark": false
       },
       "viewConfig": {
         "zoomLevel": 100
@@ -2780,9 +2989,17 @@
         "공정표 작성 및 대시보드 설계": 74,
         "2) V3PageLifeCycleManager 골격 설계 및 Navigation Policy Task 구현": 75,
         "대시보드 설계": 76,
-        "라이프사이클 로깅 회의": 77
+        "라이프사이클 로깅 회의": 77,
+        "LifeCycle JSON으로 콘솔 출력 가능하게끔": 78,
+        "2) V3PageLifeCycleManager 골격 설계 및 Navigation Policy Task 구현": 79,
+        ".": 80,
+        "월근태입력": 81,
+        "월근태입력 및 시간외근무수당 청구 기안": 82,
+        "비용내역 입력 및 가지급 청구 기안": 83,
+        "시간관리 회고보고서 작성": 84,
+        "배포일정 조율 및 동기화시 문제 없을지 확인": 85
       },
-      "nextColorIndex": 78
+      "nextColorIndex": 86
     },
     "version": 0
   },
