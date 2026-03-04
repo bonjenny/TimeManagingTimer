@@ -456,6 +456,9 @@ function App() {
         onClose={() => setZoomToastOpen(false)}
         message={zoom_toast_message}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        ContentProps={{
+          sx: { color: themeConfig.isDark ? '#ffffff' : '#000000' }
+        }}
       />
     </ThemeProvider>
   );
