@@ -10,6 +10,7 @@ import PresetPanel from './components/preset/PresetPanel';
 import WeeklySchedule from './components/pages/WeeklySchedule';
 import DeployCalendar from './components/pages/DeployCalendar';
 import ProjectAnalysis from './components/pages/ProjectAnalysis';
+import TimeManagement from './components/pages/TimeManagement';
 import SettingsPage from './components/pages/SettingsPage';
 import NewTaskModal from './components/modal/NewTaskModal';
 import { Box, Typography, IconButton, Tooltip, useMediaQuery, Snackbar } from '@mui/material';
@@ -232,6 +233,12 @@ function App() {
             handlePageChange('analysis');
             break;
 
+          // Alt + 5: 시간관리 페이지
+          case '5':
+            e.preventDefault();
+            handlePageChange('timeManagement');
+            break;
+
           // Alt + T: 오늘로 이동 (일간 페이지에서)
           case 't':
             e.preventDefault();
@@ -423,6 +430,8 @@ function App() {
         return <DeployCalendar />;
       case 'analysis':
         return <ProjectAnalysis />;
+      case 'timeManagement':
+        return <TimeManagement />;
       case 'settings':
         return <SettingsPage />;
       default:

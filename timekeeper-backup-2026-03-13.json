@@ -22,6 +22,7 @@
     },
     "version": 0
   },
+  "timekeeper-browser-id": "2ef1c5b2-72b9-4a72-8562-309971c0c26c",
   "timekeeper-categories": {
     "state": {
       "categories": [
@@ -62,17 +63,9 @@
           "date": "2026-03-04",
           "job_code": "A26_00413",
           "job_name": "어플리케이션/페이지의 LifeCycle 관리",
-          "status": "스테이지",
+          "status": "스테이지 back (ECountEP back)",
           "is_holiday": false,
           "id": "89c9822d-b9f6-44f1-a5c1-9d955bcd40b8"
-        },
-        {
-          "date": "2026-03-05",
-          "job_code": "A26_00413",
-          "job_name": "어플리케이션/페이지의 LifeCycle 관리",
-          "status": "수시",
-          "is_holiday": false,
-          "id": "89804abe-c9b9-4235-a96a-f6db36ddd2ba"
         },
         {
           "date": "2026-03-02",
@@ -81,6 +74,62 @@
           "status": "",
           "is_holiday": true,
           "id": "6f4f8ae8-b9c0-4030-b9d9-d024d7a11853"
+        },
+        {
+          "date": "2026-03-03",
+          "job_code": "",
+          "job_name": "ECountEP",
+          "status": "스테이지",
+          "is_holiday": false,
+          "id": "c8322c47-ad8b-436e-894f-f562f1189415"
+        },
+        {
+          "date": "2026-03-10",
+          "job_code": "A26_00413_pre",
+          "job_name": "(선배포)어플리케이션/페이지의 LifeCycle 관리",
+          "status": "스테이지",
+          "is_holiday": false,
+          "id": "432d755e-ceac-4023-8fd9-ec8859e093df"
+        },
+        {
+          "date": "2026-03-11",
+          "job_code": "A26_00413",
+          "job_name": "어플리케이션/페이지의 LifeCycle 관리",
+          "status": "스테이지",
+          "is_holiday": false,
+          "id": "ac9a5ff2-1ce2-4dc4-a3b8-a13527569fbe"
+        },
+        {
+          "date": "2026-03-12",
+          "job_code": "A26_00413",
+          "job_name": "어플리케이션/페이지의 LifeCycle 관리",
+          "status": "수시(back)",
+          "is_holiday": false,
+          "id": "064a681a-32b9-4159-ad61-304b02138040"
+        },
+        {
+          "date": "2026-03-11",
+          "job_code": "A26_00413_pre",
+          "job_name": "(선배포)어플리케이션/페이지의 LifeCycle 관리",
+          "status": "수시",
+          "is_holiday": false,
+          "id": "d6ab4f1d-381e-4125-ae28-eb00d8294292"
+        },
+        {
+          "date": "2026-03-12",
+          "job_code": "A26_00212",
+          "job_name": "5.6 견적입력",
+          "status": "스테이지",
+          "is_holiday": false,
+          "id": "5f012945-8e5a-4bf9-a8ec-32c9d44e7c25"
+        },
+        {
+          "date": "2026-03-16",
+          "job_code": "A26_01251",
+          "job_name": "mail_login 접근이력 메뉴 개선",
+          "status": "스테이지",
+          "is_holiday": false,
+          "id": "d1673ace-826f-413d-a009-8d7467641293"
         }
       ],
       "job_colors": [
@@ -99,6 +148,26 @@
         {
           "job_code": "A25_01846",
           "color": "#b2dfdb"
+        },
+        {
+          "job_code": "A26_00212",
+          "color": "#b2dfdb"
+        },
+        {
+          "job_code": "A26_00413_pre",
+          "color": "#f0fff0"
+        },
+        {
+          "job_code": "A26_00212_pre",
+          "color": "#dbf0ee"
+        },
+        {
+          "job_code": "A26_00398",
+          "color": "#d1c4e9"
+        },
+        {
+          "job_code": "A26_01251",
+          "color": "#efb366"
         }
       ],
       "weeks_to_show": 2
@@ -110,7 +179,7 @@
   "timekeeper-manual-presets": [
     {
       "id": "d99630f7-c32f-4caf-a665-8dd4078bcbef",
-      "title": "시간관리 보고서 작성",
+      "title": "시간관리 입력",
       "projectCode": "A25_05591",
       "category": "문서작업",
       "color": "#a69082"
@@ -137,6 +206,14 @@
     "state": {
       "projects": [
         {
+          "code": "A26_00398",
+          "name": "입력메뉴 탭동기화, 저장이벤트 3.0, 5.0 연결"
+        },
+        {
+          "code": "A26_00212",
+          "name": "5.6 견적입력"
+        },
+        {
           "code": "A26_00413",
           "name": "어플리케이션/페이지의 LifeCycle 관리"
         },
@@ -162,16 +239,7 @@
   },
   "timekeeper-storage": {
     "state": {
-      "activeTimer": {
-        "id": "79e33518-aff2-4010-8985-486a83c6d9c5",
-        "title": "시간관리 회고보고서 작성",
-        "projectCode": "A25_05591",
-        "category": "문서작업",
-        "startTime": 1772509200000,
-        "status": "RUNNING",
-        "pausedDuration": 0,
-        "endTime": 1772510216921
-      },
+      "activeTimer": null,
       "logs": [
         {
           "id": "c5777e43-bcd7-4111-a354-99477922968d",
@@ -2024,7 +2092,7 @@
           "projectCode": "A26_00999",
           "category": "개발",
           "startTime": 1772178282554,
-          "status": "PAUSED",
+          "status": "COMPLETED",
           "pausedDuration": 0,
           "lastPausedAt": 1772181572868,
           "endTime": 1772181893444.3289
@@ -2089,7 +2157,7 @@
           "projectCode": "A25_05591",
           "category": "문서작업",
           "startTime": 1772500600476.6326,
-          "status": "PAUSED",
+          "status": "COMPLETED",
           "pausedDuration": 0,
           "endTime": 1772502136609,
           "lastPausedAt": 1772502136609
@@ -2114,9 +2182,1221 @@
           "status": "COMPLETED",
           "pausedDuration": 0,
           "endTime": 1772505600000
+        },
+        {
+          "id": "79e33518-aff2-4010-8985-486a83c6d9c5",
+          "title": "시간관리 회고보고서 작성",
+          "projectCode": "A25_05591",
+          "category": "문서작업",
+          "startTime": 1772509200000,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1772514806371
+        },
+        {
+          "id": "5b7f5b76-31cb-44ab-9faf-784912f8794b",
+          "title": "성현님 authCheck.json 관련 도움, 코어 lib 푸시 제한 확인",
+          "projectCode": "A25_05591",
+          "category": "질의응답",
+          "startTime": 1772518094125.1895,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1772519627619
+        },
+        {
+          "id": "d3410298-5f23-4479-85e4-2050437cf1d8",
+          "title": "시간관리 회고보고서 작성 - 두괄식으로 재작성",
+          "projectCode": "A25_05591",
+          "category": "문서작업",
+          "startTime": 1772514806371,
+          "endTime": 1772516734291.6826,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "334e54b8-cd13-4f65-ad4e-e8a5699f46ad",
+          "title": "비용내역 입력 및 가지급 청구 기안 현금영수증 관련 반려 - 재작성",
+          "projectCode": "A25_05591",
+          "category": "문서작업",
+          "startTime": 1772516734291.6826,
+          "endTime": 1772518094125.1895,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "60b469c4-9d72-4609-b003-76138c0594be",
+          "title": "2) V3PageLifeCycleManager 골격 설계 및 Navigation Policy Task 구현",
+          "projectCode": "A26_00999",
+          "category": "개발",
+          "startTime": 1772519627619,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1772528400000
+        },
+        {
+          "id": "47f0b193-7d9b-44f8-b77b-3c7bd6722459",
+          "title": "브랜치 최신화",
+          "projectCode": "A26_00999",
+          "category": "환경세팅",
+          "startTime": 1772582400000,
+          "endTime": 1772584708203,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "327b1ec3-3f73-4492-a952-a528e20ab7e9",
+          "title": "EFA 팀 회의",
+          "projectCode": "A25_05591",
+          "category": "회의",
+          "startTime": 1772589637460.978,
+          "endTime": 1772592000000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "2bcee64c-bf58-4031-b0a9-59f83773cfd4",
+          "title": "5.6 URL 병합 (전산매체 5.0)",
+          "projectCode": "A26_00212",
+          "category": "개발",
+          "startTime": 1772584708203,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1772587075607.7087,
+          "lastPausedAt": 1772587776128
+        },
+        {
+          "id": "4af093ba-68f2-4eea-9f77-57a73fbf7594",
+          "title": "EDI 황현님 pre-push 훅 질문에 응답",
+          "projectCode": "A25_05591",
+          "category": "질의응답",
+          "startTime": 1772587075607.7087,
+          "endTime": 1772587993713.8481,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "bca6b2b7-3c11-43aa-9a51-9be0e4669a6e",
+          "title": "5.6 URL 병합 (전산매체 5.0)",
+          "projectCode": "A26_00212",
+          "category": "개발",
+          "startTime": 1772587993713.8481,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1772589637460.978
+        },
+        {
+          "id": "ad929ddb-36f4-423b-94cf-f312b7f67df1",
+          "title": "5.6 URL 병합 (전산매체 5.0)",
+          "projectCode": "A26_00212",
+          "category": "개발",
+          "startTime": 1772595600000,
+          "endTime": 1772597871959,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "a9f6aa72-9774-40e1-9e8a-33000ee98cc2",
+          "title": "stage 푸시 / stage 백푸시",
+          "projectCode": "A26_00413",
+          "category": "환경세팅",
+          "startTime": 1772597871959,
+          "endTime": 1772600261969.4058,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "8a9478da-db4e-4880-b1b2-10fe65d7faa5",
+          "title": "3) 3.0과 NavigationServiceV3와 연결, 에러 처리 및 abort 구조 검증",
+          "projectCode": "A26_00999",
+          "category": "개발",
+          "startTime": 1772600261969.4058,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1772609632905.3289,
+          "lastPausedAt": 1772610539461
+        },
+        {
+          "id": "deab28db-9bac-4a97-9d87-52b0b5ed98da",
+          "title": "EOD 종빈님 SaveDarkModeSetting 캐시 리셋 관련 질의에 응답",
+          "projectCode": "A25_05591",
+          "category": "질의응답",
+          "startTime": 1772609632905.3289,
+          "endTime": 1772610735483.8708,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "5dc5e0f7-36e3-49e3-80ab-3e85ebd6bee9",
+          "title": "3) 3.0과 NavigationServiceV3와 연결, 에러 처리 및 abort 구조 검증",
+          "projectCode": "A26_00999",
+          "category": "개발",
+          "startTime": 1772610735483.8708,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1772611931684.3923,
+          "lastPausedAt": 1772612261341
+        },
+        {
+          "id": "d9a43d40-5976-447c-8a79-647585e6568e",
+          "title": "EDC 이종복책임님 ECP050M 바닥 관련 질의에 응답",
+          "projectCode": "A25_05591",
+          "category": "질의응답",
+          "startTime": 1772611931684.3923,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1772612288547,
+          "lastPausedAt": 1772612282676
+        },
+        {
+          "id": "3267dc18-915c-4d82-bbf4-40fc9fa4da01",
+          "title": "3) 3.0과 NavigationServiceV3와 연결, 에러 처리 및 abort 구조 검증",
+          "projectCode": "A26_00999",
+          "category": "개발",
+          "startTime": 1772612288547,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1772614800000,
+          "lastPausedAt": 1772619930442
+        },
+        {
+          "id": "1bb97746-9375-4975-9c64-8b39817991e2",
+          "title": "3) 3.0과 NavigationServiceV3와 연결, 에러 처리 및 abort 구조 검증",
+          "projectCode": "A26_00999",
+          "category": "개발",
+          "startTime": 1772668800000,
+          "endTime": 1772678400000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "142edc91-8078-44c9-baa8-292e26025557",
+          "title": "pre-push 관련 잡 설명에 참여",
+          "projectCode": "A25_05591",
+          "category": "회의",
+          "startTime": 1772682000000,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1772682964526
+        },
+        {
+          "id": "90dd3cf0-3c3e-4f16-8790-cb41b5fa29b3",
+          "title": "Flexion 교육",
+          "projectCode": "A25_05591",
+          "category": "회의",
+          "startTime": 1772693921331.9458,
+          "endTime": 1772697712382.9343,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "7d56e757-f456-4e27-b30c-3c83b1e20366",
+          "title": "3) 3.0과 NavigationServiceV3와 연결, 에러 처리 및 abort 구조 검증",
+          "projectCode": "A26_00999",
+          "category": "개발",
+          "startTime": 1772682964526,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1772693921331.9458,
+          "lastPausedAt": 1772686922922
+        },
+        {
+          "id": "c511cbc7-d4f9-43ee-a827-6560a36e1e0f",
+          "title": "3) 3.0과 NavigationServiceV3와 연결, 에러 처리 및 abort 구조 검증",
+          "projectCode": "A26_00999",
+          "category": "개발",
+          "startTime": 1772697712382.9343,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1772701200000,
+          "lastPausedAt": 1772699877334
+        },
+        {
+          "id": "7ec9117d-56d9-4a8c-b4b4-b02f69f80572",
+          "title": "3) 3.0과 NavigationServiceV3와 연결, 에러 처리 및 abort 구조 검증",
+          "projectCode": "A26_00999",
+          "category": "개발",
+          "startTime": 1772755200000,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1772758865132,
+          "lastPausedAt": 1772758865132
+        },
+        {
+          "id": "00ae647d-9179-4c47-865c-7e866cdff553",
+          "title": "5.6 URL 병합 (채권채무)",
+          "projectCode": "A26_00212",
+          "category": "개발",
+          "startTime": 1772754900000,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1772755200000,
+          "lastPausedAt": 1772759415811
+        },
+        {
+          "id": "b5bf5dbe-bcac-4137-8198-e62d0a844fbc",
+          "title": "5.6 URL 병합 (전산매체 5.0)",
+          "projectCode": "A26_00212",
+          "category": "개발",
+          "startTime": 1772758865132,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1772760296170,
+          "lastPausedAt": 1772760296170
+        },
+        {
+          "id": "a67187d3-ee7a-4301-958e-64a55a8951f7",
+          "title": "3) 3.0과 NavigationServiceV3와 연결, 에러 처리 및 abort 구조 검증",
+          "projectCode": "A26_00999",
+          "category": "개발",
+          "startTime": 1772760299945,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1772764800000,
+          "lastPausedAt": 1772769316014
+        },
+        {
+          "id": "6d8ec11b-1227-4b57-bd97-b85f9da5a6bc",
+          "title": "3) 3.0과 NavigationServiceV3와 연결, 에러 처리 및 abort 구조 검증",
+          "projectCode": "A26_00999",
+          "category": "개발",
+          "startTime": 1772769330630,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1772772838423.5547,
+          "lastPausedAt": 1772769332076
+        },
+        {
+          "id": "8d69313f-f47b-4a49-890c-15b2b50c886e",
+          "title": "4) 라이프사이클 로그 수집 대시보드 구현",
+          "projectCode": "A26_00999",
+          "category": "개발",
+          "startTime": 1772768400000,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1772769330630,
+          "lastPausedAt": 1772769343198
+        },
+        {
+          "id": "9cfbe8ec-4088-4263-b67d-6b5010e66d3d",
+          "title": "4) 라이프사이클 로그 수집 대시보드 구현",
+          "projectCode": "A26_00999",
+          "category": "개발",
+          "startTime": 1772772838423.5547,
+          "endTime": 1772779512174.8179,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "4f9f179f-bf48-43a0-9a08-70753159a5dc",
+          "title": "3) 3.0과 NavigationServiceV3와 연결, 에러 처리 및 abort 구조 검증",
+          "projectCode": "A26_00999",
+          "category": "개발",
+          "startTime": 1772779512174.8179,
+          "endTime": 1772787600000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "318b07bd-0e97-41b8-aaa0-72507441e761",
+          "title": "3.0 페이지 라이프사이클 코드리뷰",
+          "projectCode": "A26_00999",
+          "category": "회의",
+          "startTime": 1773015353662.6917,
+          "endTime": 1773021526405.4514,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "f7d7fe49-00b8-4407-87ff-5faf636ef390",
+          "title": "3.0 페이지 라이프사이클 테스트 체크리스트 작성",
+          "projectCode": "A26_00999",
+          "category": "문서작업",
+          "startTime": 1773014400000,
+          "endTime": 1773015353662.6917,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "176ea668-002d-437e-a4be-614bc1f6d958",
+          "title": "3.0 페이지 라이프사이클 본배포/선배포 커밋 분리",
+          "projectCode": "A26_00999",
+          "category": "환경세팅",
+          "startTime": 1773021526405.4514,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1773022904561.1123,
+          "lastPausedAt": 1773027725789
+        },
+        {
+          "id": "11d881ec-ada9-4f00-9d21-7882488cd4a2",
+          "title": "성한님 pre-push 과거 문제 히스토리 질문에 응답",
+          "projectCode": "A25_05591",
+          "category": "질의응답",
+          "startTime": 1773022904561.1123,
+          "endTime": 1773024000000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "cc24ef15-215c-447d-b86a-6bd24458a013",
+          "title": "5.6TFT 이동현님 3.0 <-> 5.6 URL Convert 관련 문의에 응답",
+          "projectCode": "A25_05591",
+          "category": "질의응답",
+          "startTime": 1773027600000,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1773029030495.2268,
+          "lastPausedAt": 1773032162233
+        },
+        {
+          "id": "9939e25b-0b47-4075-9c86-32dd4d549b98",
+          "title": "3.0 페이지 라이프사이클 코드리뷰건 반영",
+          "projectCode": "A26_00999",
+          "category": "개발",
+          "startTime": 1773029030495.2268,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1773032220699,
+          "lastPausedAt": 1773032220699
+        },
+        {
+          "id": "e55e2682-62ab-4696-aa8e-b9cfd2e58bd8",
+          "title": "TP.16942 c-portal, 유저페이 화면 렌더링 안됩니다",
+          "projectCode": "A26_00413",
+          "category": "테스트오류수정",
+          "startTime": 1773032254184,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1773033540292.9116,
+          "lastPausedAt": 1773033045808
+        },
+        {
+          "id": "3aa30abf-ee17-4a8e-b820-bcce69ad05b1",
+          "title": "EFA 팀 회의",
+          "projectCode": "A25_05591",
+          "category": "회의",
+          "startTime": 1773039678434.2153,
+          "endTime": 1773043229968.7825,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "9c6fdcb9-374a-450b-a7f3-fff3051e776f",
+          "title": "3.0 페이지 라이프사이클 코드리뷰건 반영",
+          "projectCode": "A26_00999",
+          "category": "개발",
+          "startTime": 1773033540292.9116,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1773039678434.2153,
+          "lastPausedAt": 1773039019121
+        },
+        {
+          "id": "3254485d-6ca7-4c91-a925-0f61f831f7af",
+          "title": "메뉴탭기능 회의",
+          "projectCode": "A26_00398",
+          "category": "회의",
+          "startTime": 1773100800000,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1773105488937
+        },
+        {
+          "id": "f55a1ae8-8039-4f1c-9ec9-8745c408272b",
+          "title": "성준팀장님 url_mapping_info관련 질문에응답",
+          "projectCode": "A25_05591",
+          "category": "질의응답",
+          "startTime": 1773106520433,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1773106822993
+        },
+        {
+          "id": "11e6a83f-2d2b-4097-b19d-347d389efcbc",
+          "title": "신승현님 $ECountApp.navigationService관련 질문에 응답",
+          "projectCode": "A25_05591",
+          "category": "질의응답",
+          "startTime": 1773105488937,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1773105900000
+        },
+        {
+          "id": "6b90f5c5-6d4d-4d3b-a3be-e131f2792ae4",
+          "title": "현우님 견적입력 url 통일 관련 질문에 응답",
+          "projectCode": "A25_05591",
+          "category": "질의응답",
+          "startTime": 1773105900000,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1773106200000,
+          "lastPausedAt": 1773106926289
+        },
+        {
+          "id": "fb3726ab-1584-447a-8f5f-34bcbacf1f29",
+          "title": "은샘님 3.0 페이지 라이프사이클 선배포 관련 질문에 응답",
+          "projectCode": "A25_05591",
+          "category": "질의응답",
+          "startTime": 1773106200000,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1773106520433
+        },
+        {
+          "id": "4f18b81e-5bc8-4bbe-8bb2-e4971d3c9168",
+          "title": "어플리케이션/페이지 라이프사이클 선배포 스테이지 푸시",
+          "projectCode": "A26_00413",
+          "category": "환경세팅",
+          "startTime": 1773106822993,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1773107387979,
+          "lastPausedAt": 1773107387979
+        },
+        {
+          "id": "dad50f78-2339-4e0f-8344-6c1f2ded4b21",
+          "title": "메뉴탭기능 회의",
+          "projectCode": "A26_00398",
+          "category": "회의",
+          "startTime": 1773107387979,
+          "endTime": 1773107996253.902,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "6bd46309-ac7d-4f20-b37a-ceb412b93af4",
+          "title": "시간관리 입력",
+          "projectCode": "A25_05591",
+          "category": "문서작업",
+          "startTime": 1773107996253.902,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "dailyGroupKey": "2026-03-10",
+          "endTime": 1773108558172
+        },
+        {
+          "id": "1ee38423-8e12-4d85-bd54-8c9ee2b79e8b",
+          "title": "세트메뉴 event 동기화, 소메뉴 렌더링 분석",
+          "projectCode": "A26_00398",
+          "category": "분석",
+          "startTime": 1773108606991,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1773108612517,
+          "lastPausedAt": 1773108612517
+        },
+        {
+          "id": "558cb069-8e1c-46d4-9fa4-ed87f3fed2f6",
+          "title": "5.6 URL 병합 (채권채무)",
+          "projectCode": "A26_00212",
+          "category": "개발",
+          "startTime": 1773108651845,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1773110400000,
+          "lastPausedAt": 1773114252098
+        },
+        {
+          "id": "f37c4092-d62f-4254-9456-1be5e61a21ec",
+          "title": "5.6 URL 병합 (5.0 견적서 등 조회/현황 메뉴 C-Portal 반영)",
+          "projectCode": "A26_00212",
+          "category": "개발",
+          "startTime": 1773114505233,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1773114506925,
+          "lastPausedAt": 1773114506925
+        },
+        {
+          "id": "3c1a24e4-9c77-4077-9111-ce874a0f6c66",
+          "title": "희제님 5.0 URL (__ec_v5_api.v1.js) 커밋 푸시 관련 안내",
+          "projectCode": "A25_05591",
+          "category": "질의응답",
+          "startTime": 1773114000000,
+          "endTime": 1773114505233,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "d8f5bbcc-0271-48ec-ad56-1abbe9acfceb",
+          "title": "5.6 URL 병합 (채권채무)",
+          "projectCode": "A26_00212",
+          "category": "개발",
+          "startTime": 1773114675898,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1773115079848
+        },
+        {
+          "id": "e43dfa4c-02b3-47ff-b54c-4d611c72539f",
+          "title": "세트메뉴 event 동기화, 소메뉴 렌더링 분석",
+          "projectCode": "A26_00398",
+          "category": "분석",
+          "startTime": 1773115093844,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1773130229344.4329,
+          "lastPausedAt": 1773138284729
+        },
+        {
+          "id": "0686ab8e-42df-4a98-8bcf-1ac93d5d88b3",
+          "title": "5.6 bizz_sid 수정",
+          "projectCode": "A26_00212",
+          "category": "개발",
+          "startTime": 1773130229344.4329,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1773133200000
+        },
+        {
+          "id": "cf9073e7-42f5-4209-8719-eb76d90824a4",
+          "title": "세트메뉴 event 동기화, 소메뉴 렌더링 분석",
+          "projectCode": "A26_00398",
+          "category": "분석",
+          "startTime": 1773187354723,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "lastPausedAt": 1773189963117,
+          "endTime": 1773189963117
+        },
+        {
+          "id": "278e23d0-8fba-471f-9a97-1df3c81c3430",
+          "title": "선배포 TP.17503 구매입력 > 품질검사요청생성 자동분개 저장 오류 발생 (본 잡 영향 X)",
+          "startTime": 1773189963117,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1773190960459.7961,
+          "lastPausedAt": 1773195410824,
+          "projectCode": "A26_00413",
+          "category": "테스트오류수정"
+        },
+        {
+          "id": "35e31055-4165-42d0-b520-39dfd1a50ac9",
+          "title": "진영책임님, UrlService 리팩토링 회의",
+          "projectCode": "A25_05591",
+          "category": "회의",
+          "startTime": 1773190960459.7961,
+          "endTime": 1773194643496.358,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "89f37967-857c-4a36-9795-56e57650c214",
+          "title": "한조님 5.6 병합 관련 지원",
+          "projectCode": "A25_05591",
+          "category": "환경세팅",
+          "startTime": 1773194643496.358,
+          "endTime": 1773195561602.4973,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "2b64b6fd-c44d-498d-962a-d1ea25151c16",
+          "title": "어플리케이션 라이프사이클 본배포 스테이지 푸시",
+          "projectCode": "A26_00413",
+          "category": "환경세팅",
+          "startTime": 1773195561602.4973,
+          "endTime": 1773196200000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "fb7760f5-6490-4e30-bbfa-8c7545733e59",
+          "title": "5.6 URL 병합 (5.0 견적서 등 조회/현황 메뉴 C-Portal 반영)",
+          "projectCode": "A26_00212",
+          "category": "개발",
+          "startTime": 1773196322918,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1773196800000,
+          "lastPausedAt": 1773200383189
+        },
+        {
+          "id": "f02c0c0e-6838-4fc9-a8c7-471a1a2310a1",
+          "title": "5.6 URL 병합 (5.0 견적서 등 조회/현황 메뉴 C-Portal 반영)",
+          "projectCode": "A26_00212",
+          "category": "개발",
+          "startTime": 1773200390569,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1773205617691,
+          "lastPausedAt": 1773205617691
+        },
+        {
+          "id": "ef785903-547a-4037-9365-395250da1d69",
+          "title": "5.6 개념설명 (ModelDefinition, entity, ProgramContext 등)",
+          "startTime": 1773205617691,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1773207520834,
+          "lastPausedAt": 1773207520834,
+          "projectCode": "A25_05591",
+          "category": "회의"
+        },
+        {
+          "id": "e2301b2b-2a70-4dd3-a6b1-02800b36b70e",
+          "title": "dev.116566 특별단가등록 > 품목등록 검색창 안뜸 (본 잡 영향 X)",
+          "startTime": 1773207524421,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1773208500000,
+          "lastPausedAt": 1773211137159,
+          "projectCode": "A26_00413",
+          "category": "센터오류수정"
+        },
+        {
+          "id": "f73d98f6-d961-40f2-aaf7-e53392b7fe91",
+          "title": "5.6 개념설명 (ModelDefinition, entity, ProgramContext 등)",
+          "projectCode": "A25_05591",
+          "category": "회의",
+          "startTime": 1773208500000,
+          "endTime": 1773211249947.971,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "61916623-294e-4cdd-a0a1-2510cf311f42",
+          "title": "5.6, 플렉션 Contributor, Plugin, Converter, Interceptor 개념 분석 (target.element 5.6 세트메뉴이전 위해)",
+          "projectCode": "A26_00398",
+          "category": "분석",
+          "startTime": 1773211309185,
+          "status": "PAUSED",
+          "pausedDuration": 0,
+          "endTime": 1773211980000,
+          "lastPausedAt": 1773213966496
+        },
+        {
+          "id": "174cef51-ee39-4870-b9a4-64dcc4c09c73",
+          "title": "TP.17084 권한 막혀있는 5.0 메뉴 진입 시 오류 알럿 뜹니다. (본 잡 영향O) -> 5.0 page fallback 오류",
+          "projectCode": "A26_00413",
+          "category": "테스트오류수정",
+          "startTime": 1773211980000,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1773213600000,
+          "lastPausedAt": 1773214019087
+        },
+        {
+          "id": "d93799c5-44c4-4652-93b6-99c21a58c390",
+          "title": "QC 예림책임님 어플리케이션/페이지 잡 관련 질문 (5.6 견적입력에 영향 여부)",
+          "projectCode": "A26_00413",
+          "category": "회의",
+          "startTime": 1773213600000,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1773214054520
+        },
+        {
+          "id": "6e542b41-a138-4457-88e9-f28b54a4a025",
+          "title": "TP.17084 권한 막혀있는 5.0 메뉴 진입 시 오류 알럿 뜹니다. (본 잡 영향O) -> 5.0 page fallback 오류",
+          "projectCode": "A26_00413",
+          "category": "테스트오류수정",
+          "startTime": 1773214065557,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "lastPausedAt": 1773215559223,
+          "endTime": 1773215559223
+        },
+        {
+          "id": "7e9b4cc4-ee5e-4154-b0cf-ca6d12e3effe",
+          "title": "어플리케이션/페이지 LifeCycle 배포 동기화, back 전략 검토",
+          "projectCode": "A26_00413",
+          "category": "분석",
+          "startTime": 1773215559223,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1773215560748,
+          "lastPausedAt": 1773215560748
+        },
+        {
+          "id": "dcbfef6a-41e8-4cf3-a911-ed8a3264432e",
+          "title": "어플리케이션/페이지 LifeCycle 개발자 가이드 작성",
+          "projectCode": "A26_00413",
+          "category": "문서작업",
+          "startTime": 1773215581708,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1773217287185.97,
+          "lastPausedAt": 1773221692597
+        },
+        {
+          "id": "ecc96e6d-e92e-42e2-a152-6f065de79068",
+          "title": "5.6 견적입력 브랜치 최신화 병합오류 해결",
+          "projectCode": "A26_00212",
+          "category": "환경세팅",
+          "startTime": 1773217287185.97,
+          "endTime": 1773219600000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "ac61a3fb-fe2e-4302-adf7-c3ab645484fd",
+          "title": "5.6 입력탭 기능 방향결정전달",
+          "projectCode": "A26_00398",
+          "category": "회의",
+          "startTime": 1773274431627.177,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1773275424145,
+          "lastPausedAt": 1773275424145
+        },
+        {
+          "id": "1460bb44-899d-43ec-a95c-10d4d9c5a098",
+          "title": "5.6, 플렉션 Contributor, Plugin, Converter, Interceptor 개념 분석 (target.element 5.6 세트메뉴이전 위해)",
+          "projectCode": "A26_00398",
+          "category": "분석",
+          "startTime": 1773275427659,
+          "status": "PAUSED",
+          "pausedDuration": 0,
+          "lastPausedAt": 1773275440126,
+          "endTime": 1773275440126
+        },
+        {
+          "id": "7c6fd4d7-d617-4fbf-a2fd-c740a346fc37",
+          "title": "어플리케이션/페이지 LifeCycle 배포 동기화, back 전략 검토",
+          "projectCode": "A26_00413",
+          "category": "분석",
+          "startTime": 1773273600000,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1773274431627.177,
+          "lastPausedAt": 1773275444114
+        },
+        {
+          "id": "b7fae296-e284-4d86-9ec9-b684acb35d1d",
+          "title": "5.6, 플렉션 Contributor, Plugin, Converter, Interceptor 개념 분석 (target.element 5.6 세트메뉴이전 위해)",
+          "projectCode": "A26_00398",
+          "category": "분석",
+          "startTime": 1773275452460,
+          "status": "PAUSED",
+          "pausedDuration": 0,
+          "endTime": 1773276300000,
+          "lastPausedAt": 1773279512694
+        },
+        {
+          "id": "608bc33e-4766-454b-ad85-9560399f524b",
+          "title": "5.6 개념 설명 (xml, CRM, P, AttrFeature 등)",
+          "projectCode": "A25_05591",
+          "category": "회의",
+          "startTime": 1773276300000,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1773279618891,
+          "lastPausedAt": 1773279618891
+        },
+        {
+          "id": "1f6d69cd-4baa-4c5b-9731-707d8cd877e7",
+          "title": "센터오류 확인 /IOpenUserProfileUserAction/ecount.widget.isVisible is not a function",
+          "projectCode": "A26_00413",
+          "category": "센터오류수정",
+          "startTime": 1773279681697,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "lastPausedAt": 1773279821609,
+          "endTime": 1773279821609
+        },
+        {
+          "id": "59dabb7b-d0a8-42f4-89c1-e45c01ffa1ca",
+          "title": "__ec_v5_loader.v1.js/ecount_browser_framework1.NavigationPlanBuilder is not a function",
+          "startTime": 1773279821609,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1773280789555.8293,
+          "lastPausedAt": 1773299868432,
+          "projectCode": "A26_00413",
+          "category": "센터오류수정"
+        },
+        {
+          "id": "34427457-a5b5-4ac3-8eff-a753faddf278",
+          "title": "신승현님 ecount-app 선배포 여부 판단 문의에 응답",
+          "projectCode": "A25_05591",
+          "category": "질의응답",
+          "startTime": 1773298200000,
+          "endTime": 1773299957544.2249,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "1d5fdcf7-2928-4bbb-8c8c-474479423a8c",
+          "title": "신승현님 ecount-app 선배포 여부 판단 문의에 응답",
+          "projectCode": "A25_05591",
+          "category": "질의응답",
+          "startTime": 1773303984599.3757,
+          "endTime": 1773306322164.412,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "ec8c96f6-0d9a-462c-b9c9-f72630317157",
+          "title": "신승현님 배포프로세스 질문에 응답",
+          "projectCode": "A25_05591",
+          "category": "질의응답",
+          "startTime": 1773362288051.2717,
+          "endTime": 1773363912341.2778,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "3c534967-7358-4edd-b06f-82dc690f1c0d",
+          "title": "코드리뷰",
+          "projectCode": "A26_00413",
+          "category": "회의",
+          "startTime": 1773365519417.2402,
+          "endTime": 1773366124869.9272,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "4c87b535-a0d1-40a2-a88d-a93439071b95",
+          "title": "dev.116593 오류내용 정리 및 코드리뷰 요청",
+          "projectCode": "A26_00413",
+          "category": "문서작업",
+          "startTime": 1773363912341.2778,
+          "endTime": 1773365519417.2402,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "f8eeaca0-b427-4ba8-8465-5869579823dd",
+          "title": "dev.116593 오류내용 정리 및 코드리뷰 요청",
+          "projectCode": "A26_00413",
+          "category": "문서작업",
+          "startTime": 1773360000000,
+          "endTime": 1773362288051.2717,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "23291a84-7c94-4d05-874d-6d4832440d40",
+          "title": "dev.116584 에러로그확인요청_NavigationPlanBuilder",
+          "projectCode": "A26_00413",
+          "category": "센터오류수정",
+          "startTime": 1773280789555.8293,
+          "endTime": 1773283200000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "d5332c65-01ed-43f8-b8d7-d68d4a5e190c",
+          "title": "선배포가 필요한 케이스 논의",
+          "projectCode": "A26_00413",
+          "category": "회의",
+          "startTime": 1773295173777.3152,
+          "endTime": 1773298200000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "c7f1a1ef-0545-463d-b27c-f7d7dc565ca9",
+          "title": "dev.116584, dev.116586 에러 케이스 정리",
+          "projectCode": "A26_00413",
+          "category": "회의",
+          "startTime": 1773289239958.3767,
+          "endTime": 1773291712382.9343,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "52ebc01b-a799-438c-8ceb-da8a67f16d24",
+          "title": "5.6 브랜치 최신화 지원 (A26_00413 백 영향)",
+          "projectCode": "A26_00413",
+          "category": "환경세팅",
+          "startTime": 1773286800000,
+          "endTime": 1773289239958.3767,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "930d5b0c-3af6-4cfd-b68c-76326b661579",
+          "title": "dev.116586 에러로그 확인요청_lifecycle_event_emitter",
+          "projectCode": "A26_00413",
+          "category": "센터오류수정",
+          "startTime": 1773291712382.9343,
+          "endTime": 1773295173777.3152,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "9432395b-de32-40fa-81ab-c1a9064adccd",
+          "title": "dev.116593 입금보고서 메뉴 계좌에 계정 선택 안되는 현상",
+          "projectCode": "A26_00413",
+          "category": "센터오류수정",
+          "startTime": 1773299957544.2249,
+          "endTime": 1773303984599.3757,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "924090d5-7616-4f8e-8998-e2b0ddd52f47",
+          "title": "주간일정 작성",
+          "projectCode": "A25_05591",
+          "category": "문서작업",
+          "startTime": 1773366124869.9272,
+          "endTime": 1773367196253.902,
+          "status": "COMPLETED",
+          "pausedDuration": 0
         }
       ],
       "deleted_logs": [
+        {
+          "id": "38e44450-aa24-466d-a867-406370d7597f",
+          "title": "5.6, 플렉션 Contributor, Plugin, Converter, Interceptor 개념 분석 (target.element 5.6 세트메뉴이전 위해)",
+          "projectCode": "A26_00398",
+          "category": "분석",
+          "startTime": 1773273600000,
+          "endTime": 1773274431627.177,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "deletedAt": 1773275438179
+        },
+        {
+          "id": "5e4b7fd1-4634-43c4-aebd-046549c18528",
+          "title": "세트메뉴 event 동기화, 소메뉴 렌더링 분석",
+          "projectCode": "A26_00398",
+          "category": "분석",
+          "startTime": 1773211253635,
+          "status": "PAUSED",
+          "pausedDuration": 0,
+          "endTime": 1773211255601,
+          "lastPausedAt": 1773211255601,
+          "deletedAt": 1773211311219
+        },
+        {
+          "id": "52563f88-72cc-498f-b9de-6d2c442c72c9",
+          "title": "세트메뉴 event 동기화, 소메뉴 렌더링 분석",
+          "projectCode": "A26_00398",
+          "category": "분석",
+          "startTime": 1773114653940,
+          "status": "PAUSED",
+          "pausedDuration": 0,
+          "endTime": 1773114953940,
+          "lastPausedAt": 1773114661191,
+          "deletedAt": 1773114663137
+        },
+        {
+          "id": "b8d9a2e3-abf7-4276-9997-ee2777b78696",
+          "title": "희제님 5.0 URL (__ec_v5_api.v1.js) 커밋 푸시 관련 안내",
+          "projectCode": "A25_05591",
+          "category": "질의응답",
+          "startTime": 1773114619989,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1773114919989,
+          "deletedAt": 1773114646427
+        },
+        {
+          "id": "84acc00e-df2b-4ee6-b92b-0e5ebf63d417",
+          "title": "5.6 URL 병합 (채권채무)",
+          "projectCode": "A26_00212",
+          "category": "개발",
+          "startTime": 1773114000000,
+          "endTime": 1773114300936.5244,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "deletedAt": 1773114623974
+        },
+        {
+          "id": "58322d80-6089-40fe-ae6b-dfd1d0bd8d3f",
+          "title": "세트메뉴 event 동기화, 소메뉴 렌더링 분석",
+          "projectCode": "A26_00398",
+          "category": "분석",
+          "startTime": 1773108022777,
+          "status": "PAUSED",
+          "pausedDuration": 0,
+          "endTime": 1773108133687,
+          "lastPausedAt": 1773108133687,
+          "deletedAt": 1773108609208
+        },
+        {
+          "id": "0bf8dfc4-c244-4f57-b734-5a490b78ea47",
+          "title": "세트메뉴 event 동기화, 소메뉴 렌더링 분석",
+          "projectCode": "A26_00398",
+          "category": "분석",
+          "startTime": 1773107695438,
+          "status": "PAUSED",
+          "pausedDuration": 0,
+          "endTime": 1773108022777,
+          "lastPausedAt": 1773107995438,
+          "deletedAt": 1773108025231
+        },
+        {
+          "id": "b2b02a6c-41c4-4481-8364-392c12a83411",
+          "title": "3.0 페이지 라이프사이클 본배포/선배포 커밋 분리",
+          "projectCode": "A26_00999",
+          "category": "환경세팅",
+          "startTime": 1773029030495.2268,
+          "status": "PAUSED",
+          "pausedDuration": 0,
+          "endTime": 1773030072222.5942,
+          "lastPausedAt": 1773032172867,
+          "deletedAt": 1773032218142
+        },
+        {
+          "id": "d7887e2e-92b2-4cca-94f1-bd0c311d4a7d",
+          "title": "3.0 페이지 라이프사이클 테스트 체크리스트 작성",
+          "projectCode": "A26_00999",
+          "category": "문서작업",
+          "startTime": 1773032198534,
+          "status": "PAUSED",
+          "pausedDuration": 0,
+          "endTime": 1773032498534,
+          "lastPausedAt": 1773032199865,
+          "deletedAt": 1773032202415
+        },
+        {
+          "id": "452198fe-fc2a-4311-8317-9ee0a2adbe9f",
+          "title": "4) 라이프사이클 로그 수집 대시보드 구현",
+          "projectCode": "A26_00999",
+          "category": "개발",
+          "startTime": 1772781649245.615,
+          "endTime": 1772787600000,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "deletedAt": 1772779961646
+        },
+        {
+          "id": "877690a6-c8b5-4406-aa80-7c1a43662c57",
+          "title": "4) 라이프사이클 로그 수집 대시보드 구현",
+          "projectCode": "A26_00999",
+          "category": "개발",
+          "startTime": 1772787244120.7075,
+          "endTime": 1772787600000,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "deletedAt": 1772769350163
+        },
+        {
+          "id": "ca6ae08b-5c06-40f4-b9b9-b25f8cfb0eae",
+          "title": "4) 라이프사이클 로그 수집 대시보드 구현",
+          "projectCode": "A26_00999",
+          "category": "개발",
+          "startTime": 1772758865132,
+          "status": "PAUSED",
+          "pausedDuration": 0,
+          "endTime": 1772759452359,
+          "lastPausedAt": 1772758866462,
+          "deletedAt": 1772759461081
+        },
+        {
+          "id": "888c89cc-de84-465d-a1a8-402f1009cce3",
+          "title": "5.6 URL 병합 (채권채무)",
+          "projectCode": "A26_00212",
+          "category": "개발",
+          "startTime": 1772759388499,
+          "status": "PAUSED",
+          "pausedDuration": 0,
+          "endTime": 1772759688499,
+          "lastPausedAt": 1772759393300,
+          "deletedAt": 1772759435122
+        },
+        {
+          "id": "098b0f7a-8afe-4ca2-97d6-44fc0f8d1069",
+          "title": "5.6 URL 병합 (전산매체 5.0)",
+          "projectCode": "A26_00212",
+          "category": "개발",
+          "startTime": 1772758866462,
+          "status": "PAUSED",
+          "pausedDuration": 0,
+          "endTime": 1772759388499,
+          "lastPausedAt": 1772759351136,
+          "deletedAt": 1772759429760
+        },
+        {
+          "id": "0899964b-7ea5-4a58-85ab-bbb8a876083e",
+          "title": "5.6 URL 병합 (전산매체 5.0)",
+          "projectCode": "A26_00212",
+          "category": "개발",
+          "startTime": 1772759362724,
+          "status": "PAUSED",
+          "pausedDuration": 0,
+          "lastPausedAt": 1772759388499,
+          "endTime": 1772759388499,
+          "deletedAt": 1772759427980
+        },
+        {
+          "id": "556c1a2a-70b4-4075-9dcc-1247eeabc05e",
+          "title": "5.6 URL 병합 (채권채무)",
+          "projectCode": "A26_00212",
+          "category": "개발",
+          "startTime": 1772759155570,
+          "status": "PAUSED",
+          "pausedDuration": 0,
+          "endTime": 1772759333057,
+          "lastPausedAt": 1772759333057,
+          "deletedAt": 1772759343804
+        },
+        {
+          "id": "8f4160c5-3bf7-46ac-abf4-d0b5a74355e0",
+          "title": "5.6 URL 병합 (전산매체 5.0)",
+          "projectCode": "A26_00212",
+          "category": "개발",
+          "startTime": 1772758884504,
+          "status": "PAUSED",
+          "pausedDuration": 0,
+          "lastPausedAt": 1772759155570,
+          "endTime": 1772759155570,
+          "deletedAt": 1772759338160
+        },
+        {
+          "id": "c7c1cb82-2124-4031-bd46-d1edc16beed2",
+          "title": "3) 3.0과 NavigationServiceV3와 연결, 에러 처리 및 abort 구조 검증",
+          "projectCode": "A26_00999",
+          "category": "개발",
+          "startTime": 1772682940946,
+          "status": "PAUSED",
+          "pausedDuration": 0,
+          "endTime": 1772683240946,
+          "lastPausedAt": 1772682947852,
+          "deletedAt": 1772682950013
+        },
+        {
+          "id": "99f42d07-de0f-4ac1-8c15-6992eccbf500",
+          "title": "5.6 URL 병합 (전산매체 5.0)",
+          "projectCode": "A26_00212",
+          "category": "개발",
+          "startTime": 1772597570462,
+          "status": "PAUSED",
+          "pausedDuration": 0,
+          "endTime": 1772597871959,
+          "lastPausedAt": 1772597870462,
+          "deletedAt": 1772607645101
+        },
+        {
+          "id": "44b4d898-9c36-4c1e-b7b1-fa929b97081c",
+          "title": "3) 3.0과 NavigationServiceV3와 연결, 에러 처리 및 abort 구조 검증",
+          "projectCode": "A26_00999",
+          "category": "개발",
+          "startTime": 1772587835134,
+          "status": "PAUSED",
+          "pausedDuration": 0,
+          "endTime": 1772587836319,
+          "lastPausedAt": 1772587836319,
+          "deletedAt": 1772597875521
+        },
+        {
+          "id": "d43a80cc-21c8-4da7-b11d-b3d42d87498b",
+          "title": "5.6 URL 병합 (전산매체 5.0)",
+          "projectCode": "A26_00212",
+          "category": "개발",
+          "startTime": 1772595600000,
+          "status": "PAUSED",
+          "pausedDuration": 0,
+          "endTime": 1772595968863,
+          "lastPausedAt": 1772595968863,
+          "deletedAt": 1772595989613
+        },
+        {
+          "id": "20331243-e1f8-4cbe-94e3-2182994ec148",
+          "title": "시간관리 회고보고서 작성 - 두괄식으로 재작성",
+          "projectCode": "A25_05591",
+          "category": "문서작업",
+          "startTime": 1772519682398,
+          "status": "PAUSED",
+          "pausedDuration": 0,
+          "endTime": 1772519982398,
+          "lastPausedAt": 1772519683540,
+          "deletedAt": 1772519688394
+        },
         {
           "id": "8a99d37b-fa93-4eec-aa8d-342637e8eced",
           "title": "주간일정 작성",
@@ -2861,7 +4141,7 @@
       "themeConfig": {
         "primaryColor": "#264653",
         "accentColor": "#e76f51",
-        "isDark": false
+        "isDark": true
       },
       "viewConfig": {
         "zoomLevel": 100
@@ -2997,14 +4277,76 @@
         "월근태입력 및 시간외근무수당 청구 기안": 82,
         "비용내역 입력 및 가지급 청구 기안": 83,
         "시간관리 회고보고서 작성": 84,
-        "배포일정 조율 및 동기화시 문제 없을지 확인": 85
+        "배포일정 조율 및 동기화시 문제 없을지 확인": 85,
+        "성현님 authCheck.json 관련 도움, 코어 lib 푸시 제한 확인": 86,
+        "시간관리 회고보고서 작성 - 두괄식으로 재작성": 87,
+        "비용내역 입력 및 가지급 청구 기안 현금영수증 관련 반려 - 재작성": 88,
+        "5.6 URL 병합 (전산매체 5.0)": 89,
+        "EDI 황현님 pre-push 훅 질문에 응답": 90,
+        "3) 3.0과 NavigationServiceV3와 연결, 에러 처리 및 abort 구조 검증": 91,
+        "stage 푸시 / stage 백푸시": 92,
+        "EOD 종빈님 SaveDarkModeSetting 캐시 리셋 관련 질의에 응답": 93,
+        "EDC 이종복책임님 ECP050M 바닥 관련 질의에 응답": 94,
+        "pre-push 관련 잡 설명에 참여": 95,
+        "Flexion 교육": 96,
+        "4) 라이프사이클 로그 수집 대시보드 구현": 97,
+        "5.6 URL 병합 (채권채무)": 98,
+        "3.0 어플리케이션 라이프사이클 코드리뷰": 99,
+        "3.0 어플리케이션 라이프사이클 테스트 체크리스트 작성": 100,
+        "3.0 페이지 라이프사이클 코드리뷰": 101,
+        "3.0 페이지 라이프사이클 테스트 체크리스트 작성": 102,
+        "3.0 페이지 라이프사이클 본배포/선배포 커밋 분리": 103,
+        "성한님 pre-push 과거 문제 히스토리 질문에 응답": 104,
+        "5.6TFT 이동현님 3.0 <-> 5.6 URL Convert 관련 문의에 응답": 105,
+        "3.0 페이지 라이프사이클 코드리뷰건 반영": 106,
+        "TP.16942 c-portal, 유저페이 화면 렌더링 안됩니다": 107,
+        "세트메뉴 회의": 108,
+        "성준팀장님 url_mapping_info관련 질문에응답": 109,
+        "신승현님 $ECountApp.navigationService관련 질문에 응답": 110,
+        "현우님 견적입력 url 통일 관련 질문에 응답": 111,
+        "은샘님 3.0 페이지 라이프사이클 선배포 관련 질문에 응답": 112,
+        "메뉴탭기능 회의": 113,
+        "어플리케이션/페이지 라이프사이클 선배포 스테이지 푸시": 114,
+        "세트메뉴 event 동기화, 소메뉴 렌더링 분석": 115,
+        "5.6 URL 병합 (채권채무, 전산매체)": 116,
+        "5.6 URL 병합 (5.0 견적서 등 조회/현황 메뉴 C-Portal 반영)": 117,
+        "희제님 5.0 URL (__ec_v5_api.v1.js) 커밋 푸시 관련 안내": 118,
+        "5.6 bizz_sid 수정": 119,
+        "TP": 120,
+        "진영책임님, UrlService 리팩토링 회의": 121,
+        "한조님 5.6 병합 관련 지원": 122,
+        "어플리케이션 라이프사이클 본배포 스테이지 푸시": 123,
+        "선배포 TP.17503 구매입력 > 품질검사요청생성 자동분개 저장 오류 발생 (본 잡 영향 X)": 124,
+        "dev": 125,
+        "5.6 개념설명 (ModelDefinition, entity, ProgramContext 등)": 126,
+        "dev.116566": 127,
+        "dev.116566 특별단가등록 > 품목등록 검색창 안뜸 (본 잡 영향 X)": 128,
+        "5.6, 플렉션 Contributor, Plugin, Converter, Interceptor 개념 분석 (target.element 5.6 세트메뉴이전 위해)": 129,
+        "TP.17084 권한 막혀있는 5.0 메뉴 진입 시 오류 알럿 뜹니다. (본 잡 영향O) -> 5.0 page fallback 오류": 130,
+        "QC 예림책임님 어플리케이션/페이지 잡 관련 질문 (5.6 견적입력에 영향 여부)": 131,
+        "어플리케이션/페이지 LifeCycle 배포 동기화, back 전략 검토": 132,
+        "어플리케이션/페이지 LifeCycle 개발자 가이드 작성": 133,
+        "5.6 견적입력 브랜치 최신화 병합오류 해결": 134,
+        "5.6 입력탭 기능 방향결정전달": 135,
+        "5.6 개념 설명 (xml, CRM, P, AttrFeature 등)": 136,
+        "센터오류 확인 /IOpenUserProfileUserAction/ecount.widget.isVisible is not a function": 137,
+        "__ec_v5_loader.v1.js/ecount_browser_framework1.NavigationPlanBuilder is not a function": 138,
+        "신승현님 ecount-app 선배포 여부 판단 문의에 응답": 139,
+        "신승현님 배포프로세스 질문에 응답": 140,
+        "dev.116593 오류내용 정리 및 코드리뷰 요청": 141,
+        "dev.116584 에러로그확인요청_NavigationPlanBuilder": 142,
+        "선배포가 필요한 케이스 논의": 143,
+        "dev.116584, dev.116586 에러 케이스 정리": 144,
+        "5.6 브랜치 최신화 지원 (A26_00413 백 영향)": 145,
+        "dev.116586 에러로그 확인요청_lifecycle_event_emitter": 146,
+        "dev.116593 입금보고서 메뉴 계좌에 계정 선택 안되는 현상": 147
       },
-      "nextColorIndex": 86
+      "nextColorIndex": 148
     },
     "version": 0
   },
   "weeklyScheduleCopyFormat": 3,
-  "weeklyScheduleExcludedProject": "A25_05591",
-  "weeklyScheduleFilterMode": "exclude",
-  "weeklyScheduleTimeDisplayMode": "cumulative"
+  "weeklyScheduleExcludedProject": "",
+  "weeklyScheduleFilterMode": "all",
+  "weeklyScheduleTimeDisplayMode": "none"
 }

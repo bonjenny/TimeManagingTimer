@@ -1287,7 +1287,10 @@ const SettingsPage: React.FC = () => {
             모든 데이터 초기화
           </Button>
           <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-            모든 작업 기록, 설정, 프리셋, 게시글이 삭제됩니다. 이 작업은 되돌릴 수 없습니다.
+            모든 작업 기록, 설정, 프리셋이 삭제됩니다. 이 작업은 되돌릴 수 없습니다.
+          </Typography>
+          <Typography variant="caption" color="info.main" sx={{ display: 'block', mt: 0.5 }}>
+            💡 게시글(Q&A)은 서버에 저장되어 삭제되지 않습니다.
           </Typography>
         </Box>
       </Paper>
@@ -1329,8 +1332,12 @@ const SettingsPage: React.FC = () => {
             <li>모든 작업 기록 (타이머 로그)</li>
             <li>설정 (테마, 점심시간 등)</li>
             <li>프리셋 (즐겨찾기, 수동 프리셋)</li>
-            <li>건의사항 게시글</li>
+            <li>시간관리 표 데이터</li>
+            <li>배포 캘린더 이벤트</li>
           </Box>
+          <Typography variant="body2" color="info.main" sx={{ mb: 2 }}>
+            💡 게시글(Q&A)은 서버에 저장되어 삭제되지 않습니다.
+          </Typography>
           <Typography variant="body2" sx={{ mb: 1 }}>
             계속하려면 <strong>"초기화"</strong>를 입력하세요:
           </Typography>
