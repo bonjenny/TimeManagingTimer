@@ -36,7 +36,9 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import DownloadIcon from '@mui/icons-material/Download';
 import SettingsIcon from '@mui/icons-material/Settings';
 import CloseIcon from '@mui/icons-material/Close';
+import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import { v4 as uuidv4 } from 'uuid';
+import * as XLSX from 'xlsx';
 import { useTimerStore } from '../../store/useTimerStore';
 import { useTimeManagementStore, TimeManagementRow } from '../../store/useTimeManagementStore';
 import { useProjectStore } from '../../store/useProjectStore';
@@ -215,6 +217,45 @@ const TimeManagement: React.FC = () => {
     if (checked_ids.length > 0) {
       deleteRows(checked_ids);
     }
+  };
+
+  const handleExportExcel = () => {
+    if (current_rows.length === 0) {
+      alert('내보낼 데이터가 없습니다.');
+      return;
+    }
+
+    const export_data = current_rows.map((row) => ({
+      '작업': getProjectName(row.project_name) || '-',
+      '업무형': row.work_type,
+      '거래형(일정명)': row.schedule_name,
+      '카테고리 코드': row.category_code,
+      '카테고리명': row.category_name,
+      '시간(분)': row.time_minutes,
+      '비고': row.note || '',
+    }));
+
+    const total_minutes = current_rows.reduce((sum, row) => sum + row.time_minutes, 0);
+    export_data.push({
+      '작업': '',
+      '업무형': '',
+      '거래형(일정명)': '',
+      '카테고리 코드': '',
+      '카테고리명': '합계',
+      '시간(분)': total_minutes,
+      '비고': '',
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(export_data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, '시간관리');
+
+    const year = selected_date.getFullYear();
+    const month = String(selected_date.getMonth() + 1).padStart(2, '0');
+    const day = String(selected_date.getDate()).padStart(2, '0');
+    const file_name = `시간관리_${year}-${month}-${day}.xlsx`;
+
+    XLSX.writeFile(workbook, file_name);
   };
 
   const handleCellClick = (row: TimeManagementRow, field: keyof TimeManagementRow) => {
@@ -549,6 +590,16 @@ const TimeManagement: React.FC = () => {
             startIcon={<DownloadIcon />}
           >
             일간 타이머에서 불러오기
+          </Button>
+          <Button
+            variant="contained"
+            size="small"
+            onClick={handleExportExcel}
+            startIcon={<FileDownloadIcon />}
+            disabled={current_rows.length === 0}
+            color="success"
+          >
+            엑셀 Export
           </Button>
           <Button
             variant="outlined"
