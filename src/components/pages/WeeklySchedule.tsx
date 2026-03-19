@@ -241,9 +241,10 @@ const WeeklySchedule: React.FC = () => {
     const startTime = selectedWeekStart.getTime();
     const endTime = startTime + 7 * 24 * 60 * 60 * 1000;
 
-    // 기간 내 로그 필터링
+    // 기간 내 로그 필터링 (SCHEDULED 제외)
     let filtered = logs.filter(
       (log) =>
+        log.status !== 'SCHEDULED' &&
         log.startTime >= startTime &&
         log.startTime < endTime
     );

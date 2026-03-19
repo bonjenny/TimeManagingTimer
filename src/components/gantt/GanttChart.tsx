@@ -23,6 +23,7 @@ import {
 import type { SlideProps } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import { useTimerStore, TimerLog } from '../../store/useTimerStore';
 import { useProjectStore } from '../../store/useProjectStore';
 import { formatTimeRange, formatDuration } from '../../utils/timeUtils';
@@ -64,7 +65,7 @@ const MAX_LABEL_WIDTH = 400;
 const LABEL_WIDTH_STORAGE_KEY = 'timekeeper-gantt-label-width';
 
 const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
-  const { logs, activeTimer, addLog, updateLog, deleteLog, stopTimer, themeConfig, getOrAssignColorIndex } = useTimerStore();
+  const { logs, activeTimer, addLog, updateLog, deleteLog, stopTimer, themeConfig, getOrAssignColorIndex, activateScheduledTask } = useTimerStore();
   const { getProjectName, projects } = useProjectStore();
   
   // 프로젝트 옵션 (코드 + 이름 형태로 표시)
@@ -886,6 +887,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
   const handleCreateSave = () => {
     if (!newTitle.trim()) return;
 
+    const is_future = newLogStart > Date.now();
     const new_log: TimerLog = {
       id: crypto.randomUUID(),
       title: newTitle,
@@ -893,7 +895,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
       category: newCategory || undefined,
       startTime: newLogStart,
       endTime: newLogEnd,
-      status: 'COMPLETED',
+      status: is_future ? 'SCHEDULED' : 'COMPLETED',
       pausedDuration: 0
     };
 
@@ -1209,18 +1211,23 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
 
   const handleDeleteTask = () => {
     if (contextMenu?.log) {
-      // 진행중인 작업인 경우 먼저 타이머 중지
       if (activeTimer && activeTimer.id === contextMenu.log.id) {
         stopTimer();
       }
       deleteLog(contextMenu.log.id);
       
-      // 토스트 알림 표시
       setSnackbar({
         open: true,
         message: '작업이 휴지통으로 이동되었습니다.',
         severity: 'success'
       });
+    }
+    handleCloseContextMenu();
+  };
+
+  const handleStartScheduledNow = () => {
+    if (contextMenu?.log && contextMenu.log.status === 'SCHEDULED') {
+      activateScheduledTask(contextMenu.log.id);
     }
     handleCloseContextMenu();
   };
@@ -1528,6 +1535,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
                   const preview = getResizePreview(item);
                   const is_resizing_this = isResizing && resizeLogId === item.id;
                   const is_completed = item.status === 'COMPLETED';
+                  const is_scheduled = item.status === 'SCHEDULED';
                   
                   const is_context_menu_open = contextMenu !== null;
                   
@@ -1540,6 +1548,11 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
                       title={
                         should_disable_tooltip ? "" : (
                         <Box sx={{ textAlign: 'center' }}>
+                          {is_scheduled && (
+                            <Typography variant="caption" display="block" sx={{ color: 'rgba(255,255,200,0.9)', fontWeight: 'bold', mb: 0.25 }}>
+                              [예약]
+                            </Typography>
+                          )}
                           <Typography variant="subtitle2" sx={{ color: '#fff' }}>{item.title}</Typography>
                           {item.category && (
                             <Typography variant="caption" display="block" sx={{ color: 'rgba(255,255,255,0.8)' }}>
@@ -1553,7 +1566,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
                             {formatDuration((item.endTime ? item.endTime - item.startTime : currentTime - item.startTime) / 1000)}
                           </Typography>
                           <Typography variant="caption" display="block" sx={{ mt: 0.5, color: 'rgba(255,255,255,0.6)' }}>
-                            우클릭: 메뉴 / 더블클릭: 수정 / 양끝: 크기 조절
+                            {is_scheduled ? '우클릭: 메뉴 / 더블클릭: 수정' : '우클릭: 메뉴 / 더블클릭: 수정 / 양끝: 크기 조절'}
                           </Typography>
                         </Box>
                         )
@@ -1586,8 +1599,12 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
                           width: `${preview.width_percent}%`,
                           top: 4,
                           bottom: 4,
-                          bgcolor: item.color,
-                          opacity: item.status === 'RUNNING' ? 1 : (is_resizing_this ? 0.9 : 0.85),
+                          bgcolor: is_scheduled ? 'transparent' : item.color,
+                          backgroundImage: is_scheduled
+                            ? `repeating-linear-gradient(135deg, ${item.color}33 0px, ${item.color}33 4px, transparent 4px, transparent 8px)`
+                            : 'none',
+                          border: is_scheduled ? `2px dashed ${item.color}` : 'none',
+                          opacity: is_scheduled ? 0.8 : (item.status === 'RUNNING' ? 1 : (is_resizing_this ? 0.9 : 0.85)),
                           borderRadius: 0.5,
                           cursor: 'pointer',
                           zIndex: is_resizing_this ? 10 : 1,
@@ -1631,8 +1648,8 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
                               }
                             }}
                           />
-                          {/* 오른쪽 리사이즈 핸들 (종료 시간) - 완료 또는 일시정지된 작업(endTime 있음)에 표시 */}
-                          {(is_completed || (item.status === 'PAUSED' && item.endTime)) && (
+                          {/* 오른쪽 리사이즈 핸들 (종료 시간) - 완료/일시정지/예약된 작업(endTime 있음)에 표시 */}
+                          {(is_completed || is_scheduled || (item.status === 'PAUSED' && item.endTime)) && (
                             <Box
                               onMouseDown={(e) => handleResizeStart(e, item.id, 'end', item.startTime, item.endTime)}
                               sx={{
@@ -1686,6 +1703,14 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
             : undefined
         }
       >
+        {contextMenu?.log?.status === 'SCHEDULED' && (
+          <MenuItem onClick={handleStartScheduledNow}>
+            <ListItemIcon>
+              <PlayArrowIcon fontSize="small" color="primary" />
+            </ListItemIcon>
+            <ListItemText>지금 시작</ListItemText>
+          </MenuItem>
+        )}
         <MenuItem onClick={handleEditTask}>
           <ListItemIcon>
             <EditIcon fontSize="small" />

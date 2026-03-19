@@ -1,13 +1,27 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { Paper, IconButton, Box, Autocomplete, TextField, Tooltip, Typography } from '@mui/material';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import ScheduleIcon from '@mui/icons-material/Schedule';
+import EventNoteIcon from '@mui/icons-material/EventNote';
 import CloseIcon from '@mui/icons-material/Close';
-import { useTimerStore } from '../../store/useTimerStore';
+import { useTimerStore, TimerLog } from '../../store/useTimerStore';
 import { useProjectStore } from '../../store/useProjectStore';
 import CategoryAutocomplete from '../common/CategoryAutocomplete';
 
+const getNextHour = (): string => {
+  const now = new Date();
+  now.setHours(now.getHours() + 1, 0, 0, 0);
+  return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+};
+
+const getNextHourPlusOne = (): string => {
+  const now = new Date();
+  now.setHours(now.getHours() + 2, 0, 0, 0);
+  return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+};
+
 const TimerInput: React.FC = () => {
-  const { startTimer, getRecentTitles, removeRecentTitle } = useTimerStore();
+  const { startTimer, addLog, getRecentTitles, removeRecentTitle } = useTimerStore();
   const { projects, addProject, getProjectByCode, deleteProject } = useProjectStore();
   
   const [title, setTitle] = useState('');
@@ -16,52 +30,83 @@ const TimerInput: React.FC = () => {
   const [category, setCategory] = useState<string | null>(null);
   const [note, setNote] = useState('');
 
+  const [is_scheduling, setIsScheduling] = useState(false);
+  const [schedule_start, setScheduleStart] = useState('');
+  const [schedule_end, setScheduleEnd] = useState('');
+
   const recentTitles = getRecentTitles();
   
-  // 프로젝트 코드 옵션
   const projectCodeOptions = useMemo(() => {
     return projects.map(p => p.code);
   }, [projects]);
   
-  // 프로젝트 명 옵션
   const projectNameOptions = useMemo(() => {
     return projects.map(p => p.name);
   }, [projects]);
 
-  const handleStart = () => {
-    if (!title.trim()) return;
-    
-    // 프로젝트 코드와 이름이 있으면 저장
-    if (projectCode.trim() && projectName.trim()) {
-      addProject({ code: projectCode.trim(), name: projectName.trim() });
+  const timeToTimestamp = (time_str: string): number => {
+    const [hours, minutes] = time_str.split(':').map(Number);
+    const date = new Date();
+    date.setHours(hours, minutes, 0, 0);
+    if (date.getTime() < Date.now()) {
+      date.setDate(date.getDate() + 1);
     }
-    
-    startTimer(title, projectCode || undefined, category || undefined, note.trim() || undefined);
-    
-    // 초기화
+    return date.getTime();
+  };
+
+  const resetForm = () => {
     setTitle('');
     setProjectCode('');
     setProjectName('');
     setCategory(null);
     setNote('');
+    setIsScheduling(false);
+    setScheduleStart('');
+    setScheduleEnd('');
+  };
+
+  const handleStart = () => {
+    if (!title.trim()) return;
+    
+    if (projectCode.trim() && projectName.trim()) {
+      addProject({ code: projectCode.trim(), name: projectName.trim() });
+    }
+
+    if (is_scheduling && schedule_start && schedule_end) {
+      const start_ts = timeToTimestamp(schedule_start);
+      const end_ts = timeToTimestamp(schedule_end);
+
+      const scheduled_log: TimerLog = {
+        id: crypto.randomUUID(),
+        title: title.trim(),
+        projectCode: projectCode || undefined,
+        category: category || undefined,
+        note: note.trim() || undefined,
+        startTime: start_ts,
+        endTime: end_ts > start_ts ? end_ts : start_ts + 60 * 60 * 1000,
+        status: 'SCHEDULED',
+        pausedDuration: 0,
+      };
+      addLog(scheduled_log);
+    } else {
+      startTimer(title, projectCode || undefined, category || undefined, note.trim() || undefined);
+    }
+    
+    resetForm();
   };
   
-  // 프로젝트 코드 입력 처리 - 일치하는 프로젝트 명 자동완성
   const handleProjectCodeChange = useCallback((value: string) => {
     setProjectCode(value);
     
-    // 빈 값이면 프로젝트 명도 제거
     if (!value) {
       setProjectName('');
       return;
     }
     
-    // localStorage에서 일치하는 프로젝트 찾기
     const matchedProject = getProjectByCode(value);
     if (matchedProject) {
       setProjectName(matchedProject.name);
     } else {
-      // 부분 일치도 확인 (코드가 정확히 일치하는 경우만)
       const exactMatch = projects.find(p => p.code === value);
       if (exactMatch) {
         setProjectName(exactMatch.name);
@@ -69,17 +114,14 @@ const TimerInput: React.FC = () => {
     }
   }, [projects, getProjectByCode]);
   
-  // 프로젝트 명 입력 처리 - 일치하는 프로젝트 코드 자동완성
   const handleProjectNameChange = useCallback((value: string) => {
     setProjectName(value);
     
-    // 빈 값이면 프로젝트 코드도 제거
     if (!value) {
       setProjectCode('');
       return;
     }
     
-    // localStorage에서 일치하는 프로젝트 찾기 (이름으로)
     const matchedProject = projects.find(p => p.name === value);
     if (matchedProject) {
       setProjectCode(matchedProject.code);
@@ -93,16 +135,24 @@ const TimerInput: React.FC = () => {
     }
   };
 
+  const handleToggleScheduling = () => {
+    if (!is_scheduling) {
+      setScheduleStart(getNextHour());
+      setScheduleEnd(getNextHourPlusOne());
+    }
+    setIsScheduling(!is_scheduling);
+  };
+
   return (
     <Paper 
       elevation={0} 
       sx={{ 
         p: '2px 4px', 
         display: 'flex', 
-        alignItems: 'center', 
+        flexDirection: 'column',
         width: '100%', 
         border: '1px solid',
-        borderColor: 'var(--border-color)',
+        borderColor: is_scheduling ? 'var(--primary-color)' : 'var(--border-color)',
         bgcolor: 'var(--card-bg)',
         transition: 'all 0.2s',
         '&:focus-within': {
@@ -152,7 +202,7 @@ const TimerInput: React.FC = () => {
           renderInput={(params) => (
             <TextField 
               {...params} 
-              placeholder="무엇을 하고 계신가요? (Enter로 바로 시작)" 
+              placeholder={is_scheduling ? "예약할 작업명을 입력하세요" : "무엇을 하고 계신가요? (Enter로 바로 시작)"} 
               variant="standard"
               InputProps={{ ...params.InputProps, disableUnderline: true }}
               onKeyDown={handleKeyDown}
@@ -169,7 +219,6 @@ const TimerInput: React.FC = () => {
           value={projectCode}
           onInputChange={(_e, newValue) => handleProjectCodeChange(newValue || '')}
           onChange={(_e, newValue) => {
-            // 키보드로 옵션 선택 시에도 프로젝트명 연동
             if (newValue) {
               handleProjectCodeChange(newValue);
             }
@@ -239,7 +288,6 @@ const TimerInput: React.FC = () => {
           value={projectName}
           onInputChange={(_e, newValue) => handleProjectNameChange(newValue || '')}
           onChange={(_e, newValue) => {
-            // 키보드로 옵션 선택 시에도 프로젝트 코드 연동
             if (newValue) {
               handleProjectNameChange(newValue);
             }
@@ -332,20 +380,61 @@ const TimerInput: React.FC = () => {
           }}
         />
 
-        {/* 시작 버튼 */}
-        <Tooltip title="타이머 시작">
+        {/* 예약 모드 토글 */}
+        <Tooltip title={is_scheduling ? '예약 모드 해제' : '예약 모드'}>
+          <IconButton
+            size="small"
+            onClick={handleToggleScheduling}
+            color={is_scheduling ? 'warning' : 'default'}
+            sx={{ p: '6px' }}
+          >
+            <ScheduleIcon sx={{ fontSize: 20 }} />
+          </IconButton>
+        </Tooltip>
+
+        {/* 시작/예약 버튼 */}
+        <Tooltip title={is_scheduling ? '예약 등록' : '타이머 시작'}>
             <span>
                 <IconButton 
-                    color="primary" 
+                    color={is_scheduling ? 'warning' : 'primary'}
                     sx={{ p: '10px' }} 
                     onClick={handleStart}
-                    disabled={!title.trim()}
+                    disabled={!title.trim() || (is_scheduling && (!schedule_start || !schedule_end))}
                 >
-                    <PlayArrowIcon />
+                    {is_scheduling ? <EventNoteIcon /> : <PlayArrowIcon />}
                 </IconButton>
             </span>
         </Tooltip>
       </Box>
+
+      {/* 예약 시간 설정 영역 */}
+      {is_scheduling && (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 1, pb: 1, pt: 0 }}>
+          <Typography variant="caption" color="text.secondary" sx={{ minWidth: 'fit-content' }}>
+            예약 시간:
+          </Typography>
+          <TextField
+            type="time"
+            value={schedule_start}
+            onChange={(e) => setScheduleStart(e.target.value)}
+            size="small"
+            variant="standard"
+            InputProps={{ disableUnderline: true }}
+            sx={{ width: 90, '& .MuiInputBase-input': { fontSize: '0.85rem', p: '2px 0' } }}
+          />
+          <Typography variant="caption" color="text.secondary">~</Typography>
+          <TextField
+            type="time"
+            value={schedule_end}
+            onChange={(e) => setScheduleEnd(e.target.value)}
+            size="small"
+            variant="standard"
+            InputProps={{ disableUnderline: true }}
+            onKeyDown={handleKeyDown}
+            sx={{ width: 90, '& .MuiInputBase-input': { fontSize: '0.85rem', p: '2px 0' } }}
+          />
+        </Box>
+      )}
     </Paper>
   );
 };
