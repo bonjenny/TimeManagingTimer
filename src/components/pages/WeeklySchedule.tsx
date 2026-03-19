@@ -102,6 +102,12 @@ const WeeklySchedule: React.FC = () => {
     return getItem('weeklyScheduleExcludedProject') || '';
   });
 
+  // 관리업무 필터 상태 (all: 전체보기, exclude_management: 관리업무 제외)
+  const [viewMode, setViewMode] = useState<'all' | 'exclude_management'>(() => {
+    const saved = getItem('weeklyScheduleViewMode');
+    return saved === 'exclude_management' ? 'exclude_management' : 'all';
+  });
+
   const [copyFormat, setCopyFormat] = useState<'1' | '2' | '3'>(() => {
     const saved = getItem('weeklyScheduleCopyFormat');
     return saved === '2' || saved === '3' ? saved : '1';
@@ -161,6 +167,14 @@ const WeeklySchedule: React.FC = () => {
       name: getProjectName(code)
     }));
   }, [logs, getProjectName]);
+
+  // 관리업무 판별 함수
+  const isManagementTask = (log: TimerLog) => {
+    if (log.projectCode === 'A25_05591') return true;
+    const project_name = getProjectName(log.projectCode || '');
+    if (project_name === '관리업무') return true;
+    return false;
+  };
 
   // 로그 소요 시간 계산 헬퍼 함수
   const calcLogDuration = (log: TimerLog) => {
@@ -254,6 +268,11 @@ const WeeklySchedule: React.FC = () => {
       filtered = filtered.filter(log => log.projectCode !== excludedProject);
     }
 
+    // 관리업무 필터 적용
+    if (viewMode === 'exclude_management') {
+      filtered = filtered.filter(log => !isManagementTask(log));
+    }
+
     // 날짜별로 데이터 구성
     const dayDataList: DayData[] = weekDates.map(date => {
       const dayStart = new Date(date);
@@ -343,7 +362,7 @@ const WeeklySchedule: React.FC = () => {
       totalSeconds,
       allLogs: filtered
     };
-  }, [logs, selectedWeekStart, weekDates, filterMode, excludedProject, getProjectName, calcCumulativeSeconds]);
+  }, [logs, selectedWeekStart, weekDates, filterMode, excludedProject, viewMode, getProjectName, calcCumulativeSeconds, isManagementTask]);
 
   // 잡 색상 설정에 노출할 잡 코드: localStorage 프로젝트 + 이번 주 로그에 등장한 잡 (배포 캘린더에 없는 잡도 설정 가능)
   const job_codes_for_color_manager = useMemo(() => {
@@ -676,24 +695,18 @@ const WeeklySchedule: React.FC = () => {
 
           {/* 필터 + 복사 버튼 */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <ToggleButtonGroup
-              value={filterMode === 'all' ? 'all' : 'exclude'}
-              exclusive
+            <ToggleButton 
+              value={viewMode}
+              onClick={() => { 
+                const new_mode = viewMode === 'all' ? 'exclude_management' : 'all';
+                setViewMode(new_mode);
+                setStorageItem('weeklyScheduleViewMode', new_mode);
+              }}
+              sx={{ px: 2 }}
               size="small"
             >
-              <ToggleButton 
-                value="all" 
-                onClick={() => { 
-                  setFilterMode('all'); 
-                  setExcludedProject('');
-                  setStorageItem('weeklyScheduleFilterMode', 'all');
-                  setStorageItem('weeklyScheduleExcludedProject', '');
-                }}
-                sx={{ px: 2 }}
-              >
-                전체 보기
-              </ToggleButton>
-            </ToggleButtonGroup>
+              {viewMode === 'all' ? '전체보기' : '관리업무 제외'}
+            </ToggleButton>
 
             {availableProjects.length > 0 && (
               <FormControl size="small" sx={{ minWidth: 200 }}>

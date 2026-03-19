@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -37,6 +37,8 @@ import DownloadIcon from '@mui/icons-material/Download';
 import SettingsIcon from '@mui/icons-material/Settings';
 import CloseIcon from '@mui/icons-material/Close';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import { v4 as uuidv4 } from 'uuid';
 import * as XLSX from 'xlsx';
 import { useTimerStore } from '../../store/useTimerStore';
@@ -98,6 +100,9 @@ const TimeManagement: React.FC = () => {
     field: keyof TimeManagementRow;
   } | null>(null);
   const [edit_value, setEditValue] = useState<string>('');
+
+  const [sort_column, setSortColumn] = useState<keyof TimeManagementRow | null>(null);
+  const [sort_direction, setSortDirection] = useState<'asc' | 'desc' | null>(null);
 
   const [settings_open, setSettingsOpen] = useState(false);
   const [new_category, setNewCategory] = useState<string | null>(null);
@@ -311,6 +316,54 @@ const TimeManagement: React.FC = () => {
 
   const handleToggleAll = () => {
     toggleAllChecks(date_string, !all_checked);
+  };
+
+  const handleHeaderClick = (column: keyof TimeManagementRow) => {
+    if (column === 'checked' || column === 'id' || column === 'date' || column === 'original_log_id') {
+      return;
+    }
+
+    if (sort_column === column) {
+      if (sort_direction === 'asc') {
+        setSortDirection('desc');
+      } else if (sort_direction === 'desc') {
+        setSortColumn(null);
+        setSortDirection(null);
+      }
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
+
+  const sorted_rows = useMemo(() => {
+    if (!sort_column || !sort_direction) {
+      return current_rows;
+    }
+
+    return [...current_rows].sort((a, b) => {
+      const a_value = a[sort_column];
+      const b_value = b[sort_column];
+
+      if (typeof a_value === 'number' && typeof b_value === 'number') {
+        return sort_direction === 'asc' ? a_value - b_value : b_value - a_value;
+      }
+
+      const a_str = String(a_value);
+      const b_str = String(b_value);
+      return sort_direction === 'asc'
+        ? a_str.localeCompare(b_str)
+        : b_str.localeCompare(a_str);
+    });
+  }, [current_rows, sort_column, sort_direction]);
+
+  const renderSortIcon = (column: keyof TimeManagementRow) => {
+    if (sort_column !== column) return null;
+    return sort_direction === 'asc' ? (
+      <ArrowUpwardIcon fontSize="small" sx={{ ml: 0.5 }} />
+    ) : (
+      <ArrowDownwardIcon fontSize="small" sx={{ ml: 0.5 }} />
+    );
   };
 
   useEffect(() => {
@@ -633,17 +686,73 @@ const TimeManagement: React.FC = () => {
                   onChange={handleToggleAll}
                 />
               </TableCell>
-              <TableCell sx={{ fontWeight: 600, minWidth: 150 }}>작업</TableCell>
-              <TableCell sx={{ fontWeight: 600, minWidth: 100 }}>업무형</TableCell>
-              <TableCell sx={{ fontWeight: 600, minWidth: 200 }}>거래형(일정명)</TableCell>
-              <TableCell sx={{ fontWeight: 600, minWidth: 100 }}>카테고리 코드</TableCell>
-              <TableCell sx={{ fontWeight: 600, minWidth: 120 }}>카테고리명</TableCell>
-              <TableCell sx={{ fontWeight: 600, minWidth: 100 }}>시간(분)</TableCell>
-              <TableCell sx={{ fontWeight: 600, minWidth: 200 }}>비고</TableCell>
+              <TableCell
+                sx={{ fontWeight: 600, minWidth: 150, cursor: 'pointer', userSelect: 'none' }}
+                onClick={() => handleHeaderClick('project_name')}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  작업
+                  {renderSortIcon('project_name')}
+                </Box>
+              </TableCell>
+              <TableCell
+                sx={{ fontWeight: 600, minWidth: 100, cursor: 'pointer', userSelect: 'none' }}
+                onClick={() => handleHeaderClick('work_type')}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  업무형
+                  {renderSortIcon('work_type')}
+                </Box>
+              </TableCell>
+              <TableCell
+                sx={{ fontWeight: 600, minWidth: 200, cursor: 'pointer', userSelect: 'none' }}
+                onClick={() => handleHeaderClick('schedule_name')}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  거래형(일정명)
+                  {renderSortIcon('schedule_name')}
+                </Box>
+              </TableCell>
+              <TableCell
+                sx={{ fontWeight: 600, minWidth: 100, cursor: 'pointer', userSelect: 'none' }}
+                onClick={() => handleHeaderClick('category_code')}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  카테고리 코드
+                  {renderSortIcon('category_code')}
+                </Box>
+              </TableCell>
+              <TableCell
+                sx={{ fontWeight: 600, minWidth: 120, cursor: 'pointer', userSelect: 'none' }}
+                onClick={() => handleHeaderClick('category_name')}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  카테고리명
+                  {renderSortIcon('category_name')}
+                </Box>
+              </TableCell>
+              <TableCell
+                sx={{ fontWeight: 600, minWidth: 100, cursor: 'pointer', userSelect: 'none' }}
+                onClick={() => handleHeaderClick('time_minutes')}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  시간(분)
+                  {renderSortIcon('time_minutes')}
+                </Box>
+              </TableCell>
+              <TableCell
+                sx={{ fontWeight: 600, minWidth: 200, cursor: 'pointer', userSelect: 'none' }}
+                onClick={() => handleHeaderClick('note')}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  비고
+                  {renderSortIcon('note')}
+                </Box>
+              </TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {current_rows.map((row) => (
+            {sorted_rows.map((row) => (
               <TableRow key={row.id} hover>
                 <TableCell padding="checkbox">
                   <Checkbox

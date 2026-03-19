@@ -36,6 +36,8 @@ import RestoreIcon from '@mui/icons-material/Restore';
 import RestoreFromTrashIcon from '@mui/icons-material/RestoreFromTrash';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import { useTimerStore, TimerLog, DeletedLog } from '../../store/useTimerStore';
 import { useProjectStore } from '../../store/useProjectStore';
 import { formatDuration, getDurationSecondsExcludingLunch } from '../../utils/timeUtils';
@@ -150,6 +152,12 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
 
   // 휴지통 모달 상태
   const [trash_modal_open, setTrashModalOpen] = useState(false);
+
+  // 세션 정렬 상태 (asc: 오래된 순, desc: 최근 순)
+  const [session_sort_order, setSessionSortOrder] = useState<'asc' | 'desc'>(() => {
+    const saved = getItem('timerlist-session-sort-order');
+    return (saved === 'asc' || saved === 'desc') ? saved : 'asc';
+  });
 
   // 오늘인지 확인 (useMemo 전에 계산)
   const now = new Date();
@@ -602,6 +610,13 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
   const cancelInlineTimeEdit = () => {
     setEditingSessionTime(null);
     setInlineTimeValue('');
+  };
+
+  // 세션 정렬 토글
+  const toggleSessionSortOrder = () => {
+    const new_order = session_sort_order === 'asc' ? 'desc' : 'asc';
+    setSessionSortOrder(new_order);
+    setStorageItem('timerlist-session-sort-order', new_order);
   };
   
   // 프로젝트 코드 입력 처리 (자동완성 선택 또는 직접 입력)
@@ -1082,9 +1097,28 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
               {/* 세션 상세 (펼침) */}
               <Collapse in={is_expanded}>
                 <Box sx={{ bgcolor: 'var(--bg-tertiary)', py: 1, px: 2, borderBottom: 1, borderColor: 'var(--border-color)' }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-                    작업 이력 (총 {task.sessions.length}회 작업)
-                  </Typography>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                    <Typography variant="caption" color="text.secondary">
+                      작업 이력 (총 {task.sessions.length}회 작업)
+                    </Typography>
+                    <Tooltip title={session_sort_order === 'asc' ? '최근 순으로 정렬' : '오래된 순으로 정렬'}>
+                      <IconButton 
+                        size="small" 
+                        onClick={toggleSessionSortOrder}
+                        sx={{ 
+                          p: 0.5,
+                          color: 'text.secondary',
+                          '&:hover': { color: 'primary.main' }
+                        }}
+                      >
+                        {session_sort_order === 'asc' ? (
+                          <ArrowDownwardIcon sx={{ fontSize: 16 }} />
+                        ) : (
+                          <ArrowUpwardIcon sx={{ fontSize: 16 }} />
+                        )}
+                      </IconButton>
+                    </Tooltip>
+                  </Box>
                   <TableContainer>
                     <Table size="small">
                       <TableHead>
@@ -1098,9 +1132,19 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                         </TableRow>
                       </TableHead>
                       <TableBody>
-                        {task.sessions.map((session, idx) => (
+                        {(() => {
+                          const sorted_sessions = session_sort_order === 'desc' 
+                            ? [...task.sessions].reverse() 
+                            : task.sessions;
+                          
+                          return sorted_sessions.map((session, idx) => {
+                            const display_index = session_sort_order === 'desc'
+                              ? task.sessions.length - idx
+                              : idx + 1;
+                            
+                            return (
                           <TableRow key={session.id} hover>
-                            <TableCell sx={{ py: 0.5 }}>{idx + 1}</TableCell>
+                            <TableCell sx={{ py: 0.5 }}>{display_index}</TableCell>
                             <TableCell sx={{ py: 0.5 }}>{formatDate(session.startTime)}</TableCell>
                             <TableCell 
                               sx={{ py: 0.5, cursor: 'pointer' }}
@@ -1262,7 +1306,9 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                               </Box>
                             </TableCell>
                           </TableRow>
-                        ))}
+                            );
+                          });
+                        })()}
                       </TableBody>
                     </Table>
                   </TableContainer>
