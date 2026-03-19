@@ -36,8 +36,6 @@ import RestoreIcon from '@mui/icons-material/Restore';
 import RestoreFromTrashIcon from '@mui/icons-material/RestoreFromTrash';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
-import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
-import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import { useTimerStore, TimerLog, DeletedLog } from '../../store/useTimerStore';
 import { useProjectStore } from '../../store/useProjectStore';
 import { formatDuration, getDurationSecondsExcludingLunch } from '../../utils/timeUtils';
@@ -1097,33 +1095,23 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
               {/* 세션 상세 (펼침) */}
               <Collapse in={is_expanded}>
                 <Box sx={{ bgcolor: 'var(--bg-tertiary)', py: 1, px: 2, borderBottom: 1, borderColor: 'var(--border-color)' }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                    <Typography variant="caption" color="text.secondary">
-                      작업 이력 (총 {task.sessions.length}회 작업)
-                    </Typography>
-                    <Tooltip title={session_sort_order === 'asc' ? '최근 순으로 정렬' : '오래된 순으로 정렬'}>
-                      <IconButton 
-                        size="small" 
-                        onClick={toggleSessionSortOrder}
-                        sx={{ 
-                          p: 0.5,
-                          color: 'text.secondary',
-                          '&:hover': { color: 'primary.main' }
-                        }}
-                      >
-                        {session_sort_order === 'asc' ? (
-                          <ArrowDownwardIcon sx={{ fontSize: 16 }} />
-                        ) : (
-                          <ArrowUpwardIcon sx={{ fontSize: 16 }} />
-                        )}
-                      </IconButton>
-                    </Tooltip>
-                  </Box>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                    작업 이력 (총 {task.sessions.length}회 작업)
+                  </Typography>
                   <TableContainer>
                     <Table size="small">
                       <TableHead>
                         <TableRow>
-                          <TableCell sx={{ width: 40, py: 0.5 }}>#</TableCell>
+                          <TableCell sx={{ width: 40, py: 0.5, cursor: 'pointer', userSelect: 'none' }} onClick={toggleSessionSortOrder}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                              <Typography variant="caption">#</Typography>
+                              {session_sort_order === 'asc' ? (
+                                <ExpandMoreIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
+                              ) : (
+                                <ExpandLessIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
+                              )}
+                            </Box>
+                          </TableCell>
                           <TableCell sx={{ width: 100, py: 0.5 }}>날짜</TableCell>
                           <TableCell sx={{ width: 120, py: 0.5 }}>시작 시간</TableCell>
                           <TableCell sx={{ width: 120, py: 0.5 }}>종료 시간</TableCell>

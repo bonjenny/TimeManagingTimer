@@ -1554,7 +1554,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
                   
                   return (
                     <Tooltip
-                      key={item.id}
+                      key={`${item.id}-${isResizing ? 'resizing' : 'idle'}-${isDragging ? 'dragging' : 'idle'}`}
                       title={
                         should_disable_tooltip ? "" : (
                         <Box sx={{ textAlign: 'center' }}>
@@ -1584,9 +1584,10 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
                       arrow
                       enterDelay={300}
                       enterNextDelay={300}
-                      // 드래그/리사이즈 중이거나 컨텍스트 메뉴가 열려있으면 강제로 닫음
                       open={should_disable_tooltip ? false : undefined}
                       disableHoverListener={should_disable_tooltip}
+                      disableFocusListener
+                      disableTouchListener
                       PopperProps={{
                         sx: { pointerEvents: 'none' }
                       }}

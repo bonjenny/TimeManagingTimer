@@ -493,4 +493,85 @@ describe('WeeklySchedule', () => {
       expect(screen.getByText('비정상 일시정지 로그')).toBeInTheDocument();
     });
   });
+
+  describe('관리업무 필터', () => {
+    const addManagementLog = () => {
+      const now = new Date();
+      const monday = new Date(now);
+      const day = monday.getDay();
+      const diff = day === 0 ? -6 : 1 - day;
+      monday.setDate(now.getDate() + diff);
+      monday.setHours(9, 0, 0, 0);
+
+      act(() => {
+        const store = useTimerStore.getState();
+        store.addLog({
+          id: 'management-log-1',
+          title: '관리업무 작업',
+          projectCode: 'A25_05591',
+          category: '관리',
+          startTime: monday.getTime(),
+          endTime: monday.getTime() + 3600000,
+          status: 'COMPLETED',
+          pausedDuration: 0,
+        });
+        store.addLog({
+          id: 'normal-log-1',
+          title: '일반 작업',
+          projectCode: 'A26_00001',
+          category: '개발',
+          startTime: monday.getTime(),
+          endTime: monday.getTime() + 3600000,
+          status: 'COMPLETED',
+          pausedDuration: 0,
+        });
+      });
+    };
+
+    it('전체보기 버튼이 렌더링된다', () => {
+      render(<WeeklySchedule />);
+      expect(screen.getByRole('button', { name: '전체보기' })).toBeInTheDocument();
+    });
+
+    it('전체보기 버튼 클릭 시 관리업무 제외 버튼으로 변경된다', async () => {
+      const user = userEvent.setup();
+      addManagementLog();
+      render(<WeeklySchedule />);
+
+      const toggle_btn = screen.getByRole('button', { name: '전체보기' });
+      await user.click(toggle_btn);
+
+      expect(screen.getByRole('button', { name: '관리업무 제외' })).toBeInTheDocument();
+    });
+
+    it('관리업무 제외 모드에서 A25_05591 프로젝트가 필터링된다', async () => {
+      const user = userEvent.setup();
+      addManagementLog();
+      render(<WeeklySchedule />);
+
+      expect(screen.getByText('관리업무 작업')).toBeInTheDocument();
+      expect(screen.getByText('일반 작업')).toBeInTheDocument();
+
+      const toggle_btn = screen.getByRole('button', { name: '전체보기' });
+      await user.click(toggle_btn);
+
+      expect(screen.queryByText('관리업무 작업')).not.toBeInTheDocument();
+      expect(screen.getByText('일반 작업')).toBeInTheDocument();
+    });
+
+    it('관리업무 제외 버튼 클릭 시 전체보기로 복원된다', async () => {
+      const user = userEvent.setup();
+      addManagementLog();
+      render(<WeeklySchedule />);
+
+      const toggle_btn = screen.getByRole('button', { name: '전체보기' });
+      await user.click(toggle_btn);
+
+      const exclude_btn = screen.getByRole('button', { name: '관리업무 제외' });
+      await user.click(exclude_btn);
+
+      expect(screen.getByRole('button', { name: '전체보기' })).toBeInTheDocument();
+      expect(screen.getByText('관리업무 작업')).toBeInTheDocument();
+    });
+  });
 });

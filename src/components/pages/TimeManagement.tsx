@@ -37,8 +37,9 @@ import DownloadIcon from '@mui/icons-material/Download';
 import SettingsIcon from '@mui/icons-material/Settings';
 import CloseIcon from '@mui/icons-material/Close';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
-import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
-import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
+import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { v4 as uuidv4 } from 'uuid';
 import * as XLSX from 'xlsx';
 import { useTimerStore } from '../../store/useTimerStore';
@@ -358,12 +359,14 @@ const TimeManagement: React.FC = () => {
   }, [current_rows, sort_column, sort_direction]);
 
   const renderSortIcon = (column: keyof TimeManagementRow) => {
-    if (sort_column !== column) return null;
-    return sort_direction === 'asc' ? (
-      <ArrowUpwardIcon fontSize="small" sx={{ ml: 0.5 }} />
-    ) : (
-      <ArrowDownwardIcon fontSize="small" sx={{ ml: 0.5 }} />
-    );
+    if (sort_column === column) {
+      return sort_direction === 'asc' ? (
+        <KeyboardArrowUpIcon sx={{ fontSize: 18, ml: 0.5, opacity: 0.7 }} />
+      ) : (
+        <KeyboardArrowDownIcon sx={{ fontSize: 18, ml: 0.5, opacity: 0.7 }} />
+      );
+    }
+    return <ExpandMoreIcon sx={{ fontSize: 16, ml: 0.5, opacity: 0.3 }} />;
   };
 
   useEffect(() => {

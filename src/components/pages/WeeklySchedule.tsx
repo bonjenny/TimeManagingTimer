@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   Box,
   Paper,
@@ -169,12 +169,12 @@ const WeeklySchedule: React.FC = () => {
   }, [logs, getProjectName]);
 
   // 관리업무 판별 함수
-  const isManagementTask = (log: TimerLog) => {
+  const isManagementTask = useCallback((log: TimerLog) => {
     if (log.projectCode === 'A25_05591') return true;
     const project_name = getProjectName(log.projectCode || '');
     if (project_name === '관리업무') return true;
     return false;
-  };
+  }, [getProjectName]);
 
   // 로그 소요 시간 계산 헬퍼 함수
   const calcLogDuration = (log: TimerLog) => {
