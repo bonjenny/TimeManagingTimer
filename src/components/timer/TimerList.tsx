@@ -146,6 +146,7 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
   // 복사 다이얼로그 상태
   const [copyingTask, setCopyingTask] = useState<TaskGroup | null>(null);
   const [copyCategory, setCopyCategory] = useState<string | null>(null);
+  const [copyNote, setCopyNote] = useState<string>('');
 
   // 휴지통 모달 상태
   const [trash_modal_open, setTrashModalOpen] = useState(false);
@@ -355,12 +356,13 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
       copyingTask.title,
       copyingTask.projectCode,
       copyCategory || undefined,
-      copyingTask.note,
+      copyNote || copyingTask.note,
       copyingTask.sessions[0]?.dailyGroupKey
     );
 
     setCopyingTask(null);
     setCopyCategory(null);
+    setCopyNote('');
   };
 
   const getDuration = (log: TimerLog) => {
@@ -1020,6 +1022,7 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                         e.stopPropagation();
                         setCopyingTask(task);
                         setCopyCategory(task.category || null);
+                        setCopyNote(task.note || '');
                       }}
                       sx={{ 
                         p: 0.25, 
@@ -1358,7 +1361,7 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
       {/* 카테고리 변경 복사 다이얼로그 */}
       <Dialog
         open={!!copyingTask}
-        onClose={() => { setCopyingTask(null); setCopyCategory(null); }}
+        onClose={() => { setCopyingTask(null); setCopyCategory(null); setCopyNote(''); }}
         maxWidth="xs"
         fullWidth
         onKeyDown={(e) => {
@@ -1394,11 +1397,21 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                 autoFocus
                 sx={{ width: '100%' }}
               />
+              <TextField
+                label="비고 (변경)"
+                value={copyNote}
+                onChange={(e) => setCopyNote(e.target.value)}
+                size="small"
+                fullWidth
+                multiline
+                rows={2}
+                placeholder={copyingTask.note || '비고를 입력하세요'}
+              />
             </Box>
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => { setCopyingTask(null); setCopyCategory(null); }}>취소</Button>
+          <Button onClick={() => { setCopyingTask(null); setCopyCategory(null); setCopyNote(''); }}>취소</Button>
           <Button onClick={handleCopyWithCategory} variant="contained" color="primary">복사 생성(Enter)</Button>
         </DialogActions>
       </Dialog>
