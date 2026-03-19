@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { ThemeProvider } from '@mui/material/styles';
 import { createAppTheme } from '../../../theme';
 import TimeManagement from '../../../components/pages/TimeManagement';
@@ -297,5 +297,215 @@ describe('TimeManagement 컴포넌트', () => {
 
     expect(XLSX.utils.json_to_sheet).toHaveBeenCalled();
     expect(XLSX.writeFile).toHaveBeenCalled();
+  });
+
+  it('헤더 클릭 시 오름차순으로 정렬된다', () => {
+    const today = new Date();
+    const date_string = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+    useTimeManagementStore.setState({
+      rows: [
+        {
+          id: 'test-row-1',
+          checked: false,
+          project_name: 'A26_00413',
+          work_type: '작업',
+          schedule_name: 'C작업',
+          category_code: '13',
+          category_name: '개발',
+          time_minutes: 90,
+          note: '',
+          date: date_string,
+        },
+        {
+          id: 'test-row-2',
+          checked: false,
+          project_name: 'A25_05591',
+          work_type: '개발',
+          schedule_name: 'A작업',
+          category_code: '05',
+          category_name: '회의',
+          time_minutes: 30,
+          note: '',
+          date: date_string,
+        },
+        {
+          id: 'test-row-3',
+          checked: false,
+          project_name: 'A26_00413',
+          work_type: '작업',
+          schedule_name: 'B작업',
+          category_code: '14',
+          category_name: '테스트',
+          time_minutes: 60,
+          note: '',
+          date: date_string,
+        },
+      ],
+    });
+
+    renderWithTheme(<TimeManagement />);
+
+    const time_header = screen.getByText('시간(분)').closest('th');
+    fireEvent.click(time_header!);
+
+    const data_rows = screen.getAllByRole('row').slice(1);
+    const time_cells = data_rows.map(row => {
+      const cells = within(row as HTMLElement).getAllByRole('cell');
+      return cells[6];
+    });
+    
+    expect(time_cells[0]).toHaveTextContent('30');
+    expect(time_cells[1]).toHaveTextContent('60');
+    expect(time_cells[2]).toHaveTextContent('90');
+  });
+
+  it('헤더 재클릭 시 내림차순으로 정렬된다', () => {
+    const today = new Date();
+    const date_string = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+    useTimeManagementStore.setState({
+      rows: [
+        {
+          id: 'test-row-1',
+          checked: false,
+          project_name: 'A26_00413',
+          work_type: '작업',
+          schedule_name: 'C작업',
+          category_code: '13',
+          category_name: '개발',
+          time_minutes: 90,
+          note: '',
+          date: date_string,
+        },
+        {
+          id: 'test-row-2',
+          checked: false,
+          project_name: 'A25_05591',
+          work_type: '개발',
+          schedule_name: 'A작업',
+          category_code: '05',
+          category_name: '회의',
+          time_minutes: 30,
+          note: '',
+          date: date_string,
+        },
+      ],
+    });
+
+    renderWithTheme(<TimeManagement />);
+
+    const time_header = screen.getByText('시간(분)').closest('th');
+    fireEvent.click(time_header!);
+    fireEvent.click(time_header!);
+
+    const rows = useTimeManagementStore.getState().rows;
+    
+    expect(rows[0].time_minutes).toBe(90);
+    expect(rows[1].time_minutes).toBe(30);
+  });
+
+  it('헤더 3번 클릭 시 정렬이 해제된다', () => {
+    const today = new Date();
+    const date_string = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+    useTimeManagementStore.setState({
+      rows: [
+        {
+          id: 'test-row-1',
+          checked: false,
+          project_name: 'A26_00413',
+          work_type: '작업',
+          schedule_name: 'C작업',
+          category_code: '13',
+          category_name: '개발',
+          time_minutes: 90,
+          note: '',
+          date: date_string,
+        },
+        {
+          id: 'test-row-2',
+          checked: false,
+          project_name: 'A25_05591',
+          work_type: '개발',
+          schedule_name: 'A작업',
+          category_code: '05',
+          category_name: '회의',
+          time_minutes: 30,
+          note: '',
+          date: date_string,
+        },
+      ],
+    });
+
+    renderWithTheme(<TimeManagement />);
+
+    const time_header = screen.getByText('시간(분)').closest('th');
+    fireEvent.click(time_header!);
+    fireEvent.click(time_header!);
+    fireEvent.click(time_header!);
+
+    const rows = useTimeManagementStore.getState().rows;
+    
+    expect(rows[0].time_minutes).toBe(90);
+    expect(rows[1].time_minutes).toBe(30);
+  });
+
+  it('문자열 컬럼도 정렬할 수 있다', () => {
+    const today = new Date();
+    const date_string = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+    useTimeManagementStore.setState({
+      rows: [
+        {
+          id: 'test-row-1',
+          checked: false,
+          project_name: 'A26_00413',
+          work_type: '작업',
+          schedule_name: 'C작업',
+          category_code: '1301',
+          category_name: '개발',
+          time_minutes: 60,
+          note: '',
+          date: date_string,
+        },
+        {
+          id: 'test-row-2',
+          checked: false,
+          project_name: 'A25_05591',
+          work_type: '개발',
+          schedule_name: 'A작업',
+          category_code: '0501',
+          category_name: '회의',
+          time_minutes: 60,
+          note: '',
+          date: date_string,
+        },
+        {
+          id: 'test-row-3',
+          checked: false,
+          project_name: 'A26_00413',
+          work_type: '작업',
+          schedule_name: 'B작업',
+          category_code: '0701',
+          category_name: '테스트',
+          time_minutes: 60,
+          note: '',
+          date: date_string,
+        },
+      ],
+    });
+
+    renderWithTheme(<TimeManagement />);
+
+    const schedule_header = screen.getByText('거래형(일정명)').closest('th');
+    fireEvent.click(schedule_header!);
+
+    const rows = screen.getAllByRole('row');
+    const data_rows = rows.slice(1);
+    
+    expect(data_rows[0]).toHaveTextContent('A작업');
+    expect(data_rows[1]).toHaveTextContent('B작업');
+    expect(data_rows[2]).toHaveTextContent('C작업');
   });
 });

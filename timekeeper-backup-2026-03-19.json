@@ -35,7 +35,9 @@
         "개발자테스트",
         "센터오류수정",
         "환경세팅",
-        "기타"
+        "기타",
+        "내맘대로",
+        "내맘대로2"
       ]
     },
     "version": 0
@@ -130,6 +132,22 @@
           "status": "스테이지",
           "is_holiday": false,
           "id": "9ce17283-ec8b-41c2-b4e1-a5d9db06b817"
+        },
+        {
+          "date": "2026-03-20",
+          "job_code": "",
+          "job_name": "연차",
+          "status": "",
+          "is_holiday": true,
+          "id": "43f1cfbc-7448-4cc4-9573-b942881f66a8"
+        },
+        {
+          "date": "2026-03-23",
+          "job_code": "",
+          "job_name": "연차",
+          "status": "",
+          "is_holiday": true,
+          "id": "09da3745-00d5-42d0-a92b-c5ad06156310"
         }
       ],
       "job_colors": [
@@ -170,7 +188,7 @@
           "color": "#efb366"
         }
       ],
-      "weeks_to_show": 2
+      "weeks_to_show": 3
     },
     "version": 0
   },
@@ -202,18 +220,18 @@
   "timekeeper-palette-settings": {
     "type": "custom",
     "custom_colors": [
-      "#a99cc9",
-      "#a282c9",
-      "#8b78ba",
-      "#675cbc",
-      "#633dc2",
-      "#7643a3",
-      "#4b27a5",
-      "#2e2b88",
-      "#3a334d",
-      "#4f20c5"
+      "#b09cc9",
+      "#ae82c9",
+      "#9785ad",
+      "#7e6bae",
+      "#7b4eb1",
+      "#805194",
+      "#613498",
+      "#44367c",
+      "#3e334d",
+      "#6c2fb7"
     ],
-    "custom_base_color": "#b9b1cd"
+    "custom_base_color": "#776d83"
   },
   "timekeeper-projects": {
     "state": {
@@ -247,7 +265,7 @@
     "lunchEnd": "12:40",
     "lunchExcludeEnabled": true,
     "autoCompleteEnabled": true,
-    "presetDailyGroup": true,
+    "presetDailyGroup": false,
     "screenScale": 1
   },
   "timekeeper-storage": {
@@ -3584,9 +3602,182 @@
           "pausedDuration": 0,
           "endTime": 1773822564412.0708,
           "lastPausedAt": 1773824810297
+        },
+        {
+          "id": "4723aef8-02c8-4e17-841e-04fc3d7fa8e1",
+          "title": "5.6 TFT 이동현님 판매 URL 질의에 응답",
+          "projectCode": "A25_05591",
+          "category": "질의응답",
+          "startTime": 1773878400000,
+          "endTime": 1773880115290.6326,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "6d384385-bb3e-4598-9dab-69236be76734",
+          "title": "시간관리 입력",
+          "projectCode": "A25_05591",
+          "category": "문서작업",
+          "startTime": 1773880115290.6326,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "dailyGroupKey": "2026-03-19",
+          "endTime": 1773880885487,
+          "lastPausedAt": 1773880885487
+        },
+        {
+          "id": "60ea6e3b-e69f-4418-bdef-d3f074a1706e",
+          "title": "업무분장회의",
+          "projectCode": "A26_00398",
+          "category": "회의",
+          "startTime": 1773882299687.8252,
+          "endTime": 1773888000000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "3f96a8d6-1087-46a3-a6af-5cae85df2b1f",
+          "title": "ChangeChildUserAction 개발 (탭opened pageState관리, 데이터동기화이벤트발행)",
+          "projectCode": "A26_00398",
+          "category": "개발",
+          "startTime": 1773880885487,
+          "status": "PAUSED",
+          "pausedDuration": 0,
+          "endTime": 1773882299687.8252,
+          "lastPausedAt": 1773891769925
+        },
+        {
+          "id": "8077f0fe-76f9-492e-a6c7-7730bdbcdede",
+          "title": "소메뉴/세트메뉴 플래그, InitMenuSyncUserAction 큰 흐름 싱크맞추기",
+          "projectCode": "A26_00398",
+          "category": "회의",
+          "startTime": 1773892848699.2715,
+          "endTime": 1773896516129.0322,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "1e1d4be8-b54a-4053-adf8-4cd11c8a9560",
+          "title": "5.0 / 5.6 메뉴 배포 가이드 문서 작성",
+          "projectCode": "A25_05591",
+          "category": "문서작업",
+          "startTime": 1773896516129.0322,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1773901298254.051,
+          "lastPausedAt": 1773900185663
+        },
+        {
+          "id": "7daa780c-9a2f-4110-bee1-222810f7c4cc",
+          "title": "ChangeChildUserAction 개발 (탭opened pageState관리, 데이터동기화이벤트발행)",
+          "projectCode": "A26_00398",
+          "category": "개발",
+          "startTime": 1773901243549,
+          "status": "PAUSED",
+          "pausedDuration": 0,
+          "endTime": 1773906452857,
+          "lastPausedAt": 1773906452857
+        },
+        {
+          "id": "3a98c877-d494-470e-93c7-bbcb1cbda9dc",
+          "title": "ChangeChildUserAction 개발 (탭opened pageState관리, 데이터동기화이벤트발행)",
+          "projectCode": "A26_00398",
+          "category": "개발",
+          "startTime": 1773906456953,
+          "status": "PAUSED",
+          "pausedDuration": 0,
+          "endTime": 1773909664323.5452,
+          "lastPausedAt": 1773906656207
+        },
+        {
+          "id": "50a97bcb-0f10-41b3-9be4-c64bde0d425f",
+          "title": "시간관리 입력",
+          "projectCode": "A25_05591",
+          "category": "문서작업",
+          "startTime": 1773909664323.5452,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1773910200000,
+          "lastPausedAt": 1773906666603
+        },
+        {
+          "id": "e662c114-f894-462a-aaab-941a76de20c6",
+          "title": "주간일정 작성",
+          "projectCode": "A25_05591",
+          "category": "문서작업",
+          "startTime": 1773910200000,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1773910800000,
+          "lastPausedAt": 1773906689291
+        },
+        {
+          "id": "40063f60-c215-400e-9c82-f5149fea5e00",
+          "title": "5.0 / 5.6 메뉴 배포 가이드 문서 작성",
+          "projectCode": "A25_05591",
+          "category": "문서작업",
+          "startTime": 1773891600000,
+          "endTime": 1773892848699.2715,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "59b2bf07-df77-40a9-99e5-394983ba6e4e",
+          "title": "ㅅㄷㄴㅅ",
+          "projectCode": "A25_05591",
+          "category": "내맘대로",
+          "startTime": 1773917100000,
+          "status": "PAUSED",
+          "pausedDuration": 0,
+          "endTime": 1773917303236,
+          "lastPausedAt": 1773917303236
+        },
+        {
+          "id": "6f5ec0fd-d138-4676-ae45-e8e181b83815",
+          "title": "ㅅㄷㄴㅅ",
+          "projectCode": "A25_05591",
+          "category": "내맘대로2",
+          "startTime": 1773916680000,
+          "status": "PAUSED",
+          "pausedDuration": 0,
+          "endTime": 1773916920000,
+          "lastPausedAt": 1773917309532
         }
       ],
       "deleted_logs": [
+        {
+          "id": "ae4c5bc6-7cf6-4f9e-b836-a07cdd372504",
+          "title": "5.0 / 5.6 메뉴 배포 가이드 문서 작성",
+          "projectCode": "A25_05591",
+          "category": "문서작업",
+          "startTime": 1773891600000,
+          "endTime": 1773892848699.2715,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "deletedAt": 1773906828380
+        },
+        {
+          "id": "ecc6c93a-9429-4575-9cfa-0fb96422def9",
+          "title": "시간관리 입력",
+          "projectCode": "A25_05591",
+          "category": "문서작업",
+          "startTime": 1773893178355.8794,
+          "endTime": 1773902491155.0469,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "deletedAt": 1773886174296
+        },
+        {
+          "id": "8312dc6e-3688-40d9-9f74-42ef8c49247f",
+          "title": "ChangeChildUserAction 개발 (탭opened pageState관리, 데이터동기화이벤트발행)",
+          "projectCode": "A26_00398",
+          "category": "문서작업",
+          "startTime": 1773880781755,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "endTime": 1773880785336,
+          "deletedAt": 1773880787211
+        },
         {
           "id": "5dfd8b60-9449-4ce6-82e1-dbdacf17afec",
           "title": "ChangeChildUserAction 개발 (탭opened pageState관리, 데이터동기화이벤트발행)",
@@ -4648,9 +4839,9 @@
         "HTML영역 다크모드 적용 stage"
       ],
       "themeConfig": {
-        "primaryColor": "#b9b1cd",
-        "accentColor": "#a282c9",
-        "isDark": false
+        "primaryColor": "#776d83",
+        "accentColor": "#ae82c9",
+        "isDark": true
       },
       "viewConfig": {
         "zoomLevel": 100
@@ -4873,9 +5064,14 @@
         "5.6 TP.17385 채권메뉴 권한없음 문제 확인 (견적입력 영향 X, nol4 SSDB Cache 문제)": 169,
         "TP.17385 관련 채권채무/전산매체 URL 맵 bizz_sid 수정 작업 생성": 170,
         "요청.1549 temp 폴더 빌드": 171,
-        "요청.1549 temp 폴더 빌드 문제 (이전 경민님 문의한 내용)": 172
+        "요청.1549 temp 폴더 빌드 문제 (이전 경민님 문의한 내용)": 172,
+        "5.6 TFT 이동현님 판매 URL 질의에 응답": 173,
+        "업무분장회의": 174,
+        "소메뉴/세트메뉴 플래그, InitMenuSyncUserAction 큰 흐름 싱크맞추기": 175,
+        "5.0 / 5.6 메뉴 배포 가이드 문서 작성": 176,
+        "ㅅㄷㄴㅅ": 177
       },
-      "nextColorIndex": 173
+      "nextColorIndex": 178
     },
     "version": 0
   },
@@ -5505,6 +5701,110 @@
           "note": "",
           "date": "2026-03-18",
           "original_log_id": "78b0ea9a-39ed-47f4-9ccb-2153deab98af"
+        },
+        {
+          "id": "4b0f8f01-279e-4999-ba7c-22d72087deb6",
+          "checked": false,
+          "project_name": "A25_05591",
+          "work_type": "작업",
+          "schedule_name": "5.6 TFT 이동현님 판매 URL 질의에 응답",
+          "category_code": "10",
+          "category_name": "질의응답",
+          "time_minutes": 29,
+          "note": "",
+          "date": "2026-03-19",
+          "original_log_id": "4723aef8-02c8-4e17-841e-04fc3d7fa8e1"
+        },
+        {
+          "id": "37c2c594-9263-4b9b-91ba-0affd1d610cf",
+          "checked": false,
+          "project_name": "A25_05591",
+          "work_type": "작업",
+          "schedule_name": "시간관리 입력",
+          "category_code": "11",
+          "category_name": "문서작업",
+          "time_minutes": 22,
+          "note": "",
+          "date": "2026-03-19",
+          "original_log_id": "6d384385-bb3e-4598-9dab-69236be76734"
+        },
+        {
+          "id": "0c322e95-7feb-4d8d-81ae-035df4c1fa0d",
+          "checked": false,
+          "project_name": "A26_00398",
+          "work_type": "개발",
+          "schedule_name": "업무분장회의",
+          "category_code": "05",
+          "category_name": "회의",
+          "time_minutes": 95,
+          "note": "",
+          "date": "2026-03-19",
+          "original_log_id": "60ea6e3b-e69f-4418-bdef-d3f074a1706e"
+        },
+        {
+          "id": "0ccb7c76-c197-4668-942c-67c521e8f98a",
+          "checked": false,
+          "project_name": "A26_00398",
+          "work_type": "개발",
+          "schedule_name": "ChangeChildUserAction 개발 (탭opened pageState관리, 데이터동기화이벤트발행)",
+          "category_code": "13",
+          "category_name": "개발",
+          "time_minutes": 164,
+          "note": "",
+          "date": "2026-03-19",
+          "original_log_id": "3f96a8d6-1087-46a3-a6af-5cae85df2b1f"
+        },
+        {
+          "id": "e1df49f6-9dc0-4857-bfb2-11298fde4894",
+          "checked": false,
+          "project_name": "A26_00398",
+          "work_type": "개발",
+          "schedule_name": "소메뉴/세트메뉴 플래그, InitMenuSyncUserAction 큰 흐름 싱크맞추기",
+          "category_code": "05",
+          "category_name": "회의",
+          "time_minutes": 61,
+          "note": "",
+          "date": "2026-03-19",
+          "original_log_id": "8077f0fe-76f9-492e-a6c7-7730bdbcdede"
+        },
+        {
+          "id": "2408519a-87dd-41af-be01-d0469b1a627a",
+          "checked": false,
+          "project_name": "A25_05591",
+          "work_type": "작업",
+          "schedule_name": "5.0 / 5.6 메뉴 배포 가이드 문서 작성",
+          "category_code": "11",
+          "category_name": "문서작업",
+          "time_minutes": 101,
+          "note": "",
+          "date": "2026-03-19",
+          "original_log_id": "1e1d4be8-b54a-4053-adf8-4cd11c8a9560"
+        },
+        {
+          "id": "adfad1a9-7209-49a8-b4b8-276110866d27",
+          "checked": false,
+          "project_name": "A25_05591",
+          "work_type": "작업",
+          "schedule_name": "주간일정 작성",
+          "category_code": "11",
+          "category_name": "문서작업",
+          "time_minutes": 10,
+          "note": "",
+          "date": "2026-03-19",
+          "original_log_id": "e662c114-f894-462a-aaab-941a76de20c6"
+        },
+        {
+          "id": "f50d22c6-6e4d-4951-985c-6d2e725765d2",
+          "checked": false,
+          "project_name": "A25_05591",
+          "work_type": "작업",
+          "schedule_name": "ㅅㄷㄴㅅ",
+          "category_code": "내맘대로2",
+          "category_name": "내맘대로2",
+          "time_minutes": 7,
+          "note": "",
+          "date": "2026-03-19",
+          "original_log_id": "59b2bf07-df77-40a9-99e5-394983ba6e4e"
         }
       ],
       "default_work_type": "개발",
@@ -5519,8 +5819,8 @@
     },
     "version": 0
   },
-  "weeklyScheduleCopyFormat": 3,
-  "weeklyScheduleExcludedProject": "",
-  "weeklyScheduleFilterMode": "all",
+  "weeklyScheduleCopyFormat": 1,
+  "weeklyScheduleExcludedProject": "A25_05591",
+  "weeklyScheduleFilterMode": "exclude",
   "weeklyScheduleTimeDisplayMode": "cumulative"
 }

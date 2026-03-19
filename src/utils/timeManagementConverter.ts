@@ -13,6 +13,10 @@ interface GroupedTask {
   is_preset: boolean;
 }
 
+function makeGroupKey(projectCode: string, category: string, title: string): string {
+  return `${projectCode}||${category}||${title}`;
+}
+
 export function convertLogsToTimeManagement(
   logs: TimerLog[],
   date: string,
@@ -39,7 +43,12 @@ export function convertLogsToTimeManagement(
     const actual_duration_ms = duration_ms - paused_ms;
     const time_minutes = Math.round(actual_duration_ms / 60000);
 
-    const existing = grouped_map.get(log.title);
+    const group_key = makeGroupKey(
+      log.projectCode || '',
+      log.category || '',
+      log.title
+    );
+    const existing = grouped_map.get(group_key);
     const is_from_preset = !!log.dailyGroupKey;
 
     if (existing) {
@@ -50,7 +59,7 @@ export function convertLogsToTimeManagement(
       if (log.note) existing.note = log.note;
       if (is_from_preset) existing.is_preset = true;
     } else {
-      grouped_map.set(log.title, {
+      grouped_map.set(group_key, {
         title: log.title,
         projectCode: log.projectCode,
         category: log.category,
