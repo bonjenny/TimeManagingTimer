@@ -14,6 +14,7 @@ const TimerInput: React.FC = () => {
   const [projectCode, setProjectCode] = useState('');
   const [projectName, setProjectName] = useState('');
   const [category, setCategory] = useState<string | null>(null);
+  const [note, setNote] = useState('');
 
   const recentTitles = getRecentTitles();
   
@@ -35,13 +36,14 @@ const TimerInput: React.FC = () => {
       addProject({ code: projectCode.trim(), name: projectName.trim() });
     }
     
-    startTimer(title, projectCode || undefined, category || undefined);
+    startTimer(title, projectCode || undefined, category || undefined, note.trim() || undefined);
     
     // 초기화
     setTitle('');
     setProjectCode('');
     setProjectName('');
     setCategory(null);
+    setNote('');
   };
   
   // 프로젝트 코드 입력 처리 - 일치하는 프로젝트 명 자동완성
@@ -312,6 +314,21 @@ const TimerInput: React.FC = () => {
           sx={{ 
             width: 120,
             '& .MuiAutocomplete-input': { fontSize: '0.8rem', p: '0 !important' }
+          }}
+        />
+
+        {/* 비고 */}
+        <TextField
+          placeholder="비고"
+          variant="standard"
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          onKeyDown={handleKeyDown}
+          InputProps={{ disableUnderline: true }}
+          size="small"
+          sx={{
+            width: 120,
+            '& .MuiInputBase-input': { fontSize: '0.8rem', p: '0 !important' }
           }}
         />
 
