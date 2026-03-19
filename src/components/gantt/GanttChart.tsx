@@ -197,6 +197,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
   const [dragStartPercent, setDragStartPercent] = useState<number | null>(null);
   const [dragCurrentPercent, setDragCurrentPercent] = useState<number | null>(null);
   const [dragRowIndex, setDragRowIndex] = useState<number | null>(null);
+  const [isScheduleDrag, setIsScheduleDrag] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // 리사이즈 상태 관리
@@ -744,27 +745,30 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    // 우클릭(button === 2)은 드래그 시작하지 않음 (컨텍스트 메뉴용)
-    if (e.button === 2) return;
-    
     // 컨텍스트 메뉴가 열려있으면 닫기
     if (contextMenu) {
       setContextMenu(null);
-      return;
+      if (e.button === 2) return;
     }
+
+    // 좌클릭(0) 또는 우클릭(2)만 허용
+    if (e.button !== 0 && e.button !== 2) return;
 
     const percent = getPercentFromEvent(e);
     const row = getRowFromEvent(e);
 
-    // 왼쪽 라벨 영역 또는 시간축 헤더 영역이면 무시
     if (!containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    // 왼쪽 라벨 영역 (x < LABEL_WIDTH + 16) 또는 시간축 헤더 영역 (y < HEADER_HEIGHT) 무시
     if (x < LABEL_WIDTH + 16 || y < HEADER_HEIGHT) return;
 
+    if (e.button === 2) {
+      e.preventDefault();
+    }
+
     setIsDragging(true);
+    setIsScheduleDrag(e.button === 2);
     setDragStartPercent(percent);
     setDragCurrentPercent(percent);
     setDragRowIndex(row);
@@ -791,6 +795,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
       setDragStartPercent(null);
       setDragCurrentPercent(null);
       setDragRowIndex(null);
+      setIsScheduleDrag(false);
       return;
     }
 
@@ -846,6 +851,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
       setDragStartPercent(null);
       setDragCurrentPercent(null);
       setDragRowIndex(null);
+      setIsScheduleDrag(false);
       return;
     }
 
@@ -895,7 +901,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
       category: newCategory || undefined,
       startTime: newLogStart,
       endTime: newLogEnd,
-      status: is_future ? 'SCHEDULED' : 'COMPLETED',
+      status: (isScheduleDrag || is_future) ? 'SCHEDULED' : 'COMPLETED',
       pausedDuration: 0
     };
 
@@ -909,6 +915,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
     setNewProjectCode('');
     setNewCategory(null);
     setIsAddingSession(false);
+    setIsScheduleDrag(false);
   };
 
   // 현재 시간 위치 계산 (실시간 업데이트)
@@ -1266,6 +1273,9 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
+        onContextMenu={(e) => {
+          if (isDragging) e.preventDefault();
+        }}
         onMouseLeave={() => {
           handleMouseUp();
           setIsHoveringBar(false);
@@ -1420,8 +1430,8 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
                 width: `${Math.abs(dragCurrentPercent - dragStartPercent)}%`,
                 top: Math.min(dragRowIndex, uniqueRows.length) * (ROW_HEIGHT + ROW_GAP) + 4,
                 height: ROW_HEIGHT - 8,
-                bgcolor: 'var(--highlight-light)',
-                border: '2px dashed var(--text-primary)',
+                bgcolor: isScheduleDrag ? 'rgba(255, 152, 0, 0.15)' : 'var(--highlight-light)',
+                border: isScheduleDrag ? '2px dashed #ff9800' : '2px dashed var(--text-primary)',
                 borderRadius: 0.5,
                 zIndex: 10,
               }}
@@ -1739,7 +1749,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
         }}
       >
         <DialogTitle>
-          {isAddingSession ? `"${newTitle}" 세션 추가` : '새 업무 기록 (수동)'}
+          {isAddingSession ? `"${newTitle}" 세션 추가` : (isScheduleDrag ? '예약 일정 등록' : '새 업무 기록 (수동)')}
         </DialogTitle>
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
