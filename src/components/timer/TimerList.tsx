@@ -31,6 +31,7 @@ import PauseIcon from '@mui/icons-material/Pause';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import EditIcon from '@mui/icons-material/Edit';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import RestoreIcon from '@mui/icons-material/Restore';
 import RestoreFromTrashIcon from '@mui/icons-material/RestoreFromTrash';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -86,8 +87,12 @@ const formatDate = (timestamp: number) => {
   return date.toISOString().split('T')[0];
 };
 
+// title+category로 그룹 키 생성
+const makeGroupKey = (title: string, category?: string) => `${title}||${category || ''}`;
+
 // 그룹화된 업무 타입
 interface TaskGroup {
+  group_key: string;
   title: string;
   projectCode?: string;
   category?: string;
@@ -138,6 +143,10 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
     return projects.map(p => `[${p.code}] ${p.name}`);
   }, [projects]);
 
+  // 복사 다이얼로그 상태
+  const [copyingTask, setCopyingTask] = useState<TaskGroup | null>(null);
+  const [copyCategory, setCopyCategory] = useState<string | null>(null);
+
   // 휴지통 모달 상태
   const [trash_modal_open, setTrashModalOpen] = useState(false);
 
@@ -173,15 +182,14 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
       return true;
     });
 
-    // 제목별로 그룹화
+    // 제목+카테고리별로 그룹화
     const groups = new Map<string, TaskGroup>();
     
     filtered_logs.forEach(log => {
-      const existing = groups.get(log.title);
+      const key = makeGroupKey(log.title, log.category);
+      const existing = groups.get(key);
       
       const get_duration = (l: TimerLog) => {
-        // 점심시간 제외 적용
-        // PAUSED 상태에서 endTime이 없으면 lastPausedAt 사용
         const effectiveEndTime = l.endTime || l.lastPausedAt || l.startTime;
         return getDurationSecondsExcludingLunch(l.startTime, effectiveEndTime, l.pausedDuration);
       };
@@ -193,7 +201,6 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
       if (existing) {
         existing.sessions.push(log);
         existing.total_duration += duration;
-        // 오늘 범위 내 세션만 today_duration에 합산
         if (is_in_today_range) {
           existing.today_duration += duration;
         }
@@ -207,12 +214,11 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
           existing.has_running = true;
           existing.last_end = undefined;
         }
-        // 최신 projectCode, category, note로 업데이트
         if (log.projectCode) existing.projectCode = log.projectCode;
-        if (log.category) existing.category = log.category;
         if (log.note) existing.note = log.note;
       } else {
-        groups.set(log.title, {
+        groups.set(key, {
+          group_key: key,
           title: log.title,
           projectCode: log.projectCode,
           category: log.category,
@@ -231,19 +237,18 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
     if (activeTimer) {
       const date_range_check = activeTimer.startTime >= date_range.start && activeTimer.startTime < date_range.end;
       if (date_range_check) {
-        const existingGroup = groups.get(activeTimer.title);
+        const active_key = makeGroupKey(activeTimer.title, activeTimer.category);
+        const existingGroup = groups.get(active_key);
         if (existingGroup) {
-          // activeTimer의 startTime이 더 이르면 업데이트
           if (activeTimer.startTime < existingGroup.first_start) {
             existingGroup.first_start = activeTimer.startTime;
           }
           existingGroup.has_running = true;
           existingGroup.last_end = undefined;
-          // note 업데이트
           if (activeTimer.note) existingGroup.note = activeTimer.note;
         } else {
-          // 새 그룹 생성 (activeTimer만 있는 경우)
-          groups.set(activeTimer.title, {
+          groups.set(active_key, {
+            group_key: active_key,
             title: activeTimer.title,
             projectCode: activeTimer.projectCode,
             category: activeTimer.category,
@@ -264,13 +269,12 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
       group.sessions.sort((a, b) => a.startTime - b.startTime);
     });
 
-    // 미완료 업무는 전체 logs에서 같은 제목의 가장 이른 startTime으로 first_start 업데이트
+    // 미완료 업무는 전체 logs에서 같은 제목+카테고리의 가장 이른 startTime으로 first_start 업데이트
     groups.forEach(group => {
       if (group.has_running) {
-        // 전체 logs에서 같은 제목의 가장 이른 startTime 찾기
-        const all_sessions_for_title = logs.filter(log => log.title === group.title);
-        if (all_sessions_for_title.length > 0) {
-          const earliest_start = Math.min(...all_sessions_for_title.map(s => s.startTime));
+        const all_sessions_for_group = logs.filter(log => log.title === group.title && (log.category || '') === (group.category || ''));
+        if (all_sessions_for_group.length > 0) {
+          const earliest_start = Math.min(...all_sessions_for_group.map(s => s.startTime));
           if (earliest_start < group.first_start) {
             group.first_start = earliest_start;
           }
@@ -282,11 +286,12 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
     // dailyGroupKey가 있는 작업은 같은 키끼리만 합산
     groups.forEach(group => {
       const reference_daily_key = group.sessions[0]?.dailyGroupKey;
-      const all_sessions_for_title = logs.filter(log =>
-        log.title === group.title && log.startTime < date_range.end &&
+      const all_sessions_for_group = logs.filter(log =>
+        log.title === group.title && (log.category || '') === (group.category || '') &&
+        log.startTime < date_range.end &&
         (!reference_daily_key || log.dailyGroupKey === reference_daily_key)
       );
-      group.total_duration = all_sessions_for_title.reduce((sum, log) => {
+      group.total_duration = all_sessions_for_group.reduce((sum, log) => {
         const effectiveEndTime = log.endTime || log.lastPausedAt || log.startTime;
         return sum + getDurationSecondsExcludingLunch(log.startTime, effectiveEndTime, log.pausedDuration);
       }, 0);
@@ -294,9 +299,9 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
 
     // 정렬: 진행 중 우선 → 미완료 우선 → 프로젝트 코드 오름차순 → 작업명 오름차순
     return Array.from(groups.values()).sort((a, b) => {
-      // 0. 현재 진행 중인 작업 (activeTimer) 최상위
-      const a_is_active = activeTimer?.title === a.title;
-      const b_is_active = activeTimer?.title === b.title;
+      const active_key = activeTimer ? makeGroupKey(activeTimer.title, activeTimer.category) : '';
+      const a_is_active = active_key === a.group_key;
+      const b_is_active = active_key === b.group_key;
       
       if (a_is_active && !b_is_active) return -1; // a가 진행 중 → a 우선
       if (!a_is_active && b_is_active) return 1;  // b가 진행 중 → b 우선
@@ -339,6 +344,21 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
 
   const handleRestart = (title: string, projectCode?: string, category?: string, note?: string, dailyGroupKey?: string) => {
     startTimer(title, projectCode, category, note, dailyGroupKey);
+  };
+
+  const handleCopyWithCategory = () => {
+    if (!copyingTask) return;
+
+    startTimer(
+      copyingTask.title,
+      copyingTask.projectCode,
+      copyCategory || undefined,
+      copyingTask.note,
+      copyingTask.sessions[0]?.dailyGroupKey
+    );
+
+    setCopyingTask(null);
+    setCopyCategory(null);
   };
 
   const getDuration = (log: TimerLog) => {
@@ -431,14 +451,13 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
 
   // 인라인 제목 편집 시작
   const startInlineTitleEdit = (task: TaskGroup) => {
-    setEditingInlineTitle(task.title);
+    setEditingInlineTitle(task.group_key);
     setInlineTitle(task.title);
   };
 
   // 인라인 제목 저장
   const saveInlineTitle = (task: TaskGroup) => {
     if (inlineTitle.trim() && inlineTitle !== task.title) {
-      // 모든 세션의 제목 업데이트
       task.sessions.forEach(session => {
         updateLog(session.id, { title: inlineTitle.trim() });
       });
@@ -455,7 +474,7 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
 
   // 인라인 프로젝트 코드 편집 시작
   const startInlineProjectEdit = (task: TaskGroup) => {
-    setEditingInlineProject(task.title);
+    setEditingInlineProject(task.group_key);
     setInlineProjectCode(task.projectCode || '');
   };
 
@@ -483,7 +502,7 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
 
   // 인라인 카테고리 편집 시작
   const startInlineCategoryEdit = (task: TaskGroup) => {
-    setEditingInlineCategory(task.title);
+    setEditingInlineCategory(task.group_key);
     setInlineCategory(task.category || null);
   };
 
@@ -697,16 +716,17 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
 
         {/* 업무 목록 */}
         {groupedTasks.map((task) => {
-          const is_expanded = expandedTasks.has(task.title);
-          // activeTimer가 같은 제목이면 진행 중이므로 완료가 아님
-          const is_active_task = activeTimer?.title === task.title;
+          const is_expanded = expandedTasks.has(task.group_key);
+          const active_group_key = activeTimer ? makeGroupKey(activeTimer.title, activeTimer.category) : '';
+          const is_active_task = active_group_key === task.group_key;
           const all_completed = !is_active_task && task.sessions.every(s => s.status === 'COMPLETED');
+          const is_highlighted = false;
           
           return (
-            <Box key={task.title}>
+            <Box key={task.group_key}>
               {/* 업무 행 */}
               <Box 
-                onClick={() => toggleExpand(task.title)}
+                onClick={() => toggleExpand(task.group_key)}
                 sx={{ 
                   display: 'grid', 
                   gridTemplateColumns: '56px 140px 1fr 90px 110px 110px 130px 50px 50px',
@@ -716,11 +736,13 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                   alignItems: 'center',
                   borderBottom: 1,
                   borderColor: 'var(--border-color)',
-                  bgcolor: activeTimer?.title === task.title ? 'var(--highlight-light)' : 'var(--card-bg)',
+                  bgcolor: is_highlighted
+                    ? 'rgba(76, 175, 80, 0.2)'
+                    : is_active_task ? 'var(--highlight-light)' : 'var(--card-bg)',
                   cursor: 'pointer',
-                  transition: 'background-color 0.2s',
+                  boxShadow: is_highlighted ? 'inset 0 0 0 2px rgba(76, 175, 80, 0.5)' : 'none',
                   '&:hover': {
-                    bgcolor: 'var(--bg-hover)',
+                    bgcolor: is_highlighted ? 'rgba(76, 175, 80, 0.15)' : 'var(--bg-hover)',
                   }
                 }}
               >
@@ -824,7 +846,7 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
 
                 {/* 프로젝트 코드 */}
                 <Box sx={{ overflow: 'hidden' }} onClick={(e) => e.stopPropagation()}>
-                  {editingInlineProject === task.title ? (
+                  {editingInlineProject === task.group_key ? (
                     <Autocomplete
                       freeSolo
                       size="small"
@@ -880,7 +902,7 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
 
                 {/* 기록명 */}
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, overflow: 'hidden' }} onClick={(e) => e.stopPropagation()}>
-                  {editingInlineTitle === task.title ? (
+                  {editingInlineTitle === task.group_key ? (
                     <TextField
                       size="small"
                       variant="standard"
@@ -900,7 +922,7 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                       sx={{ 
                         '& .MuiInputBase-input': { 
                           fontSize: '0.875rem',
-                          fontWeight: activeTimer?.title === task.title ? 600 : 500,
+                          fontWeight: is_active_task ? 600 : 500,
                           p: 0
                         }
                       }}
@@ -910,8 +932,8 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                       variant="body2" 
                       onClick={() => startInlineTitleEdit(task)}
                       sx={{ 
-                        fontWeight: activeTimer?.title === task.title ? 600 : 500, 
-                        overflow: 'hidden', 
+                        fontWeight: is_active_task ? 600 : 500,
+                        overflow: 'hidden',
                         textOverflow: 'ellipsis', 
                         whiteSpace: 'nowrap',
                         color: all_completed ? 'text.secondary' : 'text.primary',
@@ -928,7 +950,7 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
 
                 {/* 카테고리 */}
                 <Box sx={{ overflow: 'visible', position: 'relative' }} onClick={(e) => e.stopPropagation()}>
-                  {editingInlineCategory === task.title ? (
+                  {editingInlineCategory === task.group_key ? (
                     <CategoryAutocomplete
                       value={inlineCategory}
                       onChange={(newValue) => {
@@ -987,14 +1009,30 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                   {task.sessions.length}회
                 </Typography>
 
-                {/* 수정/삭제 버튼 */}
+                {/* 복사/수정/삭제 버튼 */}
                 <Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.25 }}>
+                  <Tooltip title="카테고리 변경 복사">
+                    <IconButton
+                      size="small"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCopyingTask(task);
+                        setCopyCategory(task.category || null);
+                      }}
+                      sx={{ 
+                        p: 0.25, 
+                        color: 'text.secondary',
+                        '&:hover': { color: 'info.main' }
+                      }}
+                    >
+                      <ContentCopyIcon sx={{ fontSize: 16 }} />
+                    </IconButton>
+                  </Tooltip>
                   <Tooltip title="상세 수정">
                     <IconButton
                       size="small"
                       onClick={(e) => {
                         e.stopPropagation();
-                        // 진행 중인 작업(activeTimer)인 경우 activeTimer를 전달
                         if (is_active_task && activeTimer) {
                           handleEditClick(activeTimer);
                         } else if (task.sessions.length > 0) {
@@ -1015,16 +1053,14 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                       size="small"
                       onClick={(e) => {
                         e.stopPropagation();
-                        // 활성 타이머가 이 작업이면 삭제 불가
-                        if (activeTimer?.title === task.title) {
+                        if (is_active_task) {
                           return;
                         }
-                        // 모든 세션 삭제
                         task.sessions.forEach(session => {
                           deleteLog(session.id);
                         });
                       }}
-                      disabled={activeTimer?.title === task.title}
+                      disabled={is_active_task}
                       sx={{ 
                         p: 0.25, 
                         color: 'text.secondary',
@@ -1314,6 +1350,54 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
         <DialogActions>
           <Button onClick={handleEditClose}>취소</Button>
           <Button onClick={handleEditSave} variant="contained" color="primary">저장(Enter)</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 카테고리 변경 복사 다이얼로그 */}
+      <Dialog
+        open={!!copyingTask}
+        onClose={() => { setCopyingTask(null); setCopyCategory(null); }}
+        maxWidth="xs"
+        fullWidth
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleCopyWithCategory();
+          }
+        }}
+      >
+        <DialogTitle>카테고리 변경 복사</DialogTitle>
+        <DialogContent>
+          {copyingTask && (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+              <TextField
+                label="기록명"
+                value={copyingTask.title}
+                size="small"
+                InputProps={{ readOnly: true }}
+                fullWidth
+              />
+              <TextField
+                label="프로젝트"
+                value={copyingTask.projectCode ? `[${copyingTask.projectCode}] ${getProjectName(copyingTask.projectCode)}` : '-'}
+                size="small"
+                InputProps={{ readOnly: true }}
+                fullWidth
+              />
+              <CategoryAutocomplete
+                value={copyCategory}
+                onChange={(newValue) => setCopyCategory(newValue)}
+                label="카테고리 (변경)"
+                variant="outlined"
+                autoFocus
+                sx={{ width: '100%' }}
+              />
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => { setCopyingTask(null); setCopyCategory(null); }}>취소</Button>
+          <Button onClick={handleCopyWithCategory} variant="contained" color="primary">복사 생성(Enter)</Button>
         </DialogActions>
       </Dialog>
 
