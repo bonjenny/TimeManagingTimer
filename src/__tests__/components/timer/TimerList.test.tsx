@@ -769,4 +769,137 @@ describe('TimerList 누적시간 계산 (total_duration)', () => {
       expect(reopenedLog?.endTime).toBe(originalEndTime);
     });
   });
+
+  describe('카테고리 변경 복사 기능', () => {
+    it('카테고리만 변경하여 새 타이머를 시작할 수 있다', () => {
+      const { result } = renderHook(() => useTimerStore());
+      
+      // 원래 작업 생성
+      act(() => {
+        result.current.startTimer('회의', 'P001', '개발', '기존 비고');
+        result.current.completeTimer();
+      });
+      
+      const original_log = result.current.logs[0];
+      
+      // 카테고리를 변경하여 복사
+      act(() => {
+        result.current.startTimer('회의', 'P001', '회의', '기존 비고');
+      });
+      
+      expect(result.current.activeTimer).not.toBeNull();
+      expect(result.current.activeTimer?.title).toBe('회의');
+      expect(result.current.activeTimer?.projectCode).toBe('P001');
+      expect(result.current.activeTimer?.category).toBe('회의');
+      expect(result.current.activeTimer?.note).toBe('기존 비고');
+      
+      // 원래 로그는 그대로 유지
+      const existing_log = result.current.logs.find(l => l.id === original_log.id);
+      expect(existing_log).toBeDefined();
+      expect(existing_log?.category).toBe('개발');
+    });
+
+    it('비고를 변경하여 새 타이머를 시작할 수 있다', () => {
+      const { result } = renderHook(() => useTimerStore());
+      
+      act(() => {
+        result.current.startTimer('문서작업', 'P002', '문서', '원래 비고');
+        result.current.completeTimer();
+      });
+      
+      // 비고를 변경하여 복사
+      act(() => {
+        result.current.startTimer('문서작업', 'P002', '문서', '변경된 비고');
+      });
+      
+      expect(result.current.activeTimer).not.toBeNull();
+      expect(result.current.activeTimer?.title).toBe('문서작업');
+      expect(result.current.activeTimer?.note).toBe('변경된 비고');
+    });
+
+    it('카테고리와 비고를 모두 변경하여 새 타이머를 시작할 수 있다', () => {
+      const { result } = renderHook(() => useTimerStore());
+      
+      act(() => {
+        result.current.startTimer('분석', 'P003', '개발', '원래 비고');
+        result.current.completeTimer();
+      });
+      
+      // 카테고리와 비고를 모두 변경하여 복사
+      act(() => {
+        result.current.startTimer('분석', 'P003', '분석', '새로운 비고');
+      });
+      
+      expect(result.current.activeTimer).not.toBeNull();
+      expect(result.current.activeTimer?.category).toBe('분석');
+      expect(result.current.activeTimer?.note).toBe('새로운 비고');
+    });
+  });
+
+  describe('기록명+카테고리 그룹화', () => {
+    it('같은 기록명이지만 다른 카테고리는 별도 그룹으로 처리된다', () => {
+      const { result } = renderHook(() => useTimerStore());
+      
+      // 같은 기록명, 다른 카테고리로 2개 생성
+      act(() => {
+        result.current.startTimer('회의', 'P001', '회의');
+        result.current.completeTimer();
+        result.current.startTimer('회의', 'P001', '개발');
+        result.current.completeTimer();
+      });
+      
+      // 그룹화 로직 확인을 위해 logs 확인
+      const meeting_category_logs = result.current.logs.filter(
+        l => l.title === '회의' && l.category === '회의'
+      );
+      const dev_category_logs = result.current.logs.filter(
+        l => l.title === '회의' && l.category === '개발'
+      );
+      
+      expect(meeting_category_logs.length).toBe(1);
+      expect(dev_category_logs.length).toBe(1);
+    });
+
+    it('기록명과 카테고리가 모두 같으면 동일 그룹이다', () => {
+      const { result } = renderHook(() => useTimerStore());
+      
+      // 같은 기록명, 같은 카테고리로 3개 생성
+      act(() => {
+        result.current.startTimer('테스트', 'P001', '테스트');
+        result.current.completeTimer();
+        result.current.startTimer('테스트', 'P001', '테스트');
+        result.current.completeTimer();
+        result.current.startTimer('테스트', 'P001', '테스트');
+        result.current.completeTimer();
+      });
+      
+      const same_group_logs = result.current.logs.filter(
+        l => l.title === '테스트' && l.category === '테스트'
+      );
+      
+      expect(same_group_logs.length).toBe(3);
+    });
+
+    it('카테고리가 없는 경우도 별도 그룹으로 처리된다', () => {
+      const { result } = renderHook(() => useTimerStore());
+      
+      // 카테고리 있음/없음
+      act(() => {
+        result.current.startTimer('작업', 'P001', '개발');
+        result.current.completeTimer();
+        result.current.startTimer('작업', 'P001', undefined);
+        result.current.completeTimer();
+      });
+      
+      const with_category = result.current.logs.filter(
+        l => l.title === '작업' && l.category === '개발'
+      );
+      const without_category = result.current.logs.filter(
+        l => l.title === '작업' && !l.category
+      );
+      
+      expect(with_category.length).toBe(1);
+      expect(without_category.length).toBe(1);
+    });
+  });
 });
