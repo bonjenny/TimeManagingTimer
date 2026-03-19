@@ -22,6 +22,7 @@ import { useTimerStore } from './store/useTimerStore';
 import { applyThemeColors, applyPaletteHighlight } from './styles/tokens';
 import { loadPaletteSettings, getPalette, getAdjustedColor } from './utils/colorPalette';
 import { getItem } from './utils/storage';
+import { useScheduledTaskWatcher } from './hooks/useScheduledTaskWatcher';
 
 // 줌 레벨 상수
 const ZOOM_STEP = 10; // 10% 단위
@@ -40,6 +41,8 @@ const applyTheme = (primary_color: string, accent_color: string, is_dark?: boole
 };
 
 function App() {
+  useScheduledTaskWatcher();
+
   const [current_page, setCurrentPage] = useState<PageType>('daily');
   const [is_new_task_modal_open, setIsNewTaskModalOpen] = useState(false);
   const is_mobile = useMediaQuery('(max-width:900px)');

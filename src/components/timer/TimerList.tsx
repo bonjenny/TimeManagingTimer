@@ -166,6 +166,8 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
     const date_range = getDateRange(selectedDate);
     
     const filtered_logs = logs.filter(log => {
+      if (log.status === 'SCHEDULED') return false;
+
       // 미완료 상태(PAUSED, RUNNING)는 오늘 날짜에서 항상 표시
       const is_incomplete = log.status === 'PAUSED' || log.status === 'RUNNING';
       

@@ -6,7 +6,7 @@ import { idbStorage } from '../utils/storage';
 // Types
 // ----------------------------------------------------------------------
 
-export type TimerStatus = 'IDLE' | 'RUNNING' | 'PAUSED' | 'COMPLETED';
+export type TimerStatus = 'IDLE' | 'RUNNING' | 'PAUSED' | 'COMPLETED' | 'SCHEDULED';
 
 export interface TimerLog {
   id: string;          // UUID
@@ -29,6 +29,9 @@ export interface TimerLog {
 
   // 프리셋 일별 고유 관리용 (YYYY-MM-DD)
   dailyGroupKey?: string;
+
+  // 예약 작업이 활성화될 때 원래 endTime을 보존 (자동 완료 시점 추적)
+  scheduledEndTime?: number;
 }
 
 // 삭제된 로그 타입 (휴지통용)
@@ -76,6 +79,7 @@ interface TimerState {
   removeRecentTitle: (title: string) => void; // 자동완성에서 제목 제외
   pauseAndMoveToLogs: () => void; // 진행중인 타이머를 일시정지 후 logs로 이동
   updateActiveTimer: (updates: Partial<TimerLog>) => void; // activeTimer 업데이트
+  activateScheduledTask: (logId: string) => void; // 예약 작업을 활성 타이머로 전환
 
   // --- Selectors ---
   getRecentTitles: () => string[];
@@ -360,6 +364,40 @@ export const useTimerStore = create<TimerState>()(
 
         set({
           activeTimer: { ...activeTimer, ...updates },
+        });
+      },
+
+      // 예약 작업을 활성 타이머로 전환
+      activateScheduledTask: (logId) => {
+        const { logs, activeTimer } = get();
+        const scheduled_log = logs.find(log => log.id === logId && log.status === 'SCHEDULED');
+        if (!scheduled_log) return;
+
+        const now = Date.now();
+        let updated_logs = logs.filter(log => log.id !== logId);
+
+        if (activeTimer) {
+          const timerToMove: TimerLog = {
+            ...activeTimer,
+            status: 'PAUSED',
+            endTime: now,
+            lastPausedAt: now,
+          };
+          updated_logs = [...updated_logs, timerToMove];
+        }
+
+        const new_active: TimerLog = {
+          ...scheduled_log,
+          status: 'RUNNING',
+          scheduledEndTime: scheduled_log.endTime,
+          endTime: undefined,
+          pausedDuration: 0,
+          lastPausedAt: undefined,
+        };
+
+        set({
+          logs: updated_logs,
+          activeTimer: new_active,
         });
       },
 
