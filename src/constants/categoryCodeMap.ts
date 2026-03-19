@@ -56,7 +56,7 @@ export function getCategoryName(code: string): string {
 }
 
 export function getCategoryCode(name: string): string {
-  return CATEGORY_NAME_TO_CODE_MAP[name] || '9999';
+  return CATEGORY_NAME_TO_CODE_MAP[name] || name;
 }
 
 export function getAllCategoryCodes(): string[] {
