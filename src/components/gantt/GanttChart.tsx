@@ -226,6 +226,13 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
     mouseY: number;
     log: TimerLog | null;
   } | null>(null);
+  /** 메뉴 닫힐 때마다 증가 → Tooltip 리마운트로 내부 open 상태·잔상 제거 */
+  const [ganttTooltipEpoch, setGanttTooltipEpoch] = useState(0);
+
+  const closeContextMenu = useCallback(() => {
+    setContextMenu(null);
+    setGanttTooltipEpoch((e) => e + 1);
+  }, []);
 
   const [editingLog, setEditingLog] = useState<TimerLog | null>(null);
   const [editTitle, setEditTitle] = useState('');
@@ -747,9 +754,9 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    // 컨텍스트 메뉴가 열려있으면 닫기
+    // 컨텍스트 메뉴가 열려있으면 닫기 (바깥 클릭 등과 동일하게 툴팁 epoch 갱신)
     if (contextMenu) {
-      setContextMenu(null);
+      closeContextMenu();
       if (e.button === 2) return;
     }
 
@@ -1200,19 +1207,15 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
   const handleContextMenu = (event: React.MouseEvent, log: TimerLog) => {
     event.preventDefault();
     event.stopPropagation();
-    setContextMenu(
-      contextMenu === null
-        ? {
-            mouseX: event.clientX + 2,
-            mouseY: event.clientY - 6,
-            log: log,
-          }
-        : null,
-    );
-  };
-
-  const handleCloseContextMenu = () => {
-    setContextMenu(null);
+    if (contextMenu === null) {
+      setContextMenu({
+        mouseX: event.clientX + 2,
+        mouseY: event.clientY - 6,
+        log: log,
+      });
+    } else {
+      closeContextMenu();
+    }
   };
 
   // 작업 수정/삭제 핸들러
@@ -1220,7 +1223,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
     if (contextMenu?.log) {
       openEditModal(contextMenu.log);
     }
-    handleCloseContextMenu();
+    closeContextMenu();
   };
 
   const handleDeleteTask = () => {
@@ -1236,14 +1239,14 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
         severity: 'success'
       });
     }
-    handleCloseContextMenu();
+    closeContextMenu();
   };
 
   const handleStartScheduledNow = () => {
     if (contextMenu?.log && contextMenu.log.status === 'SCHEDULED') {
       activateScheduledTask(contextMenu.log.id);
     }
-    handleCloseContextMenu();
+    closeContextMenu();
   };
 
   const openEditModal = (log: TimerLog) => {
@@ -1559,12 +1562,19 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
                   
                   const is_context_menu_open = contextMenu !== null;
                   
-                  // 드래그/리사이즈/컨텍스트 메뉴 중에는 툴팁 비활성화
-                  const should_disable_tooltip = is_context_menu_open || is_resizing_this || isDragging || isResizing;
+                  // 드래그/리사이즈/컨텍스트 메뉴/수정·생성 모달 중에는 툴팁 비활성화
+                  // (메뉴 닫힌 직후 포인터가 막대 위에 남으면 툴팁이 다시 뜨거나 잔상이 남는 것 방지)
+                  const should_disable_tooltip =
+                    is_context_menu_open ||
+                    is_resizing_this ||
+                    isDragging ||
+                    isResizing ||
+                    !!editingLog ||
+                    showCreateModal;
                   
                   return (
                     <Tooltip
-                      key={`${item.id}-${isResizing ? 'resizing' : 'idle'}-${isDragging ? 'dragging' : 'idle'}`}
+                      key={`${item.id}-${ganttTooltipEpoch}-${isResizing ? 'resizing' : 'idle'}-${isDragging ? 'dragging' : 'idle'}`}
                       title={
                         should_disable_tooltip ? "" : (
                         <Box sx={{ textAlign: 'center' }}>
@@ -1717,7 +1727,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
       {/* 우클릭 메뉴 */}
       <Menu
         open={contextMenu !== null}
-        onClose={handleCloseContextMenu}
+        onClose={closeContextMenu}
         anchorReference="anchorPosition"
         anchorPosition={
           contextMenu !== null
