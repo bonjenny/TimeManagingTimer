@@ -35,9 +35,7 @@
         "개발자테스트",
         "센터오류수정",
         "환경세팅",
-        "기타",
-        "내맘대로",
-        "내맘대로2"
+        "기타"
       ]
     },
     "version": 0
@@ -148,6 +146,22 @@
           "status": "",
           "is_holiday": true,
           "id": "09da3745-00d5-42d0-a92b-c5ad06156310"
+        },
+        {
+          "date": "2026-03-25",
+          "job_code": "A26_00413",
+          "job_name": "어플리케이션/페이지의 LifeCycle 관리",
+          "status": "스테이지",
+          "is_holiday": false,
+          "id": "231efcb6-8269-48f3-8ee1-6e97c3eda43c"
+        },
+        {
+          "date": "2026-03-26",
+          "job_code": "A26_00413",
+          "job_name": "어플리케이션/페이지의 LifeCycle 관리",
+          "status": "수시",
+          "is_holiday": false,
+          "id": "d516e497-16ab-4bab-a1e8-cffbc875d240"
         }
       ],
       "job_colors": [
@@ -270,7 +284,16 @@
   },
   "timekeeper-storage": {
     "state": {
-      "activeTimer": null,
+      "activeTimer": {
+        "id": "9556759b-dce6-48e3-979f-a01bf1e0d5c7",
+        "title": "ChangeChildUserAction 개발 (탭opened pageState관리, 데이터동기화이벤트발행)",
+        "projectCode": "A26_00398",
+        "category": "개발",
+        "startTime": 1774333996670.1353,
+        "status": "RUNNING",
+        "pausedDuration": 0,
+        "endTime": 1774336132455
+      },
       "logs": [
         {
           "id": "c5777e43-bcd7-4111-a354-99477922968d",
@@ -3722,15 +3745,114 @@
           "pausedDuration": 0
         },
         {
-          "id": "59b2bf07-df77-40a9-99e5-394983ba6e4e",
-          "title": "ㅅㄷㄴㅅ",
+          "id": "99d866aa-8ce0-42d2-a842-95a56355fb29",
+          "title": "인터넷 안되는 문제 확인",
           "projectCode": "A25_05591",
-          "category": "내맘대로",
-          "startTime": 1773917100000,
+          "category": "환경세팅",
+          "startTime": 1774323600000,
+          "endTime": 1774324609880.7495,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "aebfce04-5041-403f-af26-f379196a6c68",
+          "title": "회의",
+          "projectCode": "A25_05591",
+          "category": "회의",
+          "startTime": 1774311000000,
+          "endTime": 1774320000000,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "note": "FE부문 AI 자동화 프로세스 논의 (부문장님, 준석책임님, 승현님, 민경님, 현오님, 태섭님 참석)"
+        },
+        {
+          "id": "063c684d-dabe-443e-a6be-6c61a90480a6",
+          "title": "업무분장 정리",
+          "projectCode": "A26_00398",
+          "category": "문서작업",
+          "startTime": 1774310400000,
+          "endTime": 1774311000000,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "8d166136-920f-4633-8150-cacff85f53d3",
+          "title": "ChangeChildUserAction 개발 (탭opened pageState관리, 데이터동기화이벤트발행)",
+          "projectCode": "A26_00398",
+          "category": "개발",
+          "startTime": 1774324724875,
           "status": "PAUSED",
           "pausedDuration": 0,
-          "endTime": 1773917303236,
-          "lastPausedAt": 1773917303236
+          "endTime": 1774326552894.517,
+          "lastPausedAt": 1774332239471
+        },
+        {
+          "id": "ecf8b662-dd57-4e51-a8d6-a04b5f6a2a9f",
+          "title": "20~23일간 변경사항 공유",
+          "projectCode": "A26_00398",
+          "category": "회의",
+          "startTime": 1774326552894.517,
+          "endTime": 1774328268886.5764,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "note": "세트메뉴 작업. 지희, 태섭 참여."
+        },
+        {
+          "id": "2a9682a8-b1a0-4794-ac53-b064314ce0c2",
+          "title": "5.6 세트메뉴 입력탭 메뉴 개념 없어짐",
+          "projectCode": "A25_05591",
+          "category": "회의",
+          "startTime": 1774328268886.5764,
+          "endTime": 1774329999583.7668,
+          "status": "COMPLETED",
+          "pausedDuration": 0,
+          "note": "입력탭 작업: 용희책임님, 지희 참여."
+        },
+        {
+          "id": "dd7a549d-0f46-42f8-a7d5-4e73c380fb1b",
+          "title": "탭별 유저액션 attr, menu_attr",
+          "projectCode": "A25_05591",
+          "category": "회의",
+          "note": "관련잡: 플렉션 탭 컴포넌트\n참여자: 요한팀장님, 태섭, 지희",
+          "startTime": 1774332059937.565,
+          "endTime": 1774333007700.3123,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "03f74890-9cc2-4eb9-98a0-d36fbb6d01b8",
+          "title": "메뉴권한 체크할지말지",
+          "projectCode": "A26_00398",
+          "category": "회의",
+          "note": "관련잡: 입력탭\n참여자: 용희책임님, 지희선임",
+          "startTime": 1774333007700.3123,
+          "endTime": 1774333996670.1353,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        },
+        {
+          "id": "bf262476-8512-49e5-a482-31971bb34ad2",
+          "title": "ChangeChildUserAction 개발 (탭opened pageState관리, 데이터동기화이벤트발행)",
+          "projectCode": "A26_00398",
+          "category": "개발",
+          "startTime": 1774329999583.7668,
+          "endTime": 1774332059937.565,
+          "status": "COMPLETED",
+          "pausedDuration": 0
+        }
+      ],
+      "deleted_logs": [
+        {
+          "id": "fd788261-5538-4f5e-88fa-6e3a91f916c7",
+          "title": "ChangeChildUserAction 개발 (탭opened pageState관리, 데이터동기화이벤트발행)",
+          "projectCode": "A26_00398",
+          "category": "개발",
+          "startTime": 1774332244362,
+          "status": "PAUSED",
+          "pausedDuration": 0,
+          "endTime": 1774334599100,
+          "lastPausedAt": 1774334599100,
+          "deletedAt": 1774334613374
         },
         {
           "id": "6f5ec0fd-d138-4676-ae45-e8e181b83815",
@@ -3741,10 +3863,21 @@
           "status": "PAUSED",
           "pausedDuration": 0,
           "endTime": 1773916920000,
-          "lastPausedAt": 1773917309532
-        }
-      ],
-      "deleted_logs": [
+          "lastPausedAt": 1773917309532,
+          "deletedAt": 1773918873722
+        },
+        {
+          "id": "59b2bf07-df77-40a9-99e5-394983ba6e4e",
+          "title": "ㅅㄷㄴㅅ",
+          "projectCode": "A25_05591",
+          "category": "내맘대로",
+          "startTime": 1773917100000,
+          "status": "PAUSED",
+          "pausedDuration": 0,
+          "endTime": 1773917303236,
+          "lastPausedAt": 1773917303236,
+          "deletedAt": 1773918873013
+        },
         {
           "id": "ae4c5bc6-7cf6-4f9e-b836-a07cdd372504",
           "title": "5.0 / 5.6 메뉴 배포 가이드 문서 작성",
@@ -4841,7 +4974,7 @@
       "themeConfig": {
         "primaryColor": "#776d83",
         "accentColor": "#ae82c9",
-        "isDark": true
+        "isDark": false
       },
       "viewConfig": {
         "zoomLevel": 100
@@ -5069,9 +5202,15 @@
         "업무분장회의": 174,
         "소메뉴/세트메뉴 플래그, InitMenuSyncUserAction 큰 흐름 싱크맞추기": 175,
         "5.0 / 5.6 메뉴 배포 가이드 문서 작성": 176,
-        "ㅅㄷㄴㅅ": 177
+        "ㅅㄷㄴㅅ": 177,
+        "인터넷 안되는 문제 확인": 178,
+        "업무분장 정리": 179,
+        "20~23일간 변경사항 공유": 180,
+        "5.6 세트메뉴 입력탭 메뉴 개념 없어짐": 181,
+        "탭별 유저액션 attr, menu_attr": 182,
+        "메뉴권한 체크할지말지": 183
       },
-      "nextColorIndex": 178
+      "nextColorIndex": 184
     },
     "version": 0
   },
@@ -5703,7 +5842,111 @@
           "original_log_id": "78b0ea9a-39ed-47f4-9ccb-2153deab98af"
         },
         {
-          "id": "4b0f8f01-279e-4999-ba7c-22d72087deb6",
+          "id": "a144c5a6-8ecb-44d2-a8e2-7ce5bb383c60",
+          "checked": false,
+          "project_name": "A25_05591",
+          "work_type": "작업",
+          "schedule_name": "인터넷 안되는 문제 확인",
+          "category_code": "18",
+          "category_name": "환경세팅",
+          "time_minutes": 17,
+          "note": "",
+          "date": "2026-03-24",
+          "original_log_id": "99d866aa-8ce0-42d2-a842-95a56355fb29"
+        },
+        {
+          "id": "36556651-069d-4357-b8d7-6c687780bf04",
+          "checked": false,
+          "project_name": "A25_05591",
+          "work_type": "작업",
+          "schedule_name": "회의",
+          "category_code": "05",
+          "category_name": "회의",
+          "time_minutes": 150,
+          "note": "FE부문 AI 자동화 프로세스 논의 (부문장님, 준석책임님, 승현님, 민경님, 현오님, 태섭님 참석)",
+          "date": "2026-03-24",
+          "original_log_id": "aebfce04-5041-403f-af26-f379196a6c68"
+        },
+        {
+          "id": "37916fcf-aaf4-4baf-9a44-2c9b0eb7d91a",
+          "checked": false,
+          "project_name": "A26_00398",
+          "work_type": "개발",
+          "schedule_name": "업무분장 정리",
+          "category_code": "11",
+          "category_name": "문서작업",
+          "time_minutes": 10,
+          "note": "",
+          "date": "2026-03-24",
+          "original_log_id": "063c684d-dabe-443e-a6be-6c61a90480a6"
+        },
+        {
+          "id": "250f198e-a7cf-4bb6-b36d-edffb1770bcf",
+          "checked": false,
+          "project_name": "A26_00398",
+          "work_type": "개발",
+          "schedule_name": "ChangeChildUserAction 개발 (탭opened pageState관리, 데이터동기화이벤트발행)",
+          "category_code": "13",
+          "category_name": "개발",
+          "time_minutes": 64,
+          "note": "",
+          "date": "2026-03-24",
+          "original_log_id": "8d166136-920f-4633-8150-cacff85f53d3"
+        },
+        {
+          "id": "dc02bb83-a893-4bf9-948d-9df12cf7ae4f",
+          "checked": false,
+          "project_name": "A26_00398",
+          "work_type": "개발",
+          "schedule_name": "20~23일간 변경사항 공유",
+          "category_code": "05",
+          "category_name": "회의",
+          "time_minutes": 29,
+          "note": "세트메뉴 작업. 지희, 태섭 참여.",
+          "date": "2026-03-24",
+          "original_log_id": "ecf8b662-dd57-4e51-a8d6-a04b5f6a2a9f"
+        },
+        {
+          "id": "95364105-2d19-4062-834c-37a18176a2d4",
+          "checked": false,
+          "project_name": "A25_05591",
+          "work_type": "작업",
+          "schedule_name": "5.6 세트메뉴 입력탭 메뉴 개념 없어짐",
+          "category_code": "05",
+          "category_name": "회의",
+          "time_minutes": 29,
+          "note": "입력탭 작업: 용희책임님, 지희 참여.",
+          "date": "2026-03-24",
+          "original_log_id": "2a9682a8-b1a0-4794-ac53-b064314ce0c2"
+        },
+        {
+          "id": "3a369d74-8397-4600-9275-bee838d728e3",
+          "checked": false,
+          "project_name": "A25_05591",
+          "work_type": "작업",
+          "schedule_name": "탭별 유저액션 attr, menu_attr",
+          "category_code": "05",
+          "category_name": "회의",
+          "time_minutes": 16,
+          "note": "관련잡: 플렉션 탭 컴포넌트\n참여자: 요한팀장님, 태섭, 지희",
+          "date": "2026-03-24",
+          "original_log_id": "dd7a549d-0f46-42f8-a7d5-4e73c380fb1b"
+        },
+        {
+          "id": "3caa5df1-29b0-4eda-ae4a-20b9d483148b",
+          "checked": false,
+          "project_name": "A26_00398",
+          "work_type": "개발",
+          "schedule_name": "메뉴권한 체크할지말지",
+          "category_code": "05",
+          "category_name": "회의",
+          "time_minutes": 16,
+          "note": "관련잡: 입력탭\n참여자: 용희책임님, 지희선임",
+          "date": "2026-03-24",
+          "original_log_id": "03f74890-9cc2-4eb9-98a0-d36fbb6d01b8"
+        },
+        {
+          "id": "cb00c700-11ca-4eb8-b9ef-4ff79a28dea7",
           "checked": false,
           "project_name": "A25_05591",
           "work_type": "작업",
@@ -5716,7 +5959,7 @@
           "original_log_id": "4723aef8-02c8-4e17-841e-04fc3d7fa8e1"
         },
         {
-          "id": "37c2c594-9263-4b9b-91ba-0affd1d610cf",
+          "id": "c9f0996f-2529-4548-97bb-00e4e7ab621f",
           "checked": false,
           "project_name": "A25_05591",
           "work_type": "작업",
@@ -5729,7 +5972,7 @@
           "original_log_id": "6d384385-bb3e-4598-9dab-69236be76734"
         },
         {
-          "id": "0c322e95-7feb-4d8d-81ae-035df4c1fa0d",
+          "id": "4d5cbabc-54a8-434f-ab80-9e79f30dd02c",
           "checked": false,
           "project_name": "A26_00398",
           "work_type": "개발",
@@ -5742,7 +5985,7 @@
           "original_log_id": "60ea6e3b-e69f-4418-bdef-d3f074a1706e"
         },
         {
-          "id": "0ccb7c76-c197-4668-942c-67c521e8f98a",
+          "id": "a6e384ce-6b72-48bb-bb22-25139fbef8ef",
           "checked": false,
           "project_name": "A26_00398",
           "work_type": "개발",
@@ -5755,7 +5998,7 @@
           "original_log_id": "3f96a8d6-1087-46a3-a6af-5cae85df2b1f"
         },
         {
-          "id": "e1df49f6-9dc0-4857-bfb2-11298fde4894",
+          "id": "14c7f05f-77b8-4e90-b51f-27c87bb76895",
           "checked": false,
           "project_name": "A26_00398",
           "work_type": "개발",
@@ -5768,7 +6011,7 @@
           "original_log_id": "8077f0fe-76f9-492e-a6c7-7730bdbcdede"
         },
         {
-          "id": "2408519a-87dd-41af-be01-d0469b1a627a",
+          "id": "a666ca60-c892-4203-8908-9f628485e2d4",
           "checked": false,
           "project_name": "A25_05591",
           "work_type": "작업",
@@ -5781,7 +6024,7 @@
           "original_log_id": "1e1d4be8-b54a-4053-adf8-4cd11c8a9560"
         },
         {
-          "id": "adfad1a9-7209-49a8-b4b8-276110866d27",
+          "id": "2cdea591-9661-416a-a7f2-7714081e1905",
           "checked": false,
           "project_name": "A25_05591",
           "work_type": "작업",
@@ -5792,19 +6035,6 @@
           "note": "",
           "date": "2026-03-19",
           "original_log_id": "e662c114-f894-462a-aaab-941a76de20c6"
-        },
-        {
-          "id": "f50d22c6-6e4d-4951-985c-6d2e725765d2",
-          "checked": false,
-          "project_name": "A25_05591",
-          "work_type": "작업",
-          "schedule_name": "ㅅㄷㄴㅅ",
-          "category_code": "내맘대로2",
-          "category_name": "내맘대로2",
-          "time_minutes": 7,
-          "note": "",
-          "date": "2026-03-19",
-          "original_log_id": "59b2bf07-df77-40a9-99e5-394983ba6e4e"
         }
       ],
       "default_work_type": "개발",
@@ -5819,8 +6049,10 @@
     },
     "version": 0
   },
-  "weeklyScheduleCopyFormat": 1,
-  "weeklyScheduleExcludedProject": "A25_05591",
-  "weeklyScheduleFilterMode": "exclude",
-  "weeklyScheduleTimeDisplayMode": "cumulative"
+  "timerlist-session-sort-order": "asc",
+  "weeklyScheduleCopyFormat": 3,
+  "weeklyScheduleExcludedProject": "",
+  "weeklyScheduleFilterMode": "all",
+  "weeklyScheduleTimeDisplayMode": "cumulative",
+  "weeklyScheduleViewMode": "all"
 }
