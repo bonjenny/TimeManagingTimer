@@ -226,12 +226,9 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
     mouseY: number;
     log: TimerLog | null;
   } | null>(null);
-  /** 메뉴 닫힐 때마다 증가 → Tooltip 리마운트로 내부 open 상태·잔상 제거 */
-  const [ganttTooltipEpoch, setGanttTooltipEpoch] = useState(0);
 
   const closeContextMenu = useCallback(() => {
     setContextMenu(null);
-    setGanttTooltipEpoch((e) => e + 1);
   }, []);
 
   const [editingLog, setEditingLog] = useState<TimerLog | null>(null);
@@ -1574,7 +1571,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
                   
                   return (
                     <Tooltip
-                      key={`${item.id}-${ganttTooltipEpoch}-${isResizing ? 'resizing' : 'idle'}-${isDragging ? 'dragging' : 'idle'}`}
+                      key={item.id}
                       title={
                         should_disable_tooltip ? "" : (
                         <Box sx={{ textAlign: 'center' }}>
@@ -1604,8 +1601,6 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
                       arrow
                       enterDelay={300}
                       enterNextDelay={300}
-                      open={should_disable_tooltip ? false : undefined}
-                      disableHoverListener={should_disable_tooltip}
                       disableFocusListener
                       disableTouchListener
                       PopperProps={{

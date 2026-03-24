@@ -7,13 +7,18 @@ step: Patch
 # v0.21.5 릴리즈 노트
 
 ## 버그 수정
-- 간트차트에서 우클릭 메뉴를 연 뒤 **바깥을 클릭해 메뉴만 닫은 경우**에도 작업 막대 툴팁이 사라지지 않던 현상 수정
-- 메뉴를 닫는 모든 경로(백드롭 클릭, 차트 영역에서 다른 클릭, 메뉴 토글 등)에서 동일하게 툴팁 상태를 초기화
+- 간트차트에서 우클릭 메뉴를 연 뒤 **바깥을 클릭해 닫으면 툴팁이 사라지지 않던 현상** 수정
+- 우클릭 메뉴를 닫은 후 **같은 막대를 다시 호버해도 툴팁이 뜨지 않던 현상** 수정
+- **수정 모달·생성 모달이 열려 있는 동안** 막대 툴팁이 남아 있던 현상 수정
 
 ## 기술적 변경
-- `closeContextMenu`: `setContextMenu(null)`과 함께 `ganttTooltipEpoch` 증가
-- 작업 막대 `Tooltip`의 `key`에 `ganttTooltipEpoch` 포함 → 메뉴 닫힐 때마다 Tooltip 리마운트로 MUI 내부 open 상태 제거
-- `handleMouseDown`에서 메뉴 닫을 때도 `closeContextMenu` 사용 (기존에는 `setContextMenu(null)`만 호출)
+- 기존 접근: `open={false}` / `disableHoverListener` 토글 + epoch key 리마운트
+  - 문제: `open` 을 `false` ↔ `undefined`로 전환하면 MUI Tooltip 내부 hover 상태가 꼬이고, key 리마운트 시 `mouseEnter`가 재발생하지 않아 이후 호버가 먹통
+- 새 접근: **`title` 빈 문자열만으로 제어** (`title=""` 이면 MUI Tooltip은 Popper를 렌더링하지 않음)
+  - `open` prop 제거 → 항상 MUI 내부 hover 상태에 위임
+  - `disableHoverListener` prop 제거 → 마우스 진입/이탈을 항상 추적
+  - key에서 epoch 제거 → 불필요한 리마운트 방지
+  - 메뉴·모달이 닫힌 뒤 `should_disable_tooltip`가 풀리면 title이 다시 채워지고, MUI가 이미 hover 상태를 알고 있으므로 자연스럽게 툴팁 표시
 
 ## Breaking Changes
 - 없음
