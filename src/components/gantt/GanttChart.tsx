@@ -216,6 +216,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
   const [newTitle, setNewTitle] = useState('');
   const [newProjectCode, setNewProjectCode] = useState('');
   const [newCategory, setNewCategory] = useState<string | null>(null);
+  const [newNote, setNewNote] = useState('');
   const [isAddingSession, setIsAddingSession] = useState(false); // 기존 작업에 세션 추가 여부
   const [isHoveringBar, setIsHoveringBar] = useState(false); // 작업 막대 hover 상태
   
@@ -230,6 +231,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
   const [editTitle, setEditTitle] = useState('');
   const [editProjectCode, setEditProjectCode] = useState('');
   const [editCategory, setEditCategory] = useState<string | null>(null);
+  const [editNote, setEditNote] = useState('');
   
   // 충돌 알림 상태
   const [snackbar, setSnackbar] = useState<{
@@ -873,12 +875,15 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
       setNewTitle(existing_row.title);
       setNewProjectCode(existing_row.projectCode || '');
       setNewCategory(existing_row.category || null);
+      const first_same_title = todayLogs.find((l) => l.title === existing_row.title);
+      setNewNote(first_same_title?.note || '');
       setIsAddingSession(true);
     } else {
       // 새 작업 생성
       setNewTitle('');
       setNewProjectCode('');
       setNewCategory(null);
+      setNewNote('');
       setIsAddingSession(false);
     }
 
@@ -899,6 +904,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
       title: newTitle,
       projectCode: newProjectCode || undefined,
       category: newCategory || undefined,
+      note: newNote.trim() || undefined,
       startTime: newLogStart,
       endTime: newLogEnd,
       status: (isScheduleDrag || is_future) ? 'SCHEDULED' : 'COMPLETED',
@@ -914,6 +920,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
     setNewTitle('');
     setNewProjectCode('');
     setNewCategory(null);
+    setNewNote('');
     setIsAddingSession(false);
     setIsScheduleDrag(false);
   };
@@ -1244,6 +1251,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
     setEditTitle(log.title);
     setEditProjectCode(log.projectCode || '');
     setEditCategory(log.category || null);
+    setEditNote(log.note || '');
   };
 
   const handleEditSave = () => {
@@ -1251,7 +1259,8 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
       updateLog(editingLog.id, {
         title: editTitle,
         projectCode: editProjectCode || undefined,
-        category: editCategory || undefined
+        category: editCategory || undefined,
+        note: editNote.trim() || undefined
       });
       handleEditClose();
     }
@@ -1262,6 +1271,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
     setEditTitle('');
     setEditProjectCode('');
     setEditCategory(null);
+    setEditNote('');
   };
 
   return (
@@ -1593,6 +1603,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
                       }}
                     >
                       <Box
+                        data-testid={`gantt-task-bar-${item.id}`}
                         onMouseDown={(e) => {
                           // 모든 작업에 대해 스마트 리사이즈 시도
                           handleSmartResizeStart(e, item);
@@ -1776,6 +1787,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
                       setNewTitle('');
                       setNewProjectCode('');
                       setNewCategory(null);
+                      setNewNote('');
                     }}
                     sx={{ fontSize: '0.75rem', minWidth: 'auto' }}
                   >
@@ -1822,6 +1834,15 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
                 </Box>
               </>
             )}
+            <TextField
+              label="비고"
+              placeholder="추가 메모"
+              value={newNote}
+              onChange={(e) => setNewNote(e.target.value)}
+              multiline
+              rows={2}
+              fullWidth
+            />
           </Box>
         </DialogContent>
         <DialogActions>
@@ -1872,6 +1893,15 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
                 sx={{ flex: 1 }}
               />
             </Box>
+            <TextField
+              label="비고"
+              placeholder="추가 메모"
+              value={editNote}
+              onChange={(e) => setEditNote(e.target.value)}
+              multiline
+              rows={2}
+              fullWidth
+            />
           </Box>
         </DialogContent>
         <DialogActions>

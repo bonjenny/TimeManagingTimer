@@ -1,4 +1,5 @@
 import { render, screen, act, fireEvent, waitFor } from '../../../test-utils';
+import userEvent from '@testing-library/user-event';
 import GanttChart from '../../../components/gantt/GanttChart';
 import { useTimerStore } from '../../../store/useTimerStore';
 
@@ -212,6 +213,49 @@ describe('GanttChart', () => {
 
       render(<GanttChart selectedDate={selectedDate} />);
       expect(screen.getByText('컨텍스트 작업')).toBeInTheDocument();
+    });
+
+    it('수정 모달에 비고 필드가 있고 저장 시 로그에 반영된다', async () => {
+      const user = userEvent.setup();
+      const start = new Date(selectedDate);
+      start.setHours(9, 0, 0, 0);
+      const end = new Date(selectedDate);
+      end.setHours(10, 0, 0, 0);
+
+      act(() => {
+        useTimerStore.getState().addLog({
+          id: 'gantt-note-edit',
+          title: '비고수정작업',
+          note: '기존메모',
+          startTime: start.getTime(),
+          endTime: end.getTime(),
+          status: 'COMPLETED',
+          pausedDuration: 0,
+        });
+      });
+
+      render(<GanttChart selectedDate={selectedDate} />);
+      fireEvent.contextMenu(screen.getByTestId('gantt-task-bar-gantt-note-edit'));
+
+      await waitFor(() => {
+        expect(screen.getByText('수정')).toBeInTheDocument();
+      });
+      await user.click(screen.getByText('수정'));
+
+      await waitFor(() => {
+        expect(screen.getByText('업무 기록 수정')).toBeInTheDocument();
+      });
+
+      const note_field = screen.getByLabelText('비고');
+      expect(note_field).toHaveValue('기존메모');
+      await user.clear(note_field);
+      await user.type(note_field, '새비고내용');
+      await user.click(screen.getByRole('button', { name: /저장\(Enter\)/ }));
+
+      await waitFor(() => {
+        const log = useTimerStore.getState().logs.find((l) => l.id === 'gantt-note-edit');
+        expect(log?.note).toBe('새비고내용');
+      });
     });
   });
 
