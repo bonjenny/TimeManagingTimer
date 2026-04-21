@@ -1058,7 +1058,7 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                         e.stopPropagation();
                         setCopyingTask(task);
                         setCopyCategory(task.category || null);
-                        setCopyNote(task.note || '');
+                        setCopyNote('');
                       }}
                       sx={{ 
                         p: 0.25, 
@@ -1139,7 +1139,7 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                           <TableCell sx={{ width: 120, py: 0.5 }}>시작 시간</TableCell>
                           <TableCell sx={{ width: 120, py: 0.5 }}>종료 시간</TableCell>
                           <TableCell sx={{ width: 80, py: 0.5 }}>소요 시간</TableCell>
-                          <TableCell sx={{ py: 0.5 }}>비고</TableCell>
+                          <TableCell sx={{ width: 180, py: 0.5 }}>비고</TableCell>
                           <TableCell sx={{ width: 80, py: 0.5 }}></TableCell>
                         </TableRow>
                       </TableHead>

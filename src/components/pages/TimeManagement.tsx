@@ -175,6 +175,13 @@ const TimeManagement: React.FC = () => {
   };
 
   const handleLoadFromLogs = () => {
+    if (current_rows.length > 0) {
+      if (!window.confirm('해당 날짜의 기존 데이터가 모두 삭제되고 새로 불러옵니다.\n계속하시겠습니까?')) {
+        return;
+      }
+      deleteRows(current_rows.map(row => row.id));
+    }
+
     const filtered_logs = logs.filter((log) => {
       if (!log.endTime || log.deletedAt) return false;
       const log_date = new Date(log.startTime);
@@ -192,13 +199,9 @@ const TimeManagement: React.FC = () => {
       category_work_type_map,
       project_work_type_map
     );
-    const merged = mergeTimeManagementRows(current_rows, converted);
 
-    const new_rows = merged.filter(
-      (row) => !current_rows.some((existing) => existing.id === row.id)
-    );
-    if (new_rows.length > 0) {
-      addRows(new_rows);
+    if (converted.length > 0) {
+      addRows(converted);
     }
   };
 
@@ -645,7 +648,7 @@ const TimeManagement: React.FC = () => {
             onClick={handleLoadFromLogs}
             startIcon={<DownloadIcon />}
           >
-            일간 타이머에서 불러오기
+            {current_rows.length > 0 ? '일간 타이머에서 다시 불러오기' : '일간 타이머에서 불러오기'}
           </Button>
           <Button
             variant="contained"

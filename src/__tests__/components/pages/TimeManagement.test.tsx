@@ -80,8 +80,16 @@ describe('TimeManagement 컴포넌트', () => {
 
     renderWithTheme(<TimeManagement />);
 
-    const load_button = screen.getByRole('button', { name: /일간 타이머에서 불러오기/ });
+    const load_button = screen.getByRole('button', { name: /일간 타이머에서( 다시)? 불러오기/ });
+    
+    // Mock window.confirm
+    const originalConfirm = window.confirm;
+    window.confirm = jest.fn(() => true);
+    
     fireEvent.click(load_button);
+    
+    // Restore window.confirm
+    window.confirm = originalConfirm;
 
     const rows = useTimeManagementStore.getState().rows;
     expect(rows.length).toBeGreaterThan(0);
@@ -208,8 +216,16 @@ describe('TimeManagement 컴포넌트', () => {
 
     renderWithTheme(<TimeManagement />);
 
-    const load_button = screen.getByRole('button', { name: /일간 타이머에서 불러오기/ });
+    const load_button = screen.getByRole('button', { name: /일간 타이머에서( 다시)? 불러오기/ });
+    
+    // Mock window.confirm
+    const originalConfirm = window.confirm;
+    window.confirm = jest.fn(() => true);
+    
     fireEvent.click(load_button);
+    
+    // Restore window.confirm
+    window.confirm = originalConfirm;
 
     const rows = useTimeManagementStore.getState().rows;
     expect(rows.length).toBeGreaterThan(0);
@@ -247,8 +263,16 @@ describe('TimeManagement 컴포넌트', () => {
 
     renderWithTheme(<TimeManagement />);
 
-    const load_button = screen.getByRole('button', { name: /일간 타이머에서 불러오기/ });
+    const load_button = screen.getByRole('button', { name: /일간 타이머에서( 다시)? 불러오기/ });
+    
+    // Mock window.confirm
+    const originalConfirm = window.confirm;
+    window.confirm = jest.fn(() => true);
+    
     fireEvent.click(load_button);
+    
+    // Restore window.confirm
+    window.confirm = originalConfirm;
 
     const rows = useTimeManagementStore.getState().rows;
     expect(rows.length).toBeGreaterThan(0);
