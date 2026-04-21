@@ -105,6 +105,22 @@ export function mergeTimeManagementRows(
   existing: TimeManagementRow[],
   converted: TimeManagementRow[]
 ): TimeManagementRow[] {
+  const converted_map = new Map(
+    converted.map((row) => [row.original_log_id, row])
+  );
+
+  const updated_existing = existing.map((row) => {
+    if (row.original_log_id && converted_map.has(row.original_log_id)) {
+      const converted_row = converted_map.get(row.original_log_id)!;
+      return {
+        ...row,
+        note: converted_row.note,
+        time_minutes: converted_row.time_minutes,
+      };
+    }
+    return row;
+  });
+
   const existing_log_ids = new Set(
     existing.map((row) => row.original_log_id).filter(Boolean)
   );
@@ -113,7 +129,7 @@ export function mergeTimeManagementRows(
     (row) => !row.original_log_id || !existing_log_ids.has(row.original_log_id)
   );
 
-  return [...existing, ...new_rows];
+  return [...updated_existing, ...new_rows];
 }
 
 export function formatDateToYYYYMMDD(date: Date): string {

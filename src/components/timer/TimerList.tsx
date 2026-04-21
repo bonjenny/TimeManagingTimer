@@ -138,6 +138,10 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
   } | null>(null);
   const [inlineTimeValue, setInlineTimeValue] = useState('');
   
+  // 인라인 비고 편집 상태
+  const [editingSessionNote, setEditingSessionNote] = useState<string | null>(null);
+  const [inlineNoteValue, setInlineNoteValue] = useState('');
+  
   // 프로젝트 옵션 (코드 + 이름 형태로 표시)
   const projectOptions = useMemo(() => {
     return projects.map(p => `[${p.code}] ${p.name}`);
@@ -362,7 +366,7 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
       copyingTask.title,
       copyingTask.projectCode,
       copyCategory || undefined,
-      copyNote || copyingTask.note,
+      copyNote || undefined,
       copyingTask.sessions[0]?.dailyGroupKey
     );
 
@@ -608,6 +612,25 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
   const cancelInlineTimeEdit = () => {
     setEditingSessionTime(null);
     setInlineTimeValue('');
+  };
+
+  // 인라인 비고 편집 시작
+  const startInlineNoteEdit = (session: TimerLog) => {
+    setEditingSessionNote(session.id);
+    setInlineNoteValue(session.note || '');
+  };
+
+  // 인라인 비고 저장
+  const saveInlineNote = (session: TimerLog) => {
+    if (inlineNoteValue.trim() !== (session.note || '')) {
+      updateLog(session.id, { note: inlineNoteValue.trim() || undefined });
+    }
+    setEditingSessionNote(null);
+  };
+
+  // 인라인 비고 편집 취소
+  const cancelInlineNoteEdit = () => {
+    setEditingSessionNote(null);
   };
 
   // 세션 정렬 토글
@@ -1116,6 +1139,7 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                           <TableCell sx={{ width: 120, py: 0.5 }}>시작 시간</TableCell>
                           <TableCell sx={{ width: 120, py: 0.5 }}>종료 시간</TableCell>
                           <TableCell sx={{ width: 80, py: 0.5 }}>소요 시간</TableCell>
+                          <TableCell sx={{ py: 0.5 }}>비고</TableCell>
                           <TableCell sx={{ width: 80, py: 0.5 }}></TableCell>
                         </TableRow>
                       </TableHead>
@@ -1251,6 +1275,50 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                             </TableCell>
                             <TableCell sx={{ py: 0.5 }}>
                               {Math.floor(getDuration(session) / 60)}분
+                            </TableCell>
+                            <TableCell 
+                              sx={{ py: 0.5, cursor: 'pointer' }}
+                              onClick={() => startInlineNoteEdit(session)}
+                            >
+                              {editingSessionNote === session.id ? (
+                                <TextField
+                                  size="small"
+                                  variant="standard"
+                                  value={inlineNoteValue}
+                                  onChange={(e) => setInlineNoteValue(e.target.value)}
+                                  onBlur={() => saveInlineNote(session)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      saveInlineNote(session);
+                                    } else if (e.key === 'Escape') {
+                                      cancelInlineNoteEdit();
+                                    }
+                                  }}
+                                  autoFocus
+                                  onClick={(e) => e.stopPropagation()}
+                                  InputProps={{ disableUnderline: true }}
+                                  sx={{ 
+                                    width: '100%',
+                                    '& input': { 
+                                      fontSize: '0.8rem', 
+                                      p: 0,
+                                      color: themeConfig.isDark ? '#fff' : 'inherit'
+                                    }
+                                  }}
+                                />
+                              ) : (
+                                <Typography 
+                                  variant="body2" 
+                                  sx={{ 
+                                    fontSize: '0.8rem',
+                                    color: session.note ? 'text.primary' : 'text.disabled',
+                                    minHeight: 20,
+                                    '&:hover': { bgcolor: 'action.hover', borderRadius: 0.5, px: 0.5 }
+                                  }}
+                                >
+                                  {session.note || '비고 추가'}
+                                </Typography>
+                              )}
                             </TableCell>
                             <TableCell sx={{ py: 0.5 }}>
                               <Box sx={{ display: 'flex', gap: 0.5 }}>
@@ -1439,7 +1507,7 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                 fullWidth
                 multiline
                 rows={2}
-                placeholder={copyingTask.note || '비고를 입력하세요'}
+                placeholder="비고를 입력하세요 (미입력 시 비워둠)"
               />
             </Box>
           )}

@@ -25,6 +25,11 @@ const ActiveTimer: React.FC = () => {
   // 프로젝트 편집 상태
   const [isEditingProject, setIsEditingProject] = useState(false);
   
+  // 비고 편집 상태
+  const [isEditingNote, setIsEditingNote] = useState(false);
+  const [editNote, setEditNote] = useState('');
+  const noteInputRef = useRef<HTMLInputElement>(null);
+  
   // 프로젝트 옵션 (코드 + 이름 형태로 표시)
   const projectOptions = projects.map(p => ({ code: p.code, label: `[${p.code}] ${p.name}` }));
 
@@ -80,6 +85,35 @@ const ActiveTimer: React.FC = () => {
       titleInputRef.current.select();
     }
   }, [isEditingTitle]);
+
+  // 비고 편집 시작
+  const handleNoteClick = () => {
+    if (activeTimer) {
+      setEditNote(activeTimer.note || '');
+      setIsEditingNote(true);
+    }
+  };
+
+  // 비고 저장
+  const handleNoteSave = () => {
+    if (activeTimer && editNote.trim() !== (activeTimer.note || '')) {
+      updateActiveTimer({ note: editNote.trim() || undefined });
+    }
+    setIsEditingNote(false);
+  };
+
+  // 비고 편집 취소
+  const handleNoteCancel = () => {
+    setIsEditingNote(false);
+    setEditNote('');
+  };
+
+  useEffect(() => {
+    if (isEditingNote && noteInputRef.current) {
+      noteInputRef.current.focus();
+      noteInputRef.current.select();
+    }
+  }, [isEditingNote]);
 
   if (!activeTimer) {
     return null;
@@ -251,9 +285,58 @@ const ActiveTimer: React.FC = () => {
               {activeTimer.title}
             </Typography>
           )}
-          <Typography variant="body2" color="text.secondary">
-            시작: {new Date(activeTimer.startTime).toLocaleTimeString()}
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+            <Typography variant="body2" color="text.secondary">
+              시작: {new Date(activeTimer.startTime).toLocaleTimeString()}
+            </Typography>
+            
+            {/* 비고 편집 */}
+            {isEditingNote ? (
+              <ClickAwayListener onClickAway={handleNoteCancel}>
+                <TextField
+                  inputRef={noteInputRef}
+                  value={editNote}
+                  onChange={(e) => setEditNote(e.target.value)}
+                  onBlur={handleNoteSave}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleNoteSave();
+                    }
+                    if (e.key === 'Escape') {
+                      handleNoteCancel();
+                    }
+                  }}
+                  variant="standard"
+                  placeholder="비고"
+                  size="small"
+                  InputProps={{ 
+                    disableUnderline: true,
+                    sx: { fontSize: '0.8rem' }
+                  }}
+                  sx={{ minWidth: 150 }}
+                />
+              </ClickAwayListener>
+            ) : (
+              <Chip 
+                label={activeTimer.note || '비고 추가'} 
+                size="small" 
+                onClick={handleNoteClick}
+                sx={{ 
+                  height: 20, 
+                  fontSize: '0.7rem',
+                  cursor: 'pointer',
+                  borderStyle: activeTimer.note ? 'solid' : 'dashed',
+                  borderWidth: 1,
+                  borderColor: activeTimer.note ? 'transparent' : 'var(--border-color)',
+                  bgcolor: activeTimer.note ? 'var(--bg-secondary)' : 'transparent',
+                  color: activeTimer.note ? 'text.secondary' : 'text.disabled',
+                  '&:hover': { bgcolor: 'var(--bg-hover)' }
+                }}
+                title={activeTimer.note ? activeTimer.note : '클릭하여 비고 추가'}
+              />
+            )}
+          </Box>
         </Box>
 
         {/* 시간 표시 */}
