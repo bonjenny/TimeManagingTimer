@@ -84,6 +84,7 @@ const TimeManagement: React.FC = () => {
     updateRow,
     deleteRows,
     getRowsByDate,
+    setRowsByDate,
     toggleCheck,
     toggleAllChecks,
     setDefaultWorkType,
@@ -175,13 +176,6 @@ const TimeManagement: React.FC = () => {
   };
 
   const handleLoadFromLogs = () => {
-    if (current_rows.length > 0) {
-      if (!window.confirm('해당 날짜의 기존 데이터가 모두 삭제되고 새로 불러옵니다.\n계속하시겠습니까?')) {
-        return;
-      }
-      deleteRows(current_rows.map(row => row.id));
-    }
-
     const filtered_logs = logs.filter((log) => {
       if (!log.endTime || log.deletedAt) return false;
       const log_date = new Date(log.startTime);
@@ -200,8 +194,10 @@ const TimeManagement: React.FC = () => {
       project_work_type_map
     );
 
-    if (converted.length > 0) {
-      addRows(converted);
+    const merged = mergeTimeManagementRows(current_rows, converted);
+
+    if (merged.length > 0) {
+      setRowsByDate(date_string, merged);
     }
   };
 
@@ -305,7 +301,7 @@ const TimeManagement: React.FC = () => {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSaveEdit();
     } else if (e.key === 'Escape') {
@@ -497,6 +493,7 @@ const TimeManagement: React.FC = () => {
           size="small"
           autoFocus
           fullWidth
+          multiline={field === 'note'}
           type={field === 'time_minutes' ? 'number' : 'text'}
         />
       );
@@ -529,9 +526,20 @@ const TimeManagement: React.FC = () => {
           '&:hover': { bgcolor: 'action.hover' },
           px: 1,
           py: 0.5,
+          whiteSpace: field === 'note' ? 'pre-wrap' : 'normal',
+          wordBreak: 'break-word',
         }}
       >
-        {String(row[field])}
+        {field === 'note' && typeof row[field] === 'string' ? (
+          (row[field] as string).split('\n').map((line, i, arr) => (
+            <React.Fragment key={i}>
+              {line}
+              {i < arr.length - 1 && <br />}
+            </React.Fragment>
+          ))
+        ) : (
+          String(row[field])
+        )}
       </Box>
     );
   };

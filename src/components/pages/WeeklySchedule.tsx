@@ -621,23 +621,20 @@ const WeeklySchedule: React.FC = () => {
   const handleFilterChange = (event: SelectChangeEvent<string>) => {
     const value = event.target.value;
     if (value === 'all') {
-      // Select: 전체 보기 → 토글: 관리업무 제외
-      setFilterMode('all');
-      setExcludedProject('');
-      setViewMode('exclude_management');
-      setStorageItem('weeklyScheduleFilterMode', 'all');
-      setStorageItem('weeklyScheduleExcludedProject', '');
-      setStorageItem('weeklyScheduleViewMode', 'exclude_management');
-    } else if (value === 'exclude_management') {
-      // Select: 관리업무 제외 → 토글: 전체보기
       setFilterMode('all');
       setExcludedProject('');
       setViewMode('all');
       setStorageItem('weeklyScheduleFilterMode', 'all');
       setStorageItem('weeklyScheduleExcludedProject', '');
       setStorageItem('weeklyScheduleViewMode', 'all');
+    } else if (value === 'exclude_management') {
+      setFilterMode('all');
+      setExcludedProject('');
+      setViewMode('exclude_management');
+      setStorageItem('weeklyScheduleFilterMode', 'all');
+      setStorageItem('weeklyScheduleExcludedProject', '');
+      setStorageItem('weeklyScheduleViewMode', 'exclude_management');
     } else {
-      // Select: 특정 프로젝트 제외 → 토글: 전체보기
       setFilterMode('exclude');
       setExcludedProject(value);
       setViewMode('all');
@@ -715,19 +712,17 @@ const WeeklySchedule: React.FC = () => {
                 const new_mode = viewMode === 'all' ? 'exclude_management' : 'all';
                 setViewMode(new_mode);
                 setStorageItem('weeklyScheduleViewMode', new_mode);
-                // Select 상태도 동기화 (반대로)
-                // 토글이 "관리업무 제외"로 변경되면 Select는 "전체 보기"로
-                if (new_mode === 'exclude_management') {
-                  setFilterMode('all');
-                  setExcludedProject('');
-                  setStorageItem('weeklyScheduleFilterMode', 'all');
-                  setStorageItem('weeklyScheduleExcludedProject', '');
-                }
+                
+                // Select 상태도 동기화 (전체 보기로 리셋)
+                setFilterMode('all');
+                setExcludedProject('');
+                setStorageItem('weeklyScheduleFilterMode', 'all');
+                setStorageItem('weeklyScheduleExcludedProject', '');
               }}
               sx={{ px: 2 }}
               size="small"
             >
-              {viewMode === 'all' ? '전체보기' : '관리업무 제외'}
+              {viewMode === 'all' ? '관리업무 제외' : '전체보기'}
             </ToggleButton>
 
             {availableProjects.length > 0 && (
@@ -735,10 +730,10 @@ const WeeklySchedule: React.FC = () => {
                 <Select
                   value={
                     viewMode === 'exclude_management' 
-                      ? 'all'
+                      ? 'exclude_management' 
                       : filterMode === 'exclude' 
                         ? excludedProject 
-                        : 'exclude_management'
+                        : 'all'
                   }
                   onChange={handleFilterChange}
                   displayEmpty

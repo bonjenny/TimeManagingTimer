@@ -28,6 +28,7 @@ interface TimeManagementState {
   deleteRow: (id: string) => void;
   deleteRows: (ids: string[]) => void;
   getRowsByDate: (date: string) => TimeManagementRow[];
+  setRowsByDate: (date: string, newRows: TimeManagementRow[]) => void;
   toggleCheck: (id: string) => void;
   toggleAllChecks: (date: string, checked: boolean) => void;
   setDefaultWorkType: (type: string) => void;
@@ -83,6 +84,14 @@ export const useTimeManagementStore = create<TimeManagementState>()(
       getRowsByDate: (date) => {
         return get().rows.filter((row) => row.date === date);
       },
+
+      setRowsByDate: (date, newRows) =>
+        set((state) => ({
+          rows: [
+            ...state.rows.filter((row) => row.date !== date),
+            ...newRows,
+          ],
+        })),
 
       toggleCheck: (id) =>
         set((state) => ({

@@ -7,7 +7,7 @@ interface GroupedTask {
   title: string;
   projectCode?: string;
   category?: string;
-  note?: string;
+  notes: string[];
   total_minutes: number;
   original_log_ids: string[];
   is_preset: boolean;
@@ -56,14 +56,14 @@ export function convertLogsToTimeManagement(
       existing.original_log_ids.push(log.id);
       if (log.projectCode) existing.projectCode = log.projectCode;
       if (log.category) existing.category = log.category;
-      if (log.note) existing.note = log.note;
+      if (log.note && log.note.trim() !== '') existing.notes.push(log.note.trim());
       if (is_from_preset) existing.is_preset = true;
     } else {
       grouped_map.set(group_key, {
         title: log.title,
         projectCode: log.projectCode,
         category: log.category,
-        note: log.note,
+        notes: log.note && log.note.trim() !== '' ? [log.note.trim()] : [],
         total_minutes: time_minutes > 0 ? time_minutes : 0,
         original_log_ids: [log.id],
         is_preset: is_from_preset,
@@ -94,7 +94,7 @@ export function convertLogsToTimeManagement(
       category_code: category_code,
       category_name: group.category || '기타',
       time_minutes: group.total_minutes,
-      note: group.note || '',
+      note: Array.from(new Set(group.notes)).join('\n'),
       date: date,
       original_log_id: group.original_log_ids[0],
     };

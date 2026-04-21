@@ -77,6 +77,7 @@ import {
   batchSetItems,
   clearAll,
 } from '../../utils/storage';
+import { AUTO_BACKUP_ENABLED_KEY, AUTO_BACKUP_DATE_KEY } from '../../utils/autoBackup';
 
 // 설정 저장 키
 const SETTINGS_STORAGE_KEY = 'timekeeper-settings';
@@ -221,6 +222,11 @@ const SettingsPage: React.FC = () => {
   // 초기화 확인 모달
   const [reset_dialog_open, setResetDialogOpen] = useState(false);
   const [reset_confirm_text, setResetConfirmText] = useState('');
+
+  const [autoBackupEnabled, setAutoBackupEnabled] = useState(() => {
+    const saved = getItem(AUTO_BACKUP_ENABLED_KEY);
+    return saved !== 'false'; // 기본값: true
+  });
 
   // 스낵바
   const [snackbar_open, setSnackbarOpen] = useState(false);
@@ -436,6 +442,12 @@ const SettingsPage: React.FC = () => {
     window.location.reload();
   };
 
+  const handleAutoBackupToggle = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const isEnabled = event.target.checked;
+    setAutoBackupEnabled(isEnabled);
+    setStorageItem(AUTO_BACKUP_ENABLED_KEY, isEnabled ? 'true' : 'false');
+  };
+
   const handleExportData = () => {
     const all_items = getAllItems();
     const export_data: Record<string, unknown> = {};
@@ -448,15 +460,19 @@ const SettingsPage: React.FC = () => {
       }
     }
 
+    const today = new Date().toISOString().slice(0, 10);
     const blob = new Blob([JSON.stringify(export_data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `timekeeper-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    link.download = `timekeeper-backup-${today}.json`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+
+    // 수동 백업 시 자동 백업 날짜도 갱신하여 중복 다운로드 방지
+    setStorageItem(AUTO_BACKUP_DATE_KEY, today);
 
     setSnackbarMessage('데이터가 내보내기되었습니다.');
     setSnackbarSeverity('success');
@@ -1257,9 +1273,26 @@ const SettingsPage: React.FC = () => {
           데이터 관리
         </Typography>
 
+        <Box sx={{ mb: 3 }}>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={autoBackupEnabled}
+                onChange={handleAutoBackupToggle}
+                color="primary"
+              />
+            }
+            label={
+              <Typography variant="body1">
+                일일 자동 백업 사용 (앱 실행 시 하루 1회 JSON 파일 자동 다운로드)
+              </Typography>
+            }
+          />
+        </Box>
+
         <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mb: 3 }}>
           <Button variant="outlined" onClick={handleExportData}>
-            데이터 내보내기 (JSON)
+            데이터 수동 내보내기 (JSON)
           </Button>
           <Button variant="outlined" component="label">
             데이터 가져오기

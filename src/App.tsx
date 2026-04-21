@@ -23,6 +23,7 @@ import { applyThemeColors, applyPaletteHighlight } from './styles/tokens';
 import { loadPaletteSettings, getPalette, getAdjustedColor } from './utils/colorPalette';
 import { getItem } from './utils/storage';
 import { useScheduledTaskWatcher } from './hooks/useScheduledTaskWatcher';
+import { checkAndRunAutoBackup } from './utils/autoBackup';
 
 // 줌 레벨 상수
 const ZOOM_STEP = 10; // 10% 단위

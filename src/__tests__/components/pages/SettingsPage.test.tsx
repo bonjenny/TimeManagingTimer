@@ -201,9 +201,9 @@ describe('SettingsPage', () => {
       expect(screen.getByText('데이터 관리')).toBeInTheDocument();
     });
 
-    it('데이터 내보내기 버튼이 렌더링된다', () => {
+    it('데이터 수동 내보내기 버튼이 렌더링된다', () => {
       render(<SettingsPage />);
-      expect(screen.getByRole('button', { name: /데이터 내보내기/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /데이터 수동 내보내기/i })).toBeInTheDocument();
     });
 
     it('위험 영역 섹션이 표시된다', () => {
