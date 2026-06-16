@@ -24,6 +24,7 @@ import { loadPaletteSettings, getPalette, getAdjustedColor } from './utils/color
 import { getItem } from './utils/storage';
 import { useScheduledTaskWatcher } from './hooks/useScheduledTaskWatcher';
 import { checkAndRunAutoBackup } from './utils/autoBackup';
+import MigrationNoticeDialog from './components/common/MigrationNoticeDialog';
 
 // 줌 레벨 상수
 const ZOOM_STEP = 10; // 10% 단위
@@ -55,6 +56,16 @@ function App() {
   const date_input_ref = useRef<HTMLInputElement>(null);
   const [zoom_toast_open, setZoomToastOpen] = useState(false);
   const [zoom_toast_message, setZoomToastMessage] = useState('');
+  const auto_backup_scheduled_ref = useRef(false);
+
+  const scheduleAutoBackup = useCallback(() => {
+    if (auto_backup_scheduled_ref.current) return;
+    auto_backup_scheduled_ref.current = true;
+
+    window.setTimeout(() => {
+      checkAndRunAutoBackup();
+    }, 3000);
+  }, []);
 
   // 선택된 날짜 상태 (기본값: 오늘)
   const [selectedDate, setSelectedDate] = useState<Date>(() => {
@@ -461,6 +472,8 @@ function App() {
         open={is_new_task_modal_open}
         onClose={() => setIsNewTaskModalOpen(false)}
       />
+
+      <MigrationNoticeDialog onResolved={scheduleAutoBackup} />
 
       {/* 줌 레벨 표시 토스트 */}
       <Snackbar
