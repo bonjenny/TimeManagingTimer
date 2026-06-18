@@ -4,12 +4,12 @@ export const MIGRATION_NOTICE_DATE_KEY = '__migration_notice_date';
 
 export const LEGACY_APP_PATH = '/EFA/time-managing.html';
 
-const isLocalEnvironment = (): boolean => {
+export const isLocalEnvironment = (): boolean => {
   const hostname = window.location.hostname;
   return hostname === 'localhost' || hostname === '127.0.0.1';
 };
 
-const isLegacyEcountApp = (): boolean => {
+export const isLegacyEcountApp = (): boolean => {
   if (window.location.hostname !== 'developer.ecount.com') return false;
 
   const pathname = window.location.pathname;
