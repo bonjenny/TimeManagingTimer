@@ -71,8 +71,7 @@ const MigrationNoticeDialog = ({ onResolved }: MigrationNoticeDialogProps) => {
           <Link href={NEW_SITE_URL} target="_blank" rel="noopener noreferrer">
             {NEW_SITE_URL}
           </Link>
-          에서 <strong>설정 &gt; 데이터 관리 &gt; 데이터 가져오기</strong> 또는{' '}
-          <strong>구 사이트에서 데이터 가져오기</strong>로 이전해 주세요.
+          에서 <strong>설정 &gt; 데이터 관리 &gt; 데이터 가져오기</strong>로 이전해 주세요.
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2, lineHeight: 1.7 }}>
           모든 데이터는 게시판 제외, 서버에 저장되지 않으며 내 컴퓨터(브라우저 IndexedDB)에

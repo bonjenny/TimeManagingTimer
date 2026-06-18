@@ -78,8 +78,6 @@ import {
   clearAll,
 } from '../../utils/storage';
 import { AUTO_BACKUP_ENABLED_KEY, AUTO_BACKUP_DATE_KEY } from '../../utils/autoBackup';
-import { canImportFromLegacySite, requestLegacyDataImport } from '../../utils/legacyDataMigration';
-import CloudDownloadIcon from '@mui/icons-material/CloudDownload';
 
 // 설정 저장 키
 const SETTINGS_STORAGE_KEY = 'timekeeper-settings';
@@ -229,7 +227,6 @@ const SettingsPage: React.FC = () => {
     const saved = getItem(AUTO_BACKUP_ENABLED_KEY);
     return saved !== 'false'; // 기본값: true
   });
-  const [legacy_import_loading, setLegacyImportLoading] = useState(false);
 
   // 스낵바
   const [snackbar_open, setSnackbarOpen] = useState(false);
@@ -511,24 +508,6 @@ const SettingsPage: React.FC = () => {
       reader.readAsText(file);
     }
     event.target.value = '';
-  };
-
-  const handleLegacyImport = async () => {
-    setLegacyImportLoading(true);
-    try {
-      await requestLegacyDataImport();
-      setSnackbarMessage('구 사이트 데이터를 가져왔습니다. 새로고침합니다.');
-      setSnackbarSeverity('success');
-      setSnackbarOpen(true);
-      setTimeout(() => window.location.reload(), 1500);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : '구 사이트에서 데이터를 가져오지 못했습니다.';
-      setSnackbarMessage(message);
-      setSnackbarSeverity('error');
-      setSnackbarOpen(true);
-    } finally {
-      setLegacyImportLoading(false);
-    }
   };
 
   return (
@@ -1319,25 +1298,7 @@ const SettingsPage: React.FC = () => {
             데이터 가져오기
             <input type="file" accept=".json" hidden onChange={handleImportData} />
           </Button>
-          {canImportFromLegacySite() && (
-            <Button
-              variant="outlined"
-              color="primary"
-              startIcon={<CloudDownloadIcon />}
-              onClick={handleLegacyImport}
-              disabled={legacy_import_loading}
-            >
-              {legacy_import_loading ? '가져오는 중…' : '구 사이트에서 데이터 가져오기'}
-            </Button>
-          )}
         </Box>
-
-        {canImportFromLegacySite() && (
-          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-            구 사이트(developer.ecount.com)에 로그인된 브라우저의 IndexedDB에서 데이터를 직접
-            가져옵니다. 팝업 허용이 필요합니다.
-          </Typography>
-        )}
 
         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 3 }}>
           ⚠️ 데이터 가져오기 시 기존 데이터가 덮어씌워집니다.

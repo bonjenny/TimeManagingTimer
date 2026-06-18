@@ -25,7 +25,6 @@ import { getItem } from './utils/storage';
 import { useScheduledTaskWatcher } from './hooks/useScheduledTaskWatcher';
 import { checkAndRunAutoBackup } from './utils/autoBackup';
 import MigrationNoticeDialog from './components/common/MigrationNoticeDialog';
-import { startLegacyMigrationBridge } from './utils/legacyDataMigration';
 
 // 줌 레벨 상수
 const ZOOM_STEP = 10; // 10% 단위
@@ -167,10 +166,6 @@ function App() {
       // 무시
     }
   }, [setThemeConfig]);
-
-  useEffect(() => {
-    startLegacyMigrationBridge();
-  }, []);
 
   // 동적 테마 생성 (다크모드일 때 색상 보정 적용)
   const currentTheme = useMemo(() => {
