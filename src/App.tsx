@@ -25,6 +25,7 @@ import { getItem } from './utils/storage';
 import { useScheduledTaskWatcher } from './hooks/useScheduledTaskWatcher';
 import { checkAndRunAutoBackup } from './utils/autoBackup';
 import MigrationNoticeDialog from './components/common/MigrationNoticeDialog';
+import GithubReturnNoticeDialog from './components/common/GithubReturnNoticeDialog';
 
 // 줌 레벨 상수
 const ZOOM_STEP = 10; // 10% 단위
@@ -474,6 +475,7 @@ function App() {
       />
 
       <MigrationNoticeDialog onResolved={scheduleAutoBackup} />
+      <GithubReturnNoticeDialog onResolved={scheduleAutoBackup} />
 
       {/* 줌 레벨 표시 토스트 */}
       <Snackbar

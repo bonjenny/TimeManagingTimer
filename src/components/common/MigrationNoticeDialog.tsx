@@ -13,14 +13,12 @@ import DownloadIcon from '@mui/icons-material/Download';
 import {
   shouldShowMigrationNotice,
   markMigrationNoticeShown,
-  LEGACY_APP_PATH,
+  APP_URL,
+  SERVER_SWITCH_DATE_LABEL,
 } from '../../utils/migrationNotice';
 import { downloadExportJson } from '../../utils/export_data';
 import { AUTO_BACKUP_DATE_KEY } from '../../utils/autoBackup';
 import { setItem } from '../../utils/storage';
-
-const OLD_SITE_URL = `https://developer.ecount.com${LEGACY_APP_PATH}`;
-const NEW_SITE_URL = 'https://bonjenny.github.io/';
 
 interface MigrationNoticeDialogProps {
   onResolved: () => void;
@@ -49,41 +47,39 @@ const MigrationNoticeDialog = ({ onResolved }: MigrationNoticeDialogProps) => {
     downloadExportJson('timekeeper-backup');
     const today = new Date().toISOString().slice(0, 10);
     setItem(AUTO_BACKUP_DATE_KEY, today);
-    setExportMessage('IndexedDB 데이터를 JSON 파일로 저장했습니다. 새 사이트에서 가져오기 해 주세요.');
+    setExportMessage('데이터를 JSON 파일로 저장했습니다. 안전한 폴더에 보관해 주세요.');
   };
 
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
-      <DialogTitle sx={{ fontWeight: 600 }}>서버 이전 안내</DialogTitle>
+      <DialogTitle sx={{ fontWeight: 600 }}>내부 서버 전환 안내</DialogTitle>
       <DialogContent>
         <Alert severity="warning" sx={{ mb: 2 }}>
-          10.10.10.250번 서버가 6/19(금) 이후 제거될 예정입니다.
+          10.10.10.250 서버는 {SERVER_SWITCH_DATE_LABEL} 이후 제거될 예정입니다.
         </Alert>
         <Typography variant="body2" sx={{ mb: 1.5, lineHeight: 1.7 }}>
-          따라서 해당 서버에서 운영되던{' '}
-          <Link href={OLD_SITE_URL} target="_blank" rel="noopener noreferrer">
-            {OLD_SITE_URL}
-          </Link>
-          도 폐쇄될 예정입니다.
+          신규 서버(10.10.10.150)에 웹 환경 구성이 완료되었으며,
+          <br />
+          250 서버 사용 종료 후 <strong>developer.ecount.com</strong> 도메인을 150 서버로 연결해{' '}
+          <Link href={APP_URL} target="_blank" rel="noopener noreferrer">
+            {APP_URL}
+          </Link>{' '}
+          주소 그대로 사용 가능합니다.
         </Typography>
-        <Typography variant="body2" sx={{ mb: 1.5, lineHeight: 1.7 }}>
-          아래 버튼으로 이 브라우저 IndexedDB에 저장된 데이터를 JSON으로 저장한 뒤,{' '}
-          <Link href={NEW_SITE_URL} target="_blank" rel="noopener noreferrer">
-            {NEW_SITE_URL}
-          </Link>
-          에서 <strong>설정 &gt; 데이터 관리 &gt; 데이터 가져오기</strong>로 이전해 주세요.
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2, lineHeight: 1.7 }}>
-          모든 데이터는 게시판 제외, 서버에 저장되지 않으며 내 컴퓨터(브라우저 IndexedDB)에
-          저장됩니다.
-        </Typography>
+        <Alert severity="info" sx={{ mb: 2 }}>
+          만일을 대비해 <strong>{SERVER_SWITCH_DATE_LABEL} 퇴근 전</strong> 아래 버튼으로 JSON
+          백업을 받아 두시기 바랍니다.
+          <br />
+          또는 <strong>설정 &gt; 데이터 관리 &gt; 데이터 수동보내기 (JSON)</strong>으로 백업 받아두실 수
+          있습니다.
+        </Alert>
         <Button
           variant="outlined"
           startIcon={<DownloadIcon />}
           onClick={handleExport}
           fullWidth
         >
-          IndexedDB 데이터보내기 (JSON 다운로드)
+          데이터 백업 (JSON 다운로드)
         </Button>
         {export_message && (
           <Alert severity="success" sx={{ mt: 2 }}>
