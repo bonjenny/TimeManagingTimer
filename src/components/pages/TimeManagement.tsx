@@ -40,6 +40,7 @@ import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import { v4 as uuidv4 } from 'uuid';
 import * as XLSX from 'xlsx';
 import { useTimerStore } from '../../store/useTimerStore';
@@ -57,6 +58,7 @@ import {
   getAllCategoryCodes,
   getAllCategoryNames,
 } from '../../constants/categoryCodeMap';
+import ErpRegisterDialog from './ErpRegisterDialog';
 
 const DAY_START_HOUR = 0;
 const WORK_TYPE_OPTIONS = ['작업', '개발'];
@@ -111,6 +113,7 @@ const TimeManagement: React.FC = () => {
   const [new_work_type, setNewWorkType] = useState<string>('작업');
 
   const [project_settings_open, setProjectSettingsOpen] = useState(false);
+  const [erp_open, setErpOpen] = useState(false);
   const [new_project_code, setNewProjectCode] = useState<string | null>(null);
   const [new_project_work_type, setNewProjectWorkType] = useState<string>('작업');
 
@@ -659,14 +662,22 @@ const TimeManagement: React.FC = () => {
             {current_rows.length > 0 ? '일간 타이머에서 다시 불러오기' : '일간 타이머에서 불러오기'}
           </Button>
           <Button
-            variant="contained"
+            variant="outlined"
             size="small"
             onClick={handleExportExcel}
             startIcon={<FileDownloadIcon />}
             disabled={current_rows.length === 0}
-            color="success"
           >
             엑셀 Export
+          </Button>
+          <Button
+            variant="contained"
+            size="small"
+            onClick={() => setErpOpen(true)}
+            startIcon={<CloudUploadIcon />}
+            disabled={current_rows.length === 0}
+          >
+            시간관리 등록
           </Button>
           <Button
             variant="outlined"
@@ -984,6 +995,7 @@ const TimeManagement: React.FC = () => {
           <Button onClick={() => setProjectSettingsOpen(false)}>닫기</Button>
         </DialogActions>
       </Dialog>
+      <ErpRegisterDialog open={erp_open} onClose={() => setErpOpen(false)} rows={current_rows} date={date_string} />
     </Box>
   );
 };

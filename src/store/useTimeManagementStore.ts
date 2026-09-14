@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { idbStorage } from '../utils/storage';
+import { ErpMapping, ErpUser, DEFAULT_ERP_MAPPING, DEFAULT_ERP_USER } from '../utils/erpTimelog';
 
 export interface TimeManagementRow {
   id: string;
@@ -21,6 +22,8 @@ interface TimeManagementState {
   default_work_type: string;
   category_work_type_map: Record<string, string>;
   project_work_type_map: Record<string, string>;
+  erp_mapping: ErpMapping;
+  erp_user: ErpUser;
 
   addRow: (row: TimeManagementRow) => void;
   addRows: (rows: TimeManagementRow[]) => void;
@@ -38,6 +41,8 @@ interface TimeManagementState {
   setProjectWorkType: (project_code: string, work_type: string) => void;
   removeProjectWorkType: (project_code: string) => void;
   getWorkTypeForProject: (project_code: string) => string | undefined;
+  setErpMapping: (mapping: ErpMapping) => void;
+  setErpUser: (user: ErpUser) => void;
 }
 
 export const useTimeManagementStore = create<TimeManagementState>()(
@@ -53,6 +58,8 @@ export const useTimeManagementStore = create<TimeManagementState>()(
       project_work_type_map: {
         'A25_05591': '작업',
       },
+      erp_mapping: DEFAULT_ERP_MAPPING,
+      erp_user: DEFAULT_ERP_USER,
 
       addRow: (row) =>
         set((state) => ({
@@ -147,6 +154,10 @@ export const useTimeManagementStore = create<TimeManagementState>()(
       getWorkTypeForProject: (project_code) => {
         return get().project_work_type_map[project_code];
       },
+
+      setErpMapping: (mapping) => set({ erp_mapping: mapping }),
+
+      setErpUser: (user) => set({ erp_user: user }),
     }),
     {
       name: 'timekeeper-time-management',
