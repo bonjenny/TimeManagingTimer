@@ -36,7 +36,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import DownloadIcon from '@mui/icons-material/Download';
 import SettingsIcon from '@mui/icons-material/Settings';
 import CloseIcon from '@mui/icons-material/Close';
-import FileDownloadIcon from '@mui/icons-material/FileDownload';
+import FileUploadIcon from '@mui/icons-material/FileUpload';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -665,7 +665,7 @@ const TimeManagement: React.FC = () => {
             variant="outlined"
             size="small"
             onClick={handleExportExcel}
-            startIcon={<FileDownloadIcon />}
+            startIcon={<FileUploadIcon />}
             disabled={current_rows.length === 0}
           >
             엑셀 Export

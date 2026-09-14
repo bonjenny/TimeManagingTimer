@@ -6,6 +6,7 @@ import { TimeManagementRow } from '../store/useTimeManagementStore';
 export const BOARD_WORK = 'B_000000E074008';
 export const BOARD_DEV = 'B_000000E074010';
 export const BOARD_TIMELOG = 'B_000000E074025';
+export const ERP_DEFAULT_ORIGIN = 'https://logine.ecount.com';
 export const ERP_TIMELOG_URL =
   'https://logine.ecount.com/ec56/view/erp?w_flag=1#menuType=MENUTREE_000007&menuSeq=MENUTREE_002624&groupSeq=MENUTREE_000044&prgId=E200469&depth=4';
 
@@ -304,4 +305,54 @@ export function buildErpConsoleScript(payload: unknown, date_iso: string, row_co
   alert(line);
   console.log(line);
 })();`;
+}
+
+// "E-xxxx" 또는 ERP 주소창 URL 전체를 받아 { sid, origin } 으로. 못 읽으면 null.
+export function parseErpSession(input: string): { sid: string; origin: string } | null {
+  const text = input.trim();
+  const from_url = text.match(/ec_req_sid=([A-Za-z0-9_-]+)/);
+  const sid = from_url ? from_url[1] : /^[A-Za-z]-[A-Za-z0-9_-]+$/.test(text) ? text : '';
+  if (!sid) return null;
+  const origin = text.match(/^https:\/\/[a-z0-9.-]+\.ecount\.com/i)?.[0] || ERP_DEFAULT_ORIGIN;
+  return { sid, origin };
+}
+
+export interface ErpPostResult {
+  ok: boolean;
+  status: number;
+  board_num?: string;
+  message: string;
+}
+
+// ERP 서버는 요청 Origin 을 그대로 허용(credentials 포함)하므로 developer.ecount.com 에서 직접 호출 가능.
+// 쿠키는 같은 사이트(ecount.com)라 credentials: 'include' 로 붙는다.
+export async function postErpTimelog(payload: unknown, sid: string, origin: string = ERP_DEFAULT_ORIGIN): Promise<ErpPostResult> {
+  const url = `${origin}/ec5/api/app.board/action/CreateBoardAction:board:input?ec_req_sid=${encodeURIComponent(sid)}&__disableMin=Y`;
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'X-ECCSVER': '{"to":"v5http","v":{"v3http":"639246419025975313","v5http":"639246419025975313"}}',
+        'Accept': 'application/keypack,*/*',
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+      body: JSON.stringify(payload),
+    });
+  } catch (e) {
+    return { ok: false, status: 0, message: `네트워크/CORS 오류: ${(e as Error).message}` };
+  }
+  const text = await res.text();
+  const board_num = text.match(/"board_num":(\d+)/)?.[1];
+  if (/InvalidSession/i.test(text)) {
+    return { ok: false, status: res.status, message: '세션 만료 또는 잘못된 세션키입니다. ERP에 다시 로그인한 뒤 새 주소를 붙여넣으세요.' };
+  }
+  return {
+    ok: res.ok && !!board_num,
+    status: res.status,
+    board_num,
+    message: board_num ? `저장 완료: 시간 로그 ${board_num}번` : `HTTP ${res.status} ${text.replace(/\s+/g, ' ').slice(0, 200)}`,
+  };
 }

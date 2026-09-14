@@ -47,3 +47,14 @@ describe('buildErpPayload', () => {
     expect(s).toContain('confirm(');
   });
 });
+
+describe('parseErpSession', () => {
+  it('ERP URL 과 세션키 문자열을 모두 읽는다', () => {
+    const { parseErpSession } = jest.requireActual('../../utils/erpTimelog');
+    expect(parseErpSession('https://logine.ecount.com/ec56/view/erp?w_flag=1&ec_req_sid=E-ETqBSjHE9g4JF#menuType=1'))
+      .toEqual({ sid: 'E-ETqBSjHE9g4JF', origin: 'https://logine.ecount.com' });
+    expect(parseErpSession(' E-ETqBSjHE9g4JF ')).toEqual({ sid: 'E-ETqBSjHE9g4JF', origin: 'https://logine.ecount.com' });
+    expect(parseErpSession('https://logind.ecount.com/ec5/view/erp?ec_req_sid=D-abc')?.origin).toBe('https://logind.ecount.com');
+    expect(parseErpSession('아무거나')).toBeNull();
+  });
+});

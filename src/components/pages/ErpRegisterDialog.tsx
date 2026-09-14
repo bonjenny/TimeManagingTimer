@@ -19,13 +19,20 @@ import {
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import { TimeManagementRow, useTimeManagementStore } from '../../store/useTimeManagementStore';
 import {
   buildErpPayload,
   buildErpConsoleScript,
   ErpMapping,
   ERP_TIMELOG_URL,
+  parseErpSession,
+  postErpTimelog,
+  ErpPostResult,
 } from '../../utils/erpTimelog';
+
+// ponytail: 세션키는 IndexedDB(백업 파일에 통째로 들어감)에 두지 않고 탭 단위 sessionStorage 에만 보관
+const SESSION_KEY = 'erp-session-input';
 
 interface Props {
   open: boolean;
@@ -41,6 +48,10 @@ const ErpRegisterDialog: React.FC<Props> = ({ open, onClose, rows, date }) => {
   const [mapping_error, setMappingError] = useState('');
   const [copied, setCopied] = useState(false);
   const [script_fallback, setScriptFallback] = useState(''); // 클립보드 거부 시 수동 복사용
+  const [session_input, setSessionInput] = useState(() => sessionStorage.getItem(SESSION_KEY) || '');
+  const [posting, setPosting] = useState(false);
+  const [post_result, setPostResult] = useState<ErpPostResult | null>(null);
+  const session = parseErpSession(session_input);
 
   const result = useMemo(
     () => buildErpPayload(rows, date, erp_mapping, erp_user),
@@ -59,6 +70,21 @@ const ErpRegisterDialog: React.FC<Props> = ({ open, onClose, rows, date }) => {
       setScriptFallback(script);
     }
     window.open(ERP_TIMELOG_URL, '_blank');
+  };
+
+  const handleSessionChange = (value: string) => {
+    setSessionInput(value);
+    sessionStorage.setItem(SESSION_KEY, value);
+  };
+
+  const handlePost = async () => {
+    if (!session) return;
+    if (!window.confirm(`${date} 시간 로그 ${result.resolved.length}행 ${result.total}분을 ERP에 저장할까요?`)) return;
+    setPosting(true);
+    setPostResult(null);
+    const res = await postErpTimelog(result.payload, session.sid, session.origin);
+    setPostResult(res);
+    setPosting(false);
   };
 
   const openMappingEditor = () => {
@@ -91,6 +117,12 @@ const ErpRegisterDialog: React.FC<Props> = ({ open, onClose, rows, date }) => {
           <Alert severity="error" sx={{ mb: 2, whiteSpace: 'pre-wrap' }}>
             {result.errors.join('\n')}
             {'\n'}아래 "게시글 매핑 편집"에서 프로젝트 → 작업/개발 게시글(sid)을 추가하세요.
+          </Alert>
+        )}
+        {post_result && (
+          <Alert severity={post_result.ok ? 'success' : 'error'} sx={{ mb: 2, wordBreak: 'break-all' }}>
+            {post_result.message}
+            {post_result.status === 0 && ' — 아래 "콘솔 스크립트 복사"로 ERP 탭에서 직접 실행할 수 있습니다.'}
           </Alert>
         )}
         {copied && (
@@ -145,6 +177,24 @@ const ErpRegisterDialog: React.FC<Props> = ({ open, onClose, rows, date }) => {
           </TableBody>
         </Table>
 
+        <TextField
+          size="small"
+          fullWidth
+          label="ERP 세션 (로그인된 ERP 주소창 URL 전체 또는 ec_req_sid)"
+          placeholder="https://logine.ecount.com/ec56/view/erp?w_flag=1&ec_req_sid=E-..."
+          value={session_input}
+          onChange={(e) => handleSessionChange(e.target.value)}
+          error={!!session_input && !session}
+          helperText={
+            session_input && !session
+              ? 'ec_req_sid 를 찾지 못했습니다.'
+              : session
+                ? `세션 ${session.sid.slice(0, 4)}… · ${session.origin}`
+                : 'ERP에 로그인한 탭의 주소를 복사해 붙여넣으세요. 이 탭을 닫으면 지워집니다.'
+          }
+          sx={{ mb: 2 }}
+        />
+
         <Box sx={{ display: 'flex', gap: 1, mb: 1, alignItems: 'center', flexWrap: 'wrap' }}>
           <TextField size="small" label="담당자 sid" value={erp_user.pic_sid} sx={{ width: 120 }}
             onChange={(e) => setErpUser({ ...erp_user, pic_sid: e.target.value })} />
@@ -181,13 +231,16 @@ const ErpRegisterDialog: React.FC<Props> = ({ open, onClose, rows, date }) => {
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>닫기</Button>
+        <Button startIcon={<ContentCopyIcon />} disabled={!can_submit} onClick={handleCopyAndOpen}>
+          콘솔 스크립트 복사
+        </Button>
         <Button
           variant="contained"
-          startIcon={<ContentCopyIcon />}
-          disabled={!can_submit}
-          onClick={handleCopyAndOpen}
+          startIcon={<CloudUploadIcon />}
+          disabled={!can_submit || !session || posting || !!post_result?.ok}
+          onClick={handlePost}
         >
-          스크립트 복사 후 ERP 열기
+          {posting ? '저장 중…' : 'ERP에 저장'}
         </Button>
       </DialogActions>
     </Dialog>
