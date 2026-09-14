@@ -350,7 +350,7 @@ const CategoryAutocomplete: React.FC<CategoryAutocompleteProps> = ({
             onDragEnd={handleDragEnd}
           >
             <SortableContext items={categories} strategy={verticalListSortingStrategy}>
-              <ul ref={ref} {...other} style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+              <ul ref={ref} {...other} style={{ listStyle: 'none', padding: 0, margin: 0, maxHeight: '40vh', overflowY: 'auto' }}>
                 {categories.map((category) => (
                   <SortableOption
                     key={category}
@@ -384,9 +384,13 @@ const CategoryAutocomplete: React.FC<CategoryAutocompleteProps> = ({
       onClose={handleClose}
       fullWidth={fullWidth}
       size={size}
+      // disablePortal: Dialog 포커스 트랩이 드롭다운 안 "새 카테고리" 입력칸 포커스를 뺏지 않도록 DOM 안에 둔다.
+      // 대신 strategy fixed 로 띄워 Dialog/카드의 overflow 에 잘리지 않게 한다.
       disablePortal
       slotProps={{
         popper: {
+          popperOptions: { strategy: 'fixed' },
+          sx: { zIndex: 1500 },
           modifiers: [
             {
               name: 'flip',

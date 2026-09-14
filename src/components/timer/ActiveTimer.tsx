@@ -12,7 +12,7 @@ import CategoryAutocomplete from '../common/CategoryAutocomplete';
 const ActiveTimer: React.FC = () => {
   const { activeTimer, elapsedSeconds, showSeconds } = useTimerLogic();
   const { logs, resumeTimer, completeTimer, updateActiveTimer, pauseAndMoveToLogs } = useTimerStore();
-  const { projects, getProjectName } = useProjectStore();
+  const { projects, getProjectName, addProject } = useProjectStore();
 
   // 제목 편집 상태
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -130,7 +130,7 @@ const ActiveTimer: React.FC = () => {
         borderColor: isRunning ? 'primary.main' : 'var(--border-color)',
         bgcolor: 'var(--card-bg)',
         position: 'relative',
-        overflow: 'hidden',
+        // overflow hidden 금지: 카테고리 드롭다운(disablePortal)이 카드 밖으로 못 나가 잘린다
         transition: 'background-color 0.3s ease, border-color 0.3s ease'
       }}
     >
@@ -142,6 +142,7 @@ const ActiveTimer: React.FC = () => {
           top: 0, 
           bottom: 0, 
           width: 4, 
+          borderRadius: '4px 0 0 4px',
           bgcolor: isRunning ? 'primary.main' : 'text.disabled' 
         }} 
       />
@@ -199,6 +200,15 @@ const ActiveTimer: React.FC = () => {
                     onChange={(_e, newValue) => {
                       if (newValue && typeof newValue !== 'string') {
                         updateActiveTimer({ projectCode: newValue.code });
+                      } else if (typeof newValue === 'string' && newValue.trim()) {
+                        // 직접 타이핑: "[코드] 이름" / 코드 / 이름 → 기존 프로젝트, 없으면 코드로 새 프로젝트 등록
+                        const text = newValue.trim();
+                        const code = text.match(/^\[([^\]]+)\]/)?.[1] || text;
+                        const found = projects.find(
+                          (p) => p.code.toLowerCase() === code.toLowerCase() || p.name === text
+                        );
+                        if (!found) addProject({ code, name: code });
+                        updateActiveTimer({ projectCode: found ? found.code : code });
                       } else {
                         updateActiveTimer({ projectCode: undefined });
                       }
@@ -210,11 +220,14 @@ const ActiveTimer: React.FC = () => {
                         variant="standard"
                         placeholder="프로젝트"
                         autoFocus
+                        onFocus={(e) => e.target.select()} // 칩 클릭으로 열리면 selectOnFocus 가 안 먹어 직접 전체 선택
                         sx={{ '& .MuiInput-root': { fontSize: '0.75rem' } }}
                       />
                     )}
                     freeSolo
                     autoHighlight
+                    autoSelect
+                    selectOnFocus
                     openOnFocus
                   />
                 </Box>

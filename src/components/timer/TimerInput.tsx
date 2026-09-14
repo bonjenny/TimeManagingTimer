@@ -117,10 +117,8 @@ const TimerInput: React.FC = () => {
   const handleProjectNameChange = useCallback((value: string) => {
     setProjectName(value);
     
-    if (!value) {
-      setProjectCode('');
-      return;
-    }
+    // 이름을 지워도 코드는 유지한다 (코드만 넣고 이름을 다시 쓰는 흐름). 코드 지우기는 코드 칸에서.
+    if (!value) return;
     
     const matchedProject = projects.find(p => p.name === value);
     if (matchedProject) {
