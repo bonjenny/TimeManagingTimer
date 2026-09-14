@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { buildErpPayload, buildErpConsoleScript, DEFAULT_ERP_MAPPING, DEFAULT_ERP_USER } from '../../utils/erpTimelog';
 import { TimeManagementRow } from '../../store/useTimeManagementStore';
 
@@ -56,5 +57,59 @@ describe('parseErpSession', () => {
     expect(parseErpSession(' E-ETqBSjHE9g4JF ')).toEqual({ sid: 'E-ETqBSjHE9g4JF', origin: 'https://logine.ecount.com' });
     expect(parseErpSession('https://logind.ecount.com/ec5/view/erp?ec_req_sid=D-abc')?.origin).toBe('https://logind.ecount.com');
     expect(parseErpSession('아무거나')).toBeNull();
+  });
+});
+
+describe('게시글 매핑 자동 찾기', () => {
+  const session = { sid: 'E-test', origin: 'https://loginlxe1.ecount.com' };
+  const ok = (Data: unknown) => Promise.resolve({ ok: true, status: 200, text: () => Promise.resolve(JSON.stringify({ Status: 200, Data })) });
+  const bodies: { url: string; body: any }[] = [];
+  const mockFetch = (...responses: unknown[]) => {
+    bodies.length = 0;
+    (global as any).fetch = jest.fn((url: string, init: RequestInit) => {
+      bodies.push({ url, body: JSON.parse(String(init.body)) });
+      return ok(responses.shift());
+    });
+  };
+  const { findErpWorkPosts, findErpDevPosts } = jest.requireActual('../../utils/erpTimelog');
+
+  it('프로젝트 코드: 코드 검색 후 작업 게시판을 pjt 조건으로 검색한다', async () => {
+    mockFetch(
+      { data: [{ 'pjt$pjt_cd': 'A26_04864', 'pjt$pjt_des': 'PageSetup v2 Page내 함수 개발 및 적용' }] },
+      { data: [{ 'board_s$data_no': 12221, 'board_s$data_sid': '87FA7HFA5O755GB', 'board_s$title_ctt': 'PageSetup v2 Page내 함수 개발 및 적용' }] }
+    );
+    const posts = await findErpWorkPosts(session, 'A26_04864');
+    expect(posts).toEqual([{ no: 12221, sid: '87FA7HFA5O755GB', title: 'PageSetup v2 Page내 함수 개발 및 적용' }]);
+    expect(bodies[0].url).toContain('SelectBasicCodeSearchPopupAction:board:list?ec_req_sid=E-test');
+    expect(bodies[0].body.param).toBe('A26_04864');
+    expect(bodies[1].url).toContain('SelectBoardSearchListAction:board:list');
+    expect(bodies[1].body.bizz_sid).toBe('B_000000E074008');
+    expect(bodies[1].body.condition['board_s$pjt'].value[0].code).toBe('A26_04864');
+  });
+
+  it('작업 번호: data_no 로 검색하고 번호가 정확히 같은 것만 남긴다', async () => {
+    mockFetch({ data: [
+      { 'board_s$data_no': 12101, 'board_s$data_sid': 'A', 'board_s$title_ctt': 'x' },
+      { 'board_s$data_no': 121010, 'board_s$data_sid': 'B', 'board_s$title_ctt': 'y' },
+    ] });
+    const posts = await findErpWorkPosts(session, '12101');
+    expect(posts.map((p: any) => p.sid)).toEqual(['A']);
+    expect(bodies[0].body.condition['board_s$data_no']).toEqual({ type: 'like', value: '12101' });
+  });
+
+  it('개발 게시글: 작업 data_sid 로 연결된 것만 고른다', async () => {
+    mockFetch({ data: [
+      { 'board_s$data_no': 22247, 'board_s$data_sid': 'DEV1', 'board_s$title_ctt': 't', 'b_000000e074008_001$board_s$data_sid': '87FA7HFA5O755GB' },
+      { 'board_s$data_no': 22248, 'board_s$data_sid': 'DEV2', 'board_s$title_ctt': 't', 'b_000000e074008_001$board_s$data_sid': 'OTHER' },
+    ] });
+    const devs = await findErpDevPosts(session, { no: 12221, sid: '87FA7HFA5O755GB', title: 't' });
+    expect(devs).toEqual([{ no: 22247, sid: 'DEV1', title: 't' }]);
+    expect(bodies[0].body.bizz_sid).toBe('B_000000E074010');
+    expect(bodies[0].body.condition['board_s$title_ctt']).toEqual({ type: 'like', value: 't' });
+  });
+
+  it('없는 프로젝트 코드는 번호로 찾으라고 안내한다', async () => {
+    mockFetch({ data: [] });
+    await expect(findErpWorkPosts(session, 'A26_99999')).rejects.toThrow('작업 게시글 번호');
   });
 });

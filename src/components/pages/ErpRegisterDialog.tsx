@@ -21,6 +21,8 @@ import CloseIcon from '@mui/icons-material/Close';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import { TimeManagementRow, useTimeManagementStore } from '../../store/useTimeManagementStore';
+import { useProjectStore } from '../../store/useProjectStore';
+import ErpMappingFinder from './ErpMappingFinder';
 import {
   buildErpPayload,
   buildErpConsoleScript,
@@ -29,6 +31,8 @@ import {
   parseErpSession,
   postErpTimelog,
   ErpPostResult,
+  ErpProjectMapping,
+  resolveErpRow,
 } from '../../utils/erpTimelog';
 
 // ponytail: 세션키는 IndexedDB(백업 파일에 통째로 들어감)에 두지 않고 탭 단위 sessionStorage 에만 보관
@@ -58,6 +62,25 @@ const ErpRegisterDialog: React.FC<Props> = ({ open, onClose, rows, date }) => {
     [rows, date, erp_mapping, erp_user]
   );
   const can_submit = rows.length > 0 && result.errors.length === 0;
+  const { getProjectName } = useProjectStore();
+
+  // 매핑이 없어 변환에 실패한 프로젝트 → 개발 게시글 필요 여부 (프로젝트 없는 행은 자동 매핑 대상 아님)
+  const missing = useMemo(() => {
+    const map = new Map<string, boolean>();
+    rows.forEach((row) => {
+      if (!row.project_name) return;
+      try {
+        resolveErpRow(row, erp_mapping);
+      } catch {
+        map.set(row.project_name, !!map.get(row.project_name) || row.work_type.trim() === '개발');
+      }
+    });
+    return [...map.entries()];
+  }, [rows, erp_mapping]);
+
+  const handleAddMapping = (project: string, mapping: ErpProjectMapping) => {
+    setErpMapping({ ...erp_mapping, [project]: mapping });
+  };
 
   const handleCopyAndOpen = async () => {
     const script = buildErpConsoleScript(result.payload, date, result.resolved.length, result.total);
@@ -113,11 +136,45 @@ const ErpRegisterDialog: React.FC<Props> = ({ open, onClose, rows, date }) => {
         </IconButton>
       </DialogTitle>
       <DialogContent>
+        <TextField
+          size="small"
+          fullWidth
+          label="ERP 세션 (로그인된 ERP 주소창 URL 전체 또는 ec_req_sid)"
+          placeholder="https://logine.ecount.com/ec56/view/erp?w_flag=1&ec_req_sid=E-..."
+          value={session_input}
+          onChange={(e) => handleSessionChange(e.target.value)}
+          error={!!session_input && !session}
+          helperText={
+            session_input && !session
+              ? 'ec_req_sid 를 찾지 못했습니다.'
+              : session
+                ? `세션 ${session.sid.slice(0, 4)}… · ${session.origin}`
+                : 'ERP에 로그인한 탭의 주소를 복사해 붙여넣으세요. 이 탭을 닫으면 지워집니다.'
+          }
+          sx={{ mb: 2, mt: 1 }}
+        />
         {result.errors.length > 0 && (
           <Alert severity="error" sx={{ mb: 2, whiteSpace: 'pre-wrap' }}>
             {result.errors.join('\n')}
-            {'\n'}아래 "게시글 매핑 편집"에서 프로젝트 → 작업/개발 게시글(sid)을 추가하세요.
           </Alert>
+        )}
+        {missing.length > 0 && (
+          <Box sx={{ mb: 2, p: 1.5, border: '1px solid', borderColor: 'error.light', borderRadius: 1 }}>
+            <Typography variant="subtitle2">게시글 매핑 찾기</Typography>
+            <Typography variant="caption" color="text.secondary">
+              프로젝트 코드 또는 작업 게시글 번호로 찾으면 연결된 개발 게시글까지 채웁니다.
+            </Typography>
+            {missing.map(([project, need_dev]) => (
+              <ErpMappingFinder
+                key={project}
+                project={project}
+                project_name={getProjectName(project)}
+                need_dev={need_dev}
+                session={session}
+                onAdd={handleAddMapping}
+              />
+            ))}
+          </Box>
         )}
         {post_result && (
           <Alert severity={post_result.ok ? 'success' : 'error'} sx={{ mb: 2, wordBreak: 'break-all' }}>
@@ -177,23 +234,6 @@ const ErpRegisterDialog: React.FC<Props> = ({ open, onClose, rows, date }) => {
           </TableBody>
         </Table>
 
-        <TextField
-          size="small"
-          fullWidth
-          label="ERP 세션 (로그인된 ERP 주소창 URL 전체 또는 ec_req_sid)"
-          placeholder="https://logine.ecount.com/ec56/view/erp?w_flag=1&ec_req_sid=E-..."
-          value={session_input}
-          onChange={(e) => handleSessionChange(e.target.value)}
-          error={!!session_input && !session}
-          helperText={
-            session_input && !session
-              ? 'ec_req_sid 를 찾지 못했습니다.'
-              : session
-                ? `세션 ${session.sid.slice(0, 4)}… · ${session.origin}`
-                : 'ERP에 로그인한 탭의 주소를 복사해 붙여넣으세요. 이 탭을 닫으면 지워집니다.'
-          }
-          sx={{ mb: 2 }}
-        />
 
         <Box sx={{ display: 'flex', gap: 1, mb: 1, alignItems: 'center', flexWrap: 'wrap' }}>
           <TextField size="small" label="담당자 sid" value={erp_user.pic_sid} sx={{ width: 120 }}
