@@ -78,6 +78,7 @@ import {
   clearAll,
 } from '../../utils/storage';
 import { AUTO_BACKUP_ENABLED_KEY, AUTO_BACKUP_DATE_KEY } from '../../utils/autoBackup';
+import PruneOldDataSection from './PruneOldDataSection';
 
 // 설정 저장 키
 const SETTINGS_STORAGE_KEY = 'timekeeper-settings';
@@ -1303,6 +1304,8 @@ const SettingsPage: React.FC = () => {
         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 3 }}>
           ⚠️ 데이터 가져오기 시 기존 데이터가 덮어씌워집니다.
         </Typography>
+
+        <PruneOldDataSection onBackup={handleExportData} />
 
         <Divider sx={{ my: 2 }} />
 

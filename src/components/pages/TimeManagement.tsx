@@ -105,8 +105,8 @@ const TimeManagement: React.FC = () => {
   } | null>(null);
   const [edit_value, setEditValue] = useState<string>('');
 
-  const [sort_column, setSortColumn] = useState<keyof TimeManagementRow | null>(null);
-  const [sort_direction, setSortDirection] = useState<'asc' | 'desc' | null>(null);
+  // 다중 정렬: 먼저 누른 컬럼이 1순위, 나중에 누른 컬럼은 앞 기준이 같은 행끼리의 2·3순위
+  const [sort_keys, setSortKeys] = useState<{ column: keyof TimeManagementRow; direction: 'asc' | 'desc' }[]>([]);
 
   const [settings_open, setSettingsOpen] = useState(false);
   const [new_category, setNewCategory] = useState<string | null>(null);
@@ -216,6 +216,7 @@ const TimeManagement: React.FC = () => {
       time_minutes: 0,
       note: '',
       date: date_string,
+      end_date: formatDateToYYYYMMDD(new Date()),
     };
     addRow(new_row);
   };
@@ -240,6 +241,7 @@ const TimeManagement: React.FC = () => {
       '카테고리 코드': row.category_code,
       '카테고리명': row.category_name,
       '시간(분)': row.time_minutes,
+      '종료예정일': row.end_date || row.date,
       '비고': row.note || '',
     }));
 
@@ -251,6 +253,7 @@ const TimeManagement: React.FC = () => {
       '카테고리 코드': '',
       '카테고리명': '합계',
       '시간(분)': total_minutes,
+      '종료예정일': '',
       '비고': '',
     });
 
@@ -271,7 +274,7 @@ const TimeManagement: React.FC = () => {
       return;
     }
     setEditingCell({ row_id: row.id, field });
-    setEditValue(String(row[field]));
+    setEditValue(field === 'end_date' ? row.end_date || row.date : String(row[field]));
   };
 
   const handleSaveEdit = () => {
@@ -326,46 +329,54 @@ const TimeManagement: React.FC = () => {
       return;
     }
 
-    if (sort_column === column) {
-      if (sort_direction === 'asc') {
-        setSortDirection('desc');
-      } else if (sort_direction === 'desc') {
-        setSortColumn(null);
-        setSortDirection(null);
+    setSortKeys((prev) => {
+      const current = prev.find((k) => k.column === column);
+      if (!current) return [...prev, { column, direction: 'asc' }]; // 새 기준은 맨 뒤(가장 낮은 순위)
+      if (current.direction === 'asc') {
+        return prev.map((k) => (k.column === column ? { column, direction: 'desc' } : k)); // 순위 유지, 방향만
       }
-    } else {
-      setSortColumn(column);
-      setSortDirection('asc');
-    }
+      return prev.filter((k) => k.column !== column); // desc 다음 클릭은 해당 컬럼 정렬 해제
+    });
   };
 
   const sorted_rows = useMemo(() => {
-    if (!sort_column || !sort_direction) {
+    if (sort_keys.length === 0) {
       return current_rows;
     }
 
+    const valueOf = (row: TimeManagementRow, column: keyof TimeManagementRow) =>
+      column === 'end_date' ? row.end_date || row.date : row[column];
+
     return [...current_rows].sort((a, b) => {
-      const a_value = a[sort_column];
-      const b_value = b[sort_column];
-
-      if (typeof a_value === 'number' && typeof b_value === 'number') {
-        return sort_direction === 'asc' ? a_value - b_value : b_value - a_value;
+      for (const { column, direction } of sort_keys) {
+        const a_value = valueOf(a, column);
+        const b_value = valueOf(b, column);
+        const diff =
+          typeof a_value === 'number' && typeof b_value === 'number'
+            ? a_value - b_value
+            : String(a_value ?? '').localeCompare(String(b_value ?? ''));
+        if (diff !== 0) return direction === 'asc' ? diff : -diff;
       }
-
-      const a_str = String(a_value);
-      const b_str = String(b_value);
-      return sort_direction === 'asc'
-        ? a_str.localeCompare(b_str)
-        : b_str.localeCompare(a_str);
+      return 0;
     });
-  }, [current_rows, sort_column, sort_direction]);
+  }, [current_rows, sort_keys]);
 
   const renderSortIcon = (column: keyof TimeManagementRow) => {
-    if (sort_column === column) {
-      return sort_direction === 'asc' ? (
-        <KeyboardArrowUpIcon sx={{ fontSize: 18, ml: 0.5, opacity: 0.7 }} />
-      ) : (
-        <KeyboardArrowDownIcon sx={{ fontSize: 18, ml: 0.5, opacity: 0.7 }} />
+    const index = sort_keys.findIndex((k) => k.column === column);
+    if (index >= 0) {
+      return (
+        <>
+          {sort_keys[index].direction === 'asc' ? (
+            <KeyboardArrowUpIcon sx={{ fontSize: 18, ml: 0.5, opacity: 0.7 }} />
+          ) : (
+            <KeyboardArrowDownIcon sx={{ fontSize: 18, ml: 0.5, opacity: 0.7 }} />
+          )}
+          {sort_keys.length > 1 && (
+            <Typography component="span" variant="caption" sx={{ opacity: 0.6, fontSize: '0.65rem' }}>
+              {index + 1}
+            </Typography>
+          )}
+        </>
       );
     }
     return <ExpandMoreIcon sx={{ fontSize: 16, ml: 0.5, opacity: 0.3 }} />;
@@ -487,6 +498,20 @@ const TimeManagement: React.FC = () => {
         );
       }
 
+      if (field === 'end_date') {
+        return (
+          <TextField
+            type="date"
+            value={edit_value}
+            onChange={(e) => setEditValue(e.target.value)}
+            onBlur={handleSaveEdit}
+            onKeyDown={handleKeyDown}
+            size="small"
+            autoFocus
+          />
+        );
+      }
+
       return (
         <TextField
           value={edit_value}
@@ -516,6 +541,17 @@ const TimeManagement: React.FC = () => {
           }}
         >
           {display_value}
+        </Box>
+      );
+    }
+
+    if (field === 'end_date') {
+      return (
+        <Box
+          onClick={() => handleCellClick(row, field)}
+          sx={{ cursor: 'pointer', minHeight: 24, '&:hover': { bgcolor: 'action.hover' }, px: 1, py: 0.5, whiteSpace: 'nowrap' }}
+        >
+          {row.end_date || row.date}
         </Box>
       );
     }
@@ -766,6 +802,15 @@ const TimeManagement: React.FC = () => {
                 </Box>
               </TableCell>
               <TableCell
+                sx={{ fontWeight: 600, minWidth: 130, cursor: 'pointer', userSelect: 'none' }}
+                onClick={() => handleHeaderClick('end_date')}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  종료예정일
+                  {renderSortIcon('end_date')}
+                </Box>
+              </TableCell>
+              <TableCell
                 sx={{ fontWeight: 600, minWidth: 200, cursor: 'pointer', userSelect: 'none' }}
                 onClick={() => handleHeaderClick('note')}
               >
@@ -791,12 +836,13 @@ const TimeManagement: React.FC = () => {
                 <TableCell>{renderCell(row, 'category_code')}</TableCell>
                 <TableCell>{renderCell(row, 'category_name')}</TableCell>
                 <TableCell>{renderCell(row, 'time_minutes')}</TableCell>
+                <TableCell>{renderCell(row, 'end_date')}</TableCell>
                 <TableCell>{renderCell(row, 'note')}</TableCell>
               </TableRow>
             ))}
             {current_rows.length === 0 && (
               <TableRow>
-                <TableCell colSpan={8} align="center" sx={{ py: 4, color: 'text.secondary' }}>
+                <TableCell colSpan={9} align="center" sx={{ py: 4, color: 'text.secondary' }}>
                   데이터가 없습니다. "일간 타이머에서 불러오기" 버튼을 클릭하거나 "새 행 추가"를 눌러 시작하세요.
                 </TableCell>
               </TableRow>

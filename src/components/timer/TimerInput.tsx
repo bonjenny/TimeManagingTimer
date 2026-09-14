@@ -418,7 +418,7 @@ const TimerInput: React.FC = () => {
             size="small"
             variant="standard"
             InputProps={{ disableUnderline: true }}
-            sx={{ width: 90, '& .MuiInputBase-input': { fontSize: '0.85rem', p: '2px 0' } }}
+            sx={{ width: 130, '& .MuiInputBase-input': { fontSize: '0.85rem', p: '2px 0' } }}
           />
           <Typography variant="caption" color="text.secondary">~</Typography>
           <TextField
@@ -429,7 +429,7 @@ const TimerInput: React.FC = () => {
             variant="standard"
             InputProps={{ disableUnderline: true }}
             onKeyDown={handleKeyDown}
-            sx={{ width: 90, '& .MuiInputBase-input': { fontSize: '0.85rem', p: '2px 0' } }}
+            sx={{ width: 130, '& .MuiInputBase-input': { fontSize: '0.85rem', p: '2px 0' } }}
           />
         </Box>
       )}

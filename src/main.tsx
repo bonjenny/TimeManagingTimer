@@ -6,6 +6,8 @@ initStorage()
     const { createRoot } = await import('react-dom/client')
     const { CssBaseline } = await import('@mui/material')
     const { default: App } = await import('./App')
+    const { migrateRenamedCategories } = await import('./utils/categoryMigration')
+    migrateRenamedCategories()
 
     createRoot(document.getElementById('root')!).render(
       <React.StrictMode>

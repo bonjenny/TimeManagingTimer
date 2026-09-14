@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -51,39 +51,23 @@ const DeployEventModal: React.FC<DeployEventModalProps> = ({
   const { addEvent, updateEvent, deleteEvent } = useDeployCalendarStore();
   const { projects } = useProjectStore();
   
-  // 폼 상태
-  const [job_code, setJobCode] = useState('');
-  const [job_name, setJobName] = useState('');
-  const [status, setStatus] = useState('');
-  const [is_holiday, setIsHoliday] = useState(false);
+  // 폼 상태. 부모가 열 때마다 key 를 바꿔 새로 마운트하므로 여기서 한 번만 초기화한다.
+  // (useEffect 로 리셋하면 freeSolo Autocomplete 의 내부 입력값이 이전 값으로 남는다)
+  const [job_code, setJobCode] = useState(event?.job_code || '');
+  const [job_name, setJobName] = useState(event?.job_name || '');
+  const [status, setStatus] = useState(event?.status || '');
+  const [is_holiday, setIsHoliday] = useState(event?.is_holiday || false);
   
-  // 수정 모드 시 기존 데이터 로드
-  useEffect(() => {
-    if (event) {
-      setJobCode(event.job_code || '');
-      setJobName(event.job_name || '');
-      setStatus(event.status || '');
-      setIsHoliday(event.is_holiday || false);
-    } else {
-      // 초기화
-      setJobCode('');
-      setJobName('');
-      setStatus('');
-      setIsHoliday(false);
-    }
-  }, [event, open]);
-  
-  // 프로젝트 코드 선택 시 이름 자동 채우기
-  const handleProjectSelect = (_: unknown, value: string | null) => {
-    if (value) {
-      setJobCode(value);
-      // 프로젝트 이름 자동 채우기
-      const project = projects.find(p => p.code === value);
-      if (project && !job_name) {
-        setJobName(project.name);
-      }
-    } else {
-      setJobCode('');
+  // 프로젝트 코드가 바뀌면 표시명도 따라간다.
+  // 단, 사용자가 표시명을 직접 고쳐 쓴 경우(비어있지도 않고 이전 프로젝트 이름과도 다름)는 유지.
+  const handleJobCodeChange = (value: string) => {
+    const code = value.trim();
+    const prev_project = projects.find(p => p.code === job_code.trim());
+    const next_project = projects.find(p => p.code === code);
+    setJobCode(value);
+    const name_is_auto = !job_name.trim() || (prev_project && job_name === prev_project.name);
+    if (name_is_auto) {
+      setJobName(next_project ? next_project.name : '');
     }
   };
   
@@ -172,8 +156,10 @@ const DeployEventModal: React.FC<DeployEventModalProps> = ({
                   freeSolo
                   options={projects.map(p => p.code)}
                   value={job_code}
-                  onChange={handleProjectSelect}
-                  onInputChange={(_, value) => setJobCode(value)}
+                  onChange={(_, value) => handleJobCodeChange(value || '')}
+                  onInputChange={(_, value, reason) => {
+                    if (reason !== 'reset') handleJobCodeChange(value);
+                  }}
                   renderInput={(params) => (
                     <TextField
                       {...params}

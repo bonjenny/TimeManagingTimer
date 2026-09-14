@@ -1,4 +1,5 @@
 import { TimeManagementRow } from '../store/useTimeManagementStore';
+import { CATEGORY_CODE_MAP, getCategoryCode } from '../constants/categoryCodeMap';
 
 // ECOUNT ERP 시간 로그 게시판(CreateBoardAction) payload 생성기.
 // 검증 경로: eccp-timelog 스킬 scripts/timelog_api.py (2026-09-12).
@@ -81,6 +82,7 @@ export interface ErpResolvedRow {
   category_code: string;
   category_name: string;
   minutes: number;
+  end_date: string; // YYYY-MM-DD
   note: string;
 }
 
@@ -107,7 +109,20 @@ function resolveWork(
   return { work: m.work, dev: m.dev };
 }
 
+/** 행의 카테고리를 ERP 카테고리 코드/이름으로. ERP 목록에 없으면 kind='category' 오류. */
+export function resolveErpCategory(row: TimeManagementRow): { code: string; name: string } {
+  const code = CATEGORY_CODE_MAP[row.category_code] ? row.category_code : getCategoryCode(row.category_name);
+  if (!CATEGORY_CODE_MAP[code]) {
+    throw Object.assign(
+      new Error(`카테고리 "${row.category_name || row.category_code}" 는 ERP 카테고리 목록에 없습니다. 시간관리 표에서 카테고리를 바꿔주세요.`),
+      { kind: 'category' }
+    );
+  }
+  return { code, name: CATEGORY_CODE_MAP[code] };
+}
+
 export function resolveErpRow(row: TimeManagementRow, mapping: ErpMapping): ErpResolvedRow {
+  const category = resolveErpCategory(row);
   const schedule = row.schedule_name.trim();
   const extra = (row.note || '').trim();
   const note = extra ? `${schedule} // ${extra}` : schedule;
@@ -119,23 +134,24 @@ export function resolveErpRow(row: TimeManagementRow, mapping: ErpMapping): ErpR
     trx: is_dev ? target.dev! : target.work,
     bizz_sid: is_dev ? BOARD_DEV : BOARD_WORK,
     bizz_nm: is_dev ? '개발' : '작업',
-    category_code: row.category_code,
-    category_name: row.category_name,
+    category_code: category.code,
+    category_name: category.name, // ERP 에 등록된 이름으로 보낸다 (옛 이름 "탐색업무" 등 방지)
     minutes: Math.round(row.time_minutes),
+    end_date: row.end_date || row.date,
     note,
   };
 }
 
 const ref = (sid: string, name: string, extra?: Record<string, string>) => ({ sid, code: sid, name, ...extra });
 
-function buildDetail(r: ErpResolvedRow, date8: string) {
+function buildDetail(r: ErpResolvedRow) {
   return {
     'board_m$record_sid': '',
     'board_m$default_value_init': true,
     'board_m$txt_001': '',
     'board_m$cd_sid_001': r.category_code,
     'board_m$cd_nm_001': r.category_name,
-    'board_m$dt_001': date8,
+    'board_m$dt_001': r.end_date.replace(/-/g, ''),
     'board_m$num_001': `∬N:${r.minutes}∬`,
     'board_m$atxt_001': r.note,
     'board_m$dynamic_bizz': ref(r.bizz_sid, r.bizz_nm),
@@ -256,7 +272,7 @@ export function buildErpPayload(
         action_mode: 'NEW',
         data_model: {
           boardXmaster: [buildMaster(date_iso, date8, today8, total, user)],
-          boardXdetail: resolved.map((r) => buildDetail(r, date8)),
+          boardXdetail: resolved.map((r) => buildDetail(r)),
           boardXeditor: [{ 'board_b$body_html_ctt': { code: {}, content: '' }, 'board_b$body_ctt': '' }],
           boardXnotification_master_input: [
             {

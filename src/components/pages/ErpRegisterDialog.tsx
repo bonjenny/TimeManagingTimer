@@ -71,7 +71,8 @@ const ErpRegisterDialog: React.FC<Props> = ({ open, onClose, rows, date }) => {
       if (!row.project_name) return;
       try {
         resolveErpRow(row, erp_mapping);
-      } catch {
+      } catch (e) {
+        if ((e as { kind?: string }).kind === 'category') return; // 카테고리 문제는 게시글 매핑으로 못 고친다
         map.set(row.project_name, !!map.get(row.project_name) || row.work_type.trim() === '개발');
       }
     });
@@ -212,6 +213,7 @@ const ErpRegisterDialog: React.FC<Props> = ({ open, onClose, rows, date }) => {
               <TableCell>거래</TableCell>
               <TableCell>카테고리</TableCell>
               <TableCell align="right">시간(분)</TableCell>
+              <TableCell>종료예정일</TableCell>
               <TableCell>비고</TableCell>
             </TableRow>
           </TableHead>
@@ -223,12 +225,14 @@ const ErpRegisterDialog: React.FC<Props> = ({ open, onClose, rows, date }) => {
                 <TableCell>{r.trx.title}</TableCell>
                 <TableCell>{r.category_code} {r.category_name}</TableCell>
                 <TableCell align="right">{r.minutes}</TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>{r.end_date}</TableCell>
                 <TableCell sx={{ whiteSpace: 'pre-wrap' }}>{r.note}</TableCell>
               </TableRow>
             ))}
             <TableRow>
               <TableCell colSpan={4} align="right" sx={{ fontWeight: 600 }}>합계</TableCell>
               <TableCell align="right" sx={{ fontWeight: 600 }}>{result.total}</TableCell>
+              <TableCell />
               <TableCell>{result.resolved.length}건 · 담당 {erp_user.dept} {erp_user.name}</TableCell>
             </TableRow>
           </TableBody>

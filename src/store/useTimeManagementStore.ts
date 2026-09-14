@@ -14,6 +14,7 @@ export interface TimeManagementRow {
   time_minutes: number;
   note: string;
   date: string;
+  end_date?: string; // 종료 예정일 YYYY-MM-DD. 없으면 date 로 본다(이전 데이터)
   original_log_id?: string;
 }
 

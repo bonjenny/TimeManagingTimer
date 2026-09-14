@@ -96,6 +96,7 @@ export function convertLogsToTimeManagement(
       time_minutes: group.total_minutes,
       note: Array.from(new Set(group.notes)).join('\n'),
       date: date,
+      end_date: formatDateToYYYYMMDD(new Date()),
       original_log_id: group.original_log_ids[0],
     };
   });

@@ -35,6 +35,17 @@ describe('buildErpPayload', () => {
     expect(dm.boardXdetail[0]['board_m$num_001']).toBe('∬N:42∬');
   });
 
+  it('종료예정일은 행의 end_date, 없으면 행 일자', () => {
+    const r = buildErpPayload(
+      [row({ end_date: '2026-09-30' }), row({})],
+      '2026-09-11', DEFAULT_ERP_MAPPING, DEFAULT_ERP_USER
+    );
+    const dm = (r.payload as any).data.slip_data_model.data_model;
+    expect(dm.boardXdetail[0]['board_m$dt_001']).toBe('20260930');
+    expect(dm.boardXdetail[1]['board_m$dt_001']).toBe('20260911');
+    expect(dm.boardXmaster[0]['board_s$dt_001']).toBe('20260911');
+  });
+
   it('매핑 없는 프로젝트는 errors 로 보고하고 나머지는 계속 푼다', () => {
     const r = buildErpPayload([row({ project_name: 'NOPE' }), row({})], '2026-09-11', DEFAULT_ERP_MAPPING, DEFAULT_ERP_USER);
     expect(r.errors).toHaveLength(1);
@@ -111,5 +122,23 @@ describe('게시글 매핑 자동 찾기', () => {
   it('없는 프로젝트 코드는 번호로 찾으라고 안내한다', async () => {
     mockFetch({ data: [] });
     await expect(findErpWorkPosts(session, 'A26_99999')).rejects.toThrow('작업 게시글 번호');
+  });
+});
+
+describe('ERP 카테고리', () => {
+  const { buildErpPayload: build, DEFAULT_ERP_MAPPING: M, DEFAULT_ERP_USER: U } = jest.requireActual('../../utils/erpTimelog');
+  const base = { id: 'x', checked: false, project_name: 'A26_04719', work_type: '작업', schedule_name: '일정', time_minutes: 10, note: '', date: '2026-09-11' };
+
+  it('옛 이름 탐색업무는 07 팀장업무로 보낸다', () => {
+    const r = build([{ ...base, category_code: '07', category_name: '탐색업무' }], '2026-09-11', M, U);
+    expect(r.errors).toEqual([]);
+    const d = r.payload.data.slip_data_model.data_model.boardXdetail[0];
+    expect(d['board_m$cd_sid_001']).toBe('07');
+    expect(d['board_m$cd_nm_001']).toBe('팀장업무');
+  });
+
+  it('ERP 목록에 없는 카테고리는 저장 전에 오류로 막는다', () => {
+    const r = build([{ ...base, category_code: '내맘대로', category_name: '내맘대로' }], '2026-09-11', M, U);
+    expect(r.errors[0]).toContain('ERP 카테고리 목록에 없습니다');
   });
 });

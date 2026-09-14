@@ -175,6 +175,7 @@ const DeployCalendar: React.FC = () => {
   const [event_modal_open, setEventModalOpen] = useState(false);
   const [selected_date, setSelectedDate] = useState<string>('');
   const [selected_event, setSelectedEvent] = useState<DeployEvent | null>(null);
+  const [event_modal_key, setEventModalKey] = useState(0);
   const [color_manager_open, setColorManagerOpen] = useState(false);
   
   // 우클릭 컨텍스트 메뉴 (삭제)
@@ -271,6 +272,7 @@ const DeployCalendar: React.FC = () => {
   const handleCellClick = (date: Date, event?: DeployEvent) => {
     setSelectedDate(formatDateToString(date));
     setSelectedEvent(event || null);
+    setEventModalKey((k) => k + 1);
     setEventModalOpen(true);
   };
   
@@ -530,6 +532,7 @@ const DeployCalendar: React.FC = () => {
       
       {/* 이벤트 추가/수정 모달 */}
       <DeployEventModal
+        key={event_modal_key} // 열 때마다 새로 마운트: 진행상태·프로젝트 입력칸의 이전 값이 남지 않게
         open={event_modal_open}
         onClose={() => setEventModalOpen(false)}
         date={selected_date}
