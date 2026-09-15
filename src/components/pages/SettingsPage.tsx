@@ -79,6 +79,7 @@ import {
 } from '../../utils/storage';
 import { AUTO_BACKUP_ENABLED_KEY, AUTO_BACKUP_DATE_KEY } from '../../utils/autoBackup';
 import PruneOldDataSection from './PruneOldDataSection';
+import BackupDirectorySetting from './BackupDirectorySetting';
 
 // 설정 저장 키
 const SETTINGS_STORAGE_KEY = 'timekeeper-settings';
@@ -1285,11 +1286,13 @@ const SettingsPage: React.FC = () => {
             }
             label={
               <Typography variant="body1">
-                일일 자동 백업 사용 (앱 실행 시 하루 1회 JSON 파일 자동 다운로드)
+                일일 자동 백업 사용 (앱 실행 시 하루 1회 JSON 파일 자동 저장)
               </Typography>
             }
           />
         </Box>
+
+        {autoBackupEnabled && <BackupDirectorySetting />}
 
         <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mb: 3 }}>
           <Button variant="outlined" onClick={handleExportData}>
@@ -1304,6 +1307,8 @@ const SettingsPage: React.FC = () => {
         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 3 }}>
           ⚠️ 데이터 가져오기 시 기존 데이터가 덮어씌워집니다.
         </Typography>
+
+        <Divider sx={{ my: 2 }} />
 
         <PruneOldDataSection onBackup={handleExportData} />
 

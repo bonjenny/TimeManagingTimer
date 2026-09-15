@@ -1,4 +1,5 @@
 import { getAllItems, getItem, setItem } from './storage';
+import { writeToBackupDirectory } from './backupDirectory';
 
 export const AUTO_BACKUP_DATE_KEY = '__auto_backup_date';
 export const AUTO_BACKUP_ENABLED_KEY = '__auto_backup_enabled';
@@ -36,21 +37,25 @@ export const checkAndRunAutoBackup = (): boolean => {
       }
     }
 
-    // JSON 파일 생성 및 다운로드 (자동)
-    const blob = new Blob([JSON.stringify(export_data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `timekeeper-backup-auto-${today}.json`;
-    
-    // 문서에 추가하고 클릭 이벤트를 발생시켜 다운로드 실행
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    const content = JSON.stringify(export_data, null, 2);
+    const file_name = `timekeeper-backup-auto-${today}.json`;
 
-    // 성공적으로 다운로드를 시작했으면 오늘 날짜를 기록
+    // 오늘 날짜를 먼저 기록해 비동기 저장 중 중복 실행을 막는다
     setItem(AUTO_BACKUP_DATE_KEY, today);
+
+    // 설정 > 데이터 관리에서 고른 폴더가 있고 권한이 살아 있으면 그 폴더에 저장, 아니면 기존처럼 다운로드
+    void writeToBackupDirectory(file_name, content).then((saved) => {
+      if (saved) return;
+      const blob = new Blob([content], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = file_name;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    });
     return true;
 
   } catch (error) {
