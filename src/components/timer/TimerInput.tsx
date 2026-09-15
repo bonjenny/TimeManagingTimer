@@ -4,6 +4,7 @@ import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import ScheduleIcon from '@mui/icons-material/Schedule';
 import EventNoteIcon from '@mui/icons-material/EventNote';
 import CloseIcon from '@mui/icons-material/Close';
+import PlaylistAddIcon from '@mui/icons-material/PlaylistAdd';
 import { useTimerStore, TimerLog } from '../../store/useTimerStore';
 import { useProjectStore } from '../../store/useProjectStore';
 import CategoryAutocomplete from '../common/CategoryAutocomplete';
@@ -63,6 +64,29 @@ const TimerInput: React.FC = () => {
     setIsScheduling(false);
     setScheduleStart('');
     setScheduleEnd('');
+  };
+
+  const handleAddTodo = () => {
+    if (!title.trim()) return;
+    if (projectCode.trim() && projectName.trim()) {
+      addProject({ code: projectCode.trim(), name: projectName.trim() });
+    }
+    // 업무 기록에 "미완료(일시정지) 0분" 세션으로 넣는다. ▶ 로 시작하면 같은 업무의 새 세션이 이어진다.
+    const now = Date.now();
+    addLog({
+      id: crypto.randomUUID(),
+      title: title.trim(),
+      projectCode: projectCode.trim() || undefined,
+      category: category || undefined,
+      note: note.trim() || undefined,
+      startTime: now,
+      endTime: now,
+      lastPausedAt: now,
+      status: 'PAUSED',
+      pausedDuration: 0,
+      isTodo: true,
+    });
+    resetForm();
   };
 
   const handleStart = () => {
@@ -126,9 +150,15 @@ const TimerInput: React.FC = () => {
     }
   }, [projects]);
 
+  // Enter: 시작(예약 모드면 예약 등록) / Ctrl+Enter: 할 일로 추가 / Alt+Enter: 예약 모드 켜기(켜져 있으면 예약 등록)
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
+    if (e.key !== 'Enter' || e.shiftKey || e.nativeEvent.isComposing) return;
+    e.preventDefault();
+    if (e.ctrlKey || e.metaKey) {
+      handleAddTodo();
+    } else if (e.altKey && !is_scheduling) {
+      handleToggleScheduling();
+    } else {
       handleStart();
     }
   };
@@ -379,7 +409,7 @@ const TimerInput: React.FC = () => {
         />
 
         {/* 예약 모드 토글 */}
-        <Tooltip title={is_scheduling ? '예약 모드 해제' : '예약 모드'}>
+        <Tooltip title={is_scheduling ? '예약 모드 해제' : '예약 모드 (Alt+Enter)'}>
           <IconButton
             size="small"
             onClick={handleToggleScheduling}
@@ -390,8 +420,19 @@ const TimerInput: React.FC = () => {
           </IconButton>
         </Tooltip>
 
+        {/* 할 일로 추가 (시작하지 않고 목록에만 저장) */}
+        {!is_scheduling && (
+          <Tooltip title="할 일로 추가 - 업무 기록에 미완료로 등록 (Ctrl+Enter)">
+            <span>
+              <IconButton size="small" onClick={handleAddTodo} disabled={!title.trim()} sx={{ p: '6px' }}>
+                <PlaylistAddIcon sx={{ fontSize: 20 }} />
+              </IconButton>
+            </span>
+          </Tooltip>
+        )}
+
         {/* 시작/예약 버튼 */}
-        <Tooltip title={is_scheduling ? '예약 등록' : '타이머 시작'}>
+        <Tooltip title={is_scheduling ? '예약 등록 (Enter)' : '타이머 시작 (Enter)'}>
             <span>
                 <IconButton 
                     color={is_scheduling ? 'warning' : 'primary'}

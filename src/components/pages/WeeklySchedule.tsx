@@ -259,6 +259,7 @@ const WeeklySchedule: React.FC = () => {
     let filtered = logs.filter(
       (log) =>
         log.status !== 'SCHEDULED' &&
+        !log.isTodo &&
         log.startTime >= startTime &&
         log.startTime < endTime
     );

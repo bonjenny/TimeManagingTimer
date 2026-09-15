@@ -32,6 +32,9 @@ export interface TimerLog {
 
   // 예약 작업이 활성화될 때 원래 endTime을 보존 (자동 완료 시점 추적)
   scheduledEndTime?: number;
+
+  // Ctrl+Enter 로 시작 없이 등록한 할 일(0분 미완료 기록). 간트·주간·시간관리 집계에서 제외
+  isTodo?: boolean;
 }
 
 // 삭제된 로그 타입 (휴지통용)

@@ -10,6 +10,7 @@ import LightModeIcon from '@mui/icons-material/LightMode';
 import DarkModeIcon from '@mui/icons-material/DarkMode';
 import CloseIcon from '@mui/icons-material/Close';
 import PeopleIcon from '@mui/icons-material/People';
+import MenuBookIcon from '@mui/icons-material/MenuBook';
 import { useTimerStore } from '../store/useTimerStore';
 import FeedbackBoard from './pages/FeedbackBoard';
 import { getItem, getStorageUsage } from '../utils/storage';
@@ -32,7 +33,7 @@ const loadAndApplyScreenScale = () => {
   }
 };
 
-export type PageType = 'daily' | 'weekly' | 'monthly' | 'analysis' | 'timeManagement' | 'settings';
+export type PageType = 'daily' | 'weekly' | 'monthly' | 'analysis' | 'timeManagement' | 'settings' | 'guide';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -47,6 +48,7 @@ const PAGE_MAP: { page: PageType; label: string; icon: React.ReactNode }[] = [
   { page: 'analysis', label: '프로젝트 분석', icon: <AssessmentIcon sx={{ fontSize: 20, mr: 1, mb: '0px !important' }} /> },
   { page: 'timeManagement', label: '시간관리', icon: <TableChartIcon sx={{ fontSize: 20, mr: 1, mb: '0px !important' }} /> },
   { page: 'settings', label: '설정', icon: <SettingsIcon sx={{ fontSize: 20, mr: 1, mb: '0px !important' }} /> },
+  { page: 'guide', label: '가이드', icon: <MenuBookIcon sx={{ fontSize: 20, mr: 1, mb: '0px !important' }} /> },
 ];
 
 const ADMIN_PASSWORD_HASH = simpleHash(getAdminPassword());
@@ -149,9 +151,12 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, onPageChange }) 
               onChange={handleChange}
               textColor="primary"
               indicatorColor="primary"
+              variant="scrollable"
+              scrollButtons="auto"
               sx={{
                 minHeight: 64,
                 flexGrow: 1,
+                minWidth: 0, // 좁은 화면에서 탭이 다크모드 버튼을 덮지 않고 가로 스크롤되게
                 '& .MuiTab-root': {
                   minHeight: 64,
                   fontSize: '0.95rem',

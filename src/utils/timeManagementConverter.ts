@@ -25,7 +25,7 @@ export function convertLogsToTimeManagement(
   project_work_type_map: Record<string, string> = {}
 ): TimeManagementRow[] {
   const filtered_logs = logs.filter((log) => {
-    if (!log.endTime || log.status === 'SCHEDULED') return false;
+    if (!log.endTime || log.status === 'SCHEDULED' || log.isTodo) return false;
     const log_date = new Date(log.startTime);
     const target_date = new Date(date);
     return (

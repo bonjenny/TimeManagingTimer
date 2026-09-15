@@ -337,6 +337,8 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
     let filtered_logs = logs.filter(log => {
       // 삭제된 로그는 제외
       if ('deletedAt' in log && (log as any).deletedAt) return false;
+      // 시작 전 할 일(0분)은 시간대에 그릴 게 없다
+      if (log.isTodo) return false;
 
       // 해당 날짜 시간대에 세션이 있는지 확인
       const logEnd = log.endTime || currentTimeRef.current;

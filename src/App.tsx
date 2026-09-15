@@ -12,6 +12,7 @@ import DeployCalendar from './components/pages/DeployCalendar';
 import ProjectAnalysis from './components/pages/ProjectAnalysis';
 import TimeManagement from './components/pages/TimeManagement';
 import SettingsPage from './components/pages/SettingsPage';
+import GuidePage from './components/pages/GuidePage';
 import NewTaskModal from './components/modal/NewTaskModal';
 import { Box, Typography, IconButton, Tooltip, useMediaQuery, Snackbar } from '@mui/material';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
@@ -450,6 +451,8 @@ function App() {
         return <TimeManagement />;
       case 'settings':
         return <SettingsPage />;
+      case 'guide':
+        return <GuidePage />;
       default:
         return renderDailyPage();
     }

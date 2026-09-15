@@ -80,3 +80,21 @@ describe('TimerInput', () => {
     expect(activeTimer?.projectCode).toBe('PRJ001');
   });
 });
+
+describe('할 일로 추가 (Ctrl+Enter)', () => {
+  it('타이머를 시작하지 않고 업무 기록에 미완료 0분 세션으로 넣는다', () => {
+    const { useTimerStore: timerStore } = jest.requireActual('../../../store/useTimerStore');
+    const { render: r, screen: sc, fireEvent: fe } = jest.requireActual('@testing-library/react');
+    const TimerInputC = jest.requireActual('../../../components/timer/TimerInput').default;
+    timerStore.setState({ activeTimer: null, logs: [] });
+    r(<TimerInputC />);
+    const input = sc.getByPlaceholderText(/무엇을 하고 계신가요/);
+    fe.change(input, { target: { value: '나중에 할 일' } });
+    fe.keyDown(input, { key: 'Enter', ctrlKey: true });
+    const { logs, activeTimer } = timerStore.getState();
+    expect(activeTimer).toBeNull();
+    expect(logs).toHaveLength(1);
+    expect(logs[0]).toMatchObject({ title: '나중에 할 일', status: 'PAUSED', pausedDuration: 0, isTodo: true });
+    expect(logs[0].endTime).toBe(logs[0].startTime);
+  });
+});
