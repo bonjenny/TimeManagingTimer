@@ -6,7 +6,7 @@ import CheckIcon from '@mui/icons-material/Check';
 import { useTimerStore } from '../../store/useTimerStore';
 import { useProjectStore } from '../../store/useProjectStore';
 import { useTimerLogic } from '../../hooks/useTimerLogic';
-import { formatTimeDisplay, formatDuration } from '../../utils/timeUtils';
+import { formatTimeDisplay, formatDuration, formatDurationShort } from '../../utils/timeUtils';
 import CategoryAutocomplete from '../common/CategoryAutocomplete';
 
 const ActiveTimer: React.FC = () => {
@@ -406,23 +406,105 @@ const ActiveTimer: React.FC = () => {
 
   // ---- 모바일 (md 미만): 히어로 카드 ----
   if (is_compact) {
+    const start_label = new Date(activeTimer.startTime).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
     return (
-      <Paper elevation={0} sx={{ ...paper_sx, p: 2, borderRadius: 2 }}>
-        {status_bar}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 1, flexWrap: 'wrap' }}>
-          {status_chip}
+      <Paper
+        elevation={0}
+        sx={{
+          position: 'relative',
+          p: 2,
+          borderRadius: 3,
+          border: '1px solid',
+          borderColor: isRunning ? 'color-mix(in srgb, var(--primary-color) 35%, transparent)' : 'var(--border-color)',
+          // 진행 중이면 옅은 브랜드색 바탕, 일시정지면 기본 카드
+          background: isRunning
+            ? 'linear-gradient(180deg, color-mix(in srgb, var(--primary-color) 9%, var(--card-bg)) 0%, var(--card-bg) 100%) !important'
+            : undefined,
+        }}
+      >
+        {/* 상태 + 분류 */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 1.25, flexWrap: 'wrap', minWidth: 0 }}>
+          <Box
+            sx={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 0.75,
+              px: 1,
+              height: 24,
+              borderRadius: 12,
+              fontSize: 12,
+              fontWeight: 700,
+              color: isRunning ? 'var(--primary-color)' : 'text.secondary',
+              bgcolor: isRunning ? 'color-mix(in srgb, var(--primary-color) 14%, transparent)' : 'var(--bg-hover)',
+            }}
+          >
+            <Box
+              component="span"
+              sx={{
+                width: 7,
+                height: 7,
+                borderRadius: '50%',
+                bgcolor: 'currentColor',
+                animation: isRunning ? 'tk-pulse 1.6s ease-in-out infinite' : 'none',
+                '@keyframes tk-pulse': { '0%, 100%': { opacity: 1 }, '50%': { opacity: 0.25 } },
+              }}
+            />
+            {isRunning ? '진행 중' : '일시정지'}
+          </Box>
           {category_chip}
-          {project_chip}
-          {note_chip}
+          <Box sx={{ minWidth: 0, maxWidth: '60%', display: 'flex' }}>{project_chip}</Box>
         </Box>
-        {title_node}
-        <Typography variant="caption" color="text.secondary">
-          시작: {new Date(activeTimer.startTime).toLocaleTimeString()}
-        </Typography>
 
-        <Box sx={{ my: 2, textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}>
-          {elapsed_node}
-          {accumulated_node}
+        {title_node}
+
+        {/* 비고: 칩이 아니라 제목 아래 한 줄로 */}
+        {isEditingNote ? (
+          note_chip
+        ) : (
+          <Typography
+            onClick={handleNoteClick}
+            sx={{
+              fontSize: 13,
+              lineHeight: 1.5,
+              color: activeTimer.note ? 'text.secondary' : 'text.disabled',
+              cursor: 'pointer',
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+              overflowWrap: 'anywhere',
+            }}
+          >
+            {activeTimer.note || '+ 비고 추가'}
+          </Typography>
+        )}
+
+        {/* 경과 시간 */}
+        <Box sx={{ textAlign: 'center', mt: 2.5, mb: 2.5 }}>
+          <Box sx={{ display: 'inline-flex', alignItems: 'baseline', fontVariantNumeric: 'tabular-nums' }}>
+            <Typography sx={{ fontSize: 52, fontWeight: 700, letterSpacing: '-1.5px', lineHeight: 1, color: 'text.primary' }}>
+              {formatTimeDisplay(elapsedSeconds)}
+            </Typography>
+            <Typography
+              sx={{
+                fontSize: 28,
+                fontWeight: 600,
+                lineHeight: 1,
+                color: 'text.secondary',
+                opacity: showSeconds ? 1 : 0,
+                maxWidth: showSeconds ? 60 : 0,
+                overflow: 'hidden',
+                whiteSpace: 'nowrap',
+                transition: 'opacity 0.5s ease-out, max-width 0.3s ease-out',
+              }}
+            >
+              :{String(elapsedSeconds % 60).padStart(2, '0')}
+            </Typography>
+          </Box>
+          <Typography sx={{ mt: 0.75, fontSize: 13, color: 'text.secondary' }}>
+            누적 <Box component="span" sx={{ color: 'text.primary', fontWeight: 600 }}>{formatDurationShort(totalAccumulatedSeconds)}</Box>
+            {' · '}{start_label} 시작
+          </Typography>
         </Box>
 
         <Box sx={{ display: 'flex', gap: 1 }}>
@@ -430,7 +512,7 @@ const ActiveTimer: React.FC = () => {
             variant="outlined"
             startIcon={isRunning ? <PauseIcon /> : <PlayArrowIcon />}
             onClick={isRunning ? pauseAndMoveToLogs : resumeTimer}
-            sx={{ flex: 1, height: 48, whiteSpace: 'nowrap' }}
+            sx={{ flex: 1, height: 48, borderRadius: 3, whiteSpace: 'nowrap', fontWeight: 600, bgcolor: 'var(--card-bg)' }}
           >
             {isRunning ? '세션 종료' : '재개'}
           </Button>
@@ -439,12 +521,14 @@ const ActiveTimer: React.FC = () => {
             startIcon={<CheckIcon />}
             onClick={completeTimer}
             sx={{
-                flex: 1,
-                height: 48,
-                whiteSpace: 'nowrap',
-                bgcolor: 'var(--primary-color)',
-                color: 'white',
-                '&:hover': { bgcolor: 'var(--accent-color)' }
+              flex: 1,
+              height: 48,
+              borderRadius: 3,
+              whiteSpace: 'nowrap',
+              fontWeight: 700,
+              bgcolor: 'var(--primary-color)',
+              color: 'white',
+              '&:hover': { bgcolor: 'var(--accent-color)' },
             }}
           >
             완료

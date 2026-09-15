@@ -137,7 +137,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, onPageChange }) 
           borderColor: 'divider'
         }}
       >
-        <Container maxWidth="xl">
+        <Container maxWidth="xl" sx={is_compact ? { maxWidth: '752px !important' } : undefined}>
           <Toolbar disableGutters sx={{ minHeight: { xs: MOBILE_BAR_HEIGHT, md: 64 } }}>
             {/* 로고 영역 (모바일에서는 현재 화면 제목이 그 자리를 쓴다) */}
             {!is_compact && (
@@ -310,7 +310,8 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, onPageChange }) 
           minWidth: 0,
         }}
       >
-        <Container maxWidth="xl" disableGutters>
+        {/* 모바일·태블릿: 한 손으로 읽기 좋은 폭(720px)으로 가운데 정렬 */}
+        <Container maxWidth="xl" disableGutters sx={is_compact ? { maxWidth: '720px !important' } : undefined}>
           {children}
         </Container>
       </Box>

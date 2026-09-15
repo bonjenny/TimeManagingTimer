@@ -234,7 +234,7 @@ const TimerInput: React.FC = () => {
       renderInput={(params) => (
         <TextField
           {...params}
-          placeholder={is_scheduling ? "예약할 작업명을 입력하세요" : "무엇을 하고 계신가요? (Enter로 바로 시작)"}
+          placeholder={is_scheduling ? "예약할 작업명을 입력하세요" : is_compact ? "무엇을 하고 계신가요?" : "무엇을 하고 계신가요? (Enter로 바로 시작)"}
           variant="standard"
           InputProps={{ ...params.InputProps, disableUnderline: true }}
           onKeyDown={handleKeyDown}

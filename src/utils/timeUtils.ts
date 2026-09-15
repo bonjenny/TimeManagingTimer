@@ -129,6 +129,15 @@ export const formatDuration = (seconds: number): string => {
 };
 
 // HH:MM 형식 (큰 디스플레이용)
+/** 모바일용 읽기 쉬운 길이 표기: "56분", "4시간 36분", "2시간" */
+export const formatDurationShort = (seconds: number): string => {
+  const minutes = Math.floor(Math.max(0, Math.floor(seconds)) / 60);
+  if (minutes < 60) return `${minutes}분`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return m ? `${h}시간 ${m}분` : `${h}시간`;
+};
+
 export const formatTimeDisplay = (seconds: number): string => {
   const validSeconds = Math.max(0, Math.floor(seconds));
   

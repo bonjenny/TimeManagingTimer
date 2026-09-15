@@ -45,7 +45,7 @@ import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import { useTimerStore, TimerLog, DeletedLog } from '../../store/useTimerStore';
 import { useProjectStore } from '../../store/useProjectStore';
-import { formatDuration, formatTimeDisplay, getDurationSecondsExcludingLunch } from '../../utils/timeUtils';
+import { formatDuration, formatDurationShort, getDurationSecondsExcludingLunch } from '../../utils/timeUtils';
 import { getItem, setItem as setStorageItem } from '../../utils/storage';
 import CategoryAutocomplete from '../common/CategoryAutocomplete';
 
@@ -1090,8 +1090,8 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 1 }}>
             <Typography variant="h6" sx={{ fontSize: 17, fontWeight: 600, whiteSpace: 'nowrap' }}>최근 업무 기록</Typography>
             {totalDurationSeconds > 0 && (
-              <Typography sx={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
-                총 {formatDuration(totalDurationSeconds)}
+              <Typography sx={{ fontSize: 13, color: 'text.secondary', whiteSpace: 'nowrap' }}>
+                오늘 <Box component="span" sx={{ fontSize: 15, fontWeight: 700, color: 'text.primary' }}>{formatDurationShort(totalDurationSeconds)}</Box>
               </Typography>
             )}
           </Box>
@@ -1170,16 +1170,16 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
               <Box
                 key={task.group_key}
                 sx={{
-                  border: '1px solid var(--border-color)',
-                  borderColor: is_active_task ? 'primary.main' : 'var(--border-color)',
-                  borderRadius: 2,
-                  bgcolor: is_active_task ? 'var(--highlight-light)' : 'var(--card-bg)',
+                  border: '1px solid',
+                  borderColor: is_active_task ? 'color-mix(in srgb, var(--primary-color) 45%, transparent)' : 'var(--border-color)',
+                  borderRadius: 3,
+                  bgcolor: is_active_task ? 'color-mix(in srgb, var(--primary-color) 7%, var(--card-bg))' : 'var(--card-bg)',
                 }}
               >
                 {/* 카드 본문: 탭하면 작업 이력 펼침 */}
                 <Box
                   onClick={() => toggleExpand(task.group_key)}
-                  sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, p: 1.5, pr: 0.5, cursor: 'pointer' }}
+                  sx={{ display: 'flex', alignItems: 'center', gap: 1.25, py: 1.5, pl: 1.5, pr: 0.5, cursor: 'pointer' }}
                 >
                   <IconButton
                     aria-label={is_active_task ? '일시정지' : '진행'}
@@ -1192,8 +1192,10 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                       height: 40,
                       flexShrink: 0,
                       border: '1px solid',
-                      borderColor: is_active_task ? 'warning.main' : 'var(--border-color)',
-                      color: is_active_task ? 'warning.main' : 'primary.main',
+                      borderColor: is_active_task ? 'var(--primary-color)' : 'var(--border-color)',
+                      bgcolor: is_active_task ? 'var(--primary-color)' : 'transparent',
+                      color: is_active_task ? '#fff' : 'var(--primary-color)',
+                      '&:hover': { bgcolor: is_active_task ? 'var(--accent-color)' : 'var(--bg-hover)', color: is_active_task ? '#fff' : 'var(--primary-color)' },
                     }}
                   >
                     {is_active_task ? <PauseIcon /> : <PlayArrowIcon />}
@@ -1213,18 +1215,20 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                       <Box sx={{ minWidth: 0, display: 'flex' }}>
                         {renderTaskCategory(task, true)}
                       </Box>
+                      {task.sessions.length > 1 && (
+                        <Typography component="span" sx={{ fontSize: 11, color: 'text.secondary', whiteSpace: 'nowrap', ml: 0.25 }}>
+                          {task.sessions.length}회
+                        </Typography>
+                      )}
                     </Box>
                   </Box>
 
-                  <Box sx={{ textAlign: 'right', flexShrink: 0, fontVariantNumeric: 'tabular-nums', pt: 0.25 }}>
-                    <Typography sx={{ fontSize: 16, fontWeight: 700, lineHeight: 1.3, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
-                      {formatTimeDisplay(task.today_duration)}
-                    </Typography>
-                    <Typography sx={{ fontSize: 11, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
-                      총 {formatTimeDisplay(task.total_duration)}
+                  <Box sx={{ textAlign: 'right', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
+                    <Typography sx={{ fontSize: 16, fontWeight: 700, lineHeight: 1.3, color: task.today_duration > 0 ? 'text.primary' : 'text.disabled', whiteSpace: 'nowrap' }}>
+                      {formatDurationShort(task.today_duration)}
                     </Typography>
                     <Typography sx={{ fontSize: 11, color: 'text.secondary', whiteSpace: 'nowrap' }}>
-                      세션 {task.sessions.length}
+                      총 {formatDurationShort(task.total_duration)}
                     </Typography>
                   </Box>
 

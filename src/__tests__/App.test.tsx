@@ -168,66 +168,57 @@ describe('App', () => {
     });
   });
 
-  describe('반응형 레이아웃 (v0.10.4)', () => {
+  describe('반응형 레이아웃', () => {
     const original_match_media = window.matchMedia;
+
+    // 실제 브라우저처럼: 좁은 화면이면 max-width 조건(MUI breakpoints.down, App의 900px 조건)이 참
+    const mockViewport = (is_narrow: boolean) => {
+      window.matchMedia = jest.fn().mockImplementation((query: string) => ({
+        matches: query.includes('max-width') ? is_narrow : !is_narrow,
+        media: query,
+        onchange: null,
+        addListener: jest.fn(),
+        removeListener: jest.fn(),
+        addEventListener: jest.fn(),
+        removeEventListener: jest.fn(),
+        dispatchEvent: jest.fn(),
+      }));
+    };
 
     afterEach(() => {
       window.matchMedia = original_match_media;
     });
 
-    it('데스크탑에서 프리셋 패널이 왼쪽에 표시된다', () => {
-      window.matchMedia = jest.fn().mockImplementation((query: string) => ({
-        matches: query.includes('900') ? false : true,
-        media: query,
-        onchange: null,
-        addListener: jest.fn(),
-        removeListener: jest.fn(),
-        addEventListener: jest.fn(),
-        removeEventListener: jest.fn(),
-        dispatchEvent: jest.fn(),
-      }));
-
+    it('데스크탑에서는 상단 탭과 왼쪽 작업 프리셋 패널이 표시된다', () => {
+      mockViewport(false);
       render(<App />);
 
+      expect(screen.getByRole('tab', { name: /일간 타이머/i })).toBeInTheDocument();
       expect(screen.getByText('작업 프리셋')).toBeInTheDocument();
       expect(screen.getByPlaceholderText(/무엇을 하고 계신가요/i)).toBeInTheDocument();
+      expect(screen.queryByText('더보기')).not.toBeInTheDocument();
     });
 
-    it('모바일에서 프리셋 패널이 하단에 배치된다', () => {
-      window.matchMedia = jest.fn().mockImplementation((query: string) => ({
-        matches: query.includes('900') ? true : false,
-        media: query,
-        onchange: null,
-        addListener: jest.fn(),
-        removeListener: jest.fn(),
-        addEventListener: jest.fn(),
-        removeEventListener: jest.fn(),
-        dispatchEvent: jest.fn(),
-      }));
-
+    it('모바일에서는 하단 탭 바와 화면 제목, 빠른 시작이 표시된다', () => {
+      mockViewport(true);
       render(<App />);
 
-      expect(screen.getByText('작업 프리셋')).toBeInTheDocument();
-      expect(screen.getByPlaceholderText(/무엇을 하고 계신가요/i)).toBeInTheDocument();
+      expect(screen.queryByRole('tab', { name: /일간 타이머/i })).not.toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: '일간 타이머' })).toBeInTheDocument();
+      ['타이머', '주간', '시간관리', '캘린더', '더보기'].forEach((label) => {
+        expect(screen.getByText(label)).toBeInTheDocument();
+      });
+      expect(screen.getByText('빠른 시작')).toBeInTheDocument();
+      expect(screen.getByPlaceholderText('무엇을 하고 계신가요?')).toBeInTheDocument();
     });
 
-    it('모바일에서 레이아웃 요소들이 겹치지 않는다', () => {
-      window.matchMedia = jest.fn().mockImplementation((query: string) => ({
-        matches: query.includes('900') ? true : false,
-        media: query,
-        onchange: null,
-        addListener: jest.fn(),
-        removeListener: jest.fn(),
-        addEventListener: jest.fn(),
-        removeEventListener: jest.fn(),
-        dispatchEvent: jest.fn(),
-      }));
-
+    it('모바일 하단 탭으로 화면을 전환한다', async () => {
+      mockViewport(true);
+      const user = userEvent.setup();
       render(<App />);
 
-      expect(screen.getByText('작업 프리셋')).toBeInTheDocument();
-      expect(screen.getByPlaceholderText(/무엇을 하고 계신가요/i)).toBeInTheDocument();
-      expect(screen.getByText('TimeKeeper')).toBeInTheDocument();
+      await user.click(screen.getByText('주간'));
+      expect(screen.getByRole('heading', { name: '주간 일정' })).toBeInTheDocument();
     });
   });
 });
