@@ -1109,6 +1109,101 @@ export const ErpRegisterDemo: React.FC = () => {
 // 설정
 // ---------------------------------------------------------------------------
 
+/** 브라우저 재시작 후 풀린 백업 폴더 권한을 「방문할 때마다 허용」으로 계속 유지 */
+export const BackupPermissionDemo: React.FC = () => {
+  const D = 10;
+  const CLICK1 = 14; // 「권한 다시 허용」 클릭
+  const CLICK2 = 50; // 「방문할 때마다 허용」 클릭
+  const hideAfter = (p: number) => timeline([[0, 'opacity:1'], [p - 0.1, 'opacity:1'], [p, 'opacity:0'], [97, 'opacity:0'], [100, 'opacity:1']]);
+  const pill = (text: string, hoverAt?: number) => (
+    <Box
+      sx={{
+        height: 30,
+        borderRadius: 15,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: 12,
+        fontWeight: 600,
+        color: '#d3e3fd',
+        bgcolor: '#0b4a73',
+        animation: hoverAt
+          ? anim(timeline([[0, 'background-color:#0b4a73'], [hoverAt - 0.1, 'background-color:#0b4a73'], [hoverAt, 'background-color:#1766a0'], [CLICK2 + 1, 'background-color:#1766a0'], [CLICK2 + 1.1, 'background-color:#0b4a73'], [100, 'background-color:#0b4a73']]), D)
+          : undefined,
+      }}
+    >
+      {text}
+    </Box>
+  );
+  return (
+    <DemoFrame still={4} height={380}>
+      <At x={4} y={6} sx={{ fontWeight: 700, fontSize: 13 }}>데이터 관리</At>
+      <At x={4} y={15} sx={{ fontSize: 11, color: 'text.secondary' }}>브라우저를 다시 켠 다음 날, 설정 화면</At>
+
+      {/* 자동 백업 저장 폴더 줄 */}
+      <At x={4} y={26} w={92} sx={{ display: 'flex', alignItems: 'center', gap: 1, fontSize: 12 }}>
+        <span>자동 백업 저장 폴더:</span>
+        <b>📁 time-managing_auto-backup</b>
+        <MockButton>🗀 폴더 변경</MockButton>
+        {/* 권한이 생기면 버튼 자리까지 접힌다 */}
+        <Box sx={{ overflow: 'hidden', animation: anim(timeline([[0, 'max-width:140px; opacity:1'], [CLICK2 + 1.9, 'max-width:140px; opacity:1'], [CLICK2 + 4, 'max-width:0; opacity:0'], [97, 'max-width:0; opacity:0'], [100, 'max-width:140px; opacity:1']]), D) }}>
+          <MockButton primary>권한 다시 허용</MockButton>
+        </Box>
+        <MockButton sx={{ border: 'none', color: 'primary.main', bgcolor: 'transparent' }}>기본값으로</MockButton>
+      </At>
+      <At x={4} y={37} w={92} sx={{ fontSize: 11 }}>
+        <Box sx={{ color: 'warning.main', animation: anim(hideAfter(CLICK2 + 2), D) }}>
+          브라우저를 다시 켜서 폴더 쓰기 권한이 꺼졌습니다. [권한 다시 허용]을 누르고 &quot;방문할 때마다 허용&quot;을 고르면 계속 유지됩니다.
+        </Box>
+        <Box sx={{ position: 'absolute', top: 0, color: 'text.secondary', animation: anim(showBetween(CLICK2 + 2, 97), D) }}>
+          폴더를 고르면 자동 백업 파일이 그 폴더에 바로 저장됩니다. 권한이 없을 때는 다운로드 폴더로 저장됩니다.
+        </Box>
+      </At>
+
+      {/* 브라우저 권한 요청 창 (크롬) */}
+      <At
+        x="50%"
+        y={10}
+        w="300px"
+        sx={{
+          transform: 'translateX(-50%)',
+          bgcolor: '#202124',
+          color: '#e8eaed',
+          borderRadius: 3,
+          boxShadow: 10,
+          p: 1.8,
+          zIndex: 12,
+          animation: anim(showBetween(CLICK1 + 2, CLICK2 + 1), D),
+        }}
+      >
+        <Box sx={{ position: 'absolute', right: 12, top: 10, fontSize: 14, color: '#bdc1c6' }}>✕</Box>
+        <Box sx={{ fontSize: 13, fontWeight: 600, pr: 3, lineHeight: 1.35 }}>developer.ecount.com에서 다음 권한을 요청합니다.</Box>
+        <Box sx={{ fontSize: 10, color: '#bdc1c6', mt: 0.5, mb: 1.2 }}>이 사이트를 마지막으로 방문했을 때의 파일을 보고 수정합니다.</Box>
+        <Box sx={{ bgcolor: '#2d2e31', borderRadius: 2, px: 1.2, py: 1, fontSize: 11, mb: 1.2 }}>🗀 time-managing_auto-backup</Box>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.8 }}>
+          {pill('이번에만 허용')}
+          {pill('방문할 때마다 허용', 38)}
+          {pill('허용 안함')}
+        </Box>
+      </At>
+
+      {/* 결과 설명 */}
+      <At x={4} y={62} w={92} sx={{ border: '1px solid', borderColor: 'success.main', borderRadius: 1.5, bgcolor: 'background.paper', p: 1.2, animation: anim(showBetween(CLICK2 + 6, 97), D) }}>
+        <Box sx={{ fontWeight: 700, color: 'success.main', mb: 0.4 }}>✓ 권한이 계속 유지됩니다</Box>
+        <Box sx={{ fontSize: 11, color: 'text.secondary', lineHeight: 1.6 }}>
+          다음부터는 브라우저를 다시 켜도 묻지 않고 📁 time-managing_auto-backup 폴더에 자동 백업됩니다.
+          <br />
+          「이번에만 허용」을 고르면 브라우저를 닫을 때 다시 풀립니다.
+        </Box>
+      </At>
+
+      <Cursor dur={D} path={[[0, 60, 97], [10, 57, 29], [CLICK1 + 2, 57, 29], [34, 50, 59], [CLICK2 - 1, 50, 59], [70, 60, 97], [100, 60, 97]]} />
+      <ClickRing x={57.5} y={30} at={[CLICK1]} dur={D} />
+      <ClickRing x={50.5} y={60} at={[CLICK2 - 1]} dur={D} />
+    </DemoFrame>
+  );
+};
+
 export const PruneDemo: React.FC = () => {
   const D = 9;
   return (
@@ -1285,6 +1380,7 @@ export const GUIDE_DEMOS = {
   multiSort: MultiSortDemo,
   erpRegister: ErpRegisterDemo,
   prune: PruneDemo,
+  backupPermission: BackupPermissionDemo,
   shortcut: ShortcutDemo,
   qna: QnaDemo,
 } as const;
