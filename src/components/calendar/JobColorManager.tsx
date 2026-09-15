@@ -11,7 +11,11 @@ import {
   List,
   ListItem,
   ListItemText,
+  IconButton,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
+import CloseIcon from '@mui/icons-material/Close';
 import { useDeployCalendarStore } from '../../store/useDeployCalendarStore';
 import { useProjectStore } from '../../store/useProjectStore';
 import { useTimerStore } from '../../store/useTimerStore';
@@ -54,6 +58,8 @@ const JobColorManager: React.FC<JobColorManagerProps> = ({ open, onClose, jobCod
   const { job_colors, setJobColor, getUniqueJobCodes } = useDeployCalendarStore();
   const { getProjectName } = useProjectStore();
   const { themeConfig } = useTimerStore();
+  const theme = useTheme();
+  const is_phone = useMediaQuery(theme.breakpoints.down('sm'));
   
   // 테마 팔레트에서 색상 목록 (다크모드 보정 적용)
   const color_palette = useMemo(() => {
@@ -77,10 +83,23 @@ const JobColorManager: React.FC<JobColorManagerProps> = ({ open, onClose, jobCod
   };
   
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>잡 색상 설정</DialogTitle>
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth fullScreen={is_phone}>
+      <DialogTitle
+        sx={
+          is_phone
+            ? { display: 'flex', alignItems: 'center', gap: 0.5, px: 1, py: 0.5, fontSize: 17, borderBottom: '1px solid', borderColor: 'divider' }
+            : undefined
+        }
+      >
+        {is_phone && (
+          <IconButton aria-label="닫기" onClick={onClose} sx={{ width: 44, height: 44 }}>
+            <CloseIcon />
+          </IconButton>
+        )}
+        잡 색상 설정
+      </DialogTitle>
       
-      <DialogContent>
+      <DialogContent sx={is_phone ? { px: 2 } : undefined}>
         {job_codes.length === 0 ? (
           <Typography color="text.secondary" sx={{ py: 2, textAlign: 'center' }}>
             {jobCodesOverride !== undefined
@@ -101,6 +120,9 @@ const JobColorManager: React.FC<JobColorManagerProps> = ({ open, onClose, jobCod
                     alignItems: 'center',
                     gap: 2,
                     py: 1.5,
+                    // 폰: 1줄 = 잡 코드/이름 + 직접 입력, 2줄 = 팔레트 전체 폭
+                    flexWrap: { xs: 'wrap', sm: 'nowrap' },
+                    px: { xs: 0, sm: 2 },
                     borderBottom: '1px solid',
                     borderColor: 'divider',
                   }}
@@ -111,20 +133,29 @@ const JobColorManager: React.FC<JobColorManagerProps> = ({ open, onClose, jobCod
                     sx={{ flex: 1, minWidth: 0 }}
                   />
 
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, maxWidth: 280 }}>
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 1,
+                      maxWidth: { xs: 'none', sm: 280 },
+                      order: { xs: 2, sm: 0 },
+                      flexBasis: { xs: '100%', sm: 'auto' },
+                    }}
+                  >
                     {/* 기본 색상 */}
                     <Box>
                       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
                         기본 색상
                       </Typography>
-                      <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                      <Box sx={{ display: 'flex', gap: { xs: 0.75, sm: 0.5 }, flexWrap: 'wrap' }}>
                         {DEFAULT_JOB_COLORS.map((color) => (
                           <Box
                             key={color}
                             onClick={() => handleColorChange(job_code, color)}
                             sx={{
-                              width: 24,
-                              height: 24,
+                              width: { xs: 30, sm: 24 },
+                              height: { xs: 30, sm: 24 },
                               bgcolor: color,
                               borderRadius: '6px',
                               cursor: 'pointer',
@@ -142,14 +173,14 @@ const JobColorManager: React.FC<JobColorManagerProps> = ({ open, onClose, jobCod
                       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
                         테마 색상
                       </Typography>
-                      <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                      <Box sx={{ display: 'flex', gap: { xs: 0.75, sm: 0.5 }, flexWrap: 'wrap' }}>
                         {color_palette.map((color) => (
                           <Box
                             key={color}
                             onClick={() => handleColorChange(job_code, color)}
                             sx={{
-                              width: 24,
-                              height: 24,
+                              width: { xs: 30, sm: 24 },
+                              height: { xs: 30, sm: 24 },
                               bgcolor: color,
                               borderRadius: '6px',
                               cursor: 'pointer',
@@ -171,10 +202,13 @@ const JobColorManager: React.FC<JobColorManagerProps> = ({ open, onClose, jobCod
                     onChange={(e) => handleColorChange(job_code, e.target.value)}
                     size="small"
                     sx={{
-                      width: 50,
+                      width: { xs: 56, sm: 50 },
+                      order: { xs: 1, sm: 0 },
+                      flexShrink: { xs: 0, sm: 1 },
                       '& input': {
                         padding: '4px',
                         cursor: 'pointer',
+                        ...(is_phone && { height: 34 }),
                       },
                     }}
                   />
@@ -185,8 +219,14 @@ const JobColorManager: React.FC<JobColorManagerProps> = ({ open, onClose, jobCod
         )}
       </DialogContent>
       
-      <DialogActions>
-        <Button onClick={onClose} variant="contained">
+      <DialogActions
+        sx={
+          is_phone
+            ? { px: 2, pt: 1.5, pb: 'calc(12px + env(safe-area-inset-bottom))', borderTop: '1px solid', borderColor: 'divider' }
+            : undefined
+        }
+      >
+        <Button onClick={onClose} variant="contained" fullWidth={is_phone} sx={is_phone ? { minHeight: 44 } : undefined}>
           닫기
         </Button>
       </DialogActions>

@@ -94,7 +94,7 @@ const ErpMappingFinder: React.FC<Props> = ({ project, project_name, need_dev, se
           size="small"
           label="프로젝트 코드 또는 작업 번호"
           value={query}
-          sx={{ width: 210 }}
+          sx={{ width: { xs: '100%', md: 210 } }}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && query.trim()) handleFind();
@@ -104,7 +104,7 @@ const ErpMappingFinder: React.FC<Props> = ({ project, project_name, need_dev, se
           size="small"
           label="개발 번호 (선택)"
           value={dev_no}
-          sx={{ width: 130 }}
+          sx={{ width: { xs: '100%', md: 130 } }}
           onChange={(e) => setDevNo(e.target.value.replace(/\D/g, ''))}
         />
         <Button
@@ -112,6 +112,7 @@ const ErpMappingFinder: React.FC<Props> = ({ project, project_name, need_dev, se
           variant="outlined"
           startIcon={<SearchIcon />}
           disabled={!session || !query.trim() || loading}
+          sx={{ width: { xs: '100%', md: 'auto' }, minHeight: { xs: 44, md: 'auto' }, whiteSpace: 'nowrap' }}
           onClick={handleFind}
         >
           {loading ? '찾는 중…' : '찾기'}
@@ -122,7 +123,7 @@ const ErpMappingFinder: React.FC<Props> = ({ project, project_name, need_dev, se
             size="small"
             label="작업 게시글"
             value={work_sid}
-            sx={{ minWidth: 260 }}
+            sx={{ minWidth: { xs: 0, md: 260 }, width: { xs: '100%', md: 'auto' } }}
             onChange={(e) => handleSelectWork(e.target.value)}
           >
             {works.map((w) => (
@@ -138,7 +139,7 @@ const ErpMappingFinder: React.FC<Props> = ({ project, project_name, need_dev, se
             size="small"
             label="개발 게시글"
             value={dev_sid}
-            sx={{ minWidth: 260 }}
+            sx={{ minWidth: { xs: 0, md: 260 }, width: { xs: '100%', md: 'auto' } }}
             onChange={(e) => setDevSid(e.target.value)}
           >
             <MenuItem value="">없음</MenuItem>
@@ -153,6 +154,7 @@ const ErpMappingFinder: React.FC<Props> = ({ project, project_name, need_dev, se
           size="small"
           variant="contained"
           disabled={!can_add}
+          sx={{ width: { xs: '100%', md: 'auto' }, minHeight: { xs: 44, md: 'auto' }, whiteSpace: 'nowrap' }}
           onClick={() => work && onAdd(project, dev ? { work, dev } : { work })}
         >
           매핑 추가

@@ -35,14 +35,39 @@ interface FrameProps {
   still: number;
 }
 
-/** 예시 화면 틀. 마우스를 올리면 멈추고, 움직임 줄이기 설정이면 핵심 장면에서 멈춘다. */
-export const DemoFrame: React.FC<FrameProps> = ({ children, height = 260, still }) => (
+const DESIGN_WIDTH = 760;
+
+/**
+ * 예시 화면 틀. 마우스를 올리면 멈추고, 움직임 줄이기 설정이면 핵심 장면에서 멈춘다.
+ * 760px 기준으로 그린 뒤, 그보다 좁은 화면(모바일)에서는 통째로 축소해 글자·버튼 배치가 깨지지 않게 한다.
+ */
+export const DemoFrame: React.FC<FrameProps> = ({ children, height = 260, still }) => {
+  const outer_ref = React.useRef<HTMLDivElement>(null);
+  const [scale, setScale] = React.useState(1);
+  React.useEffect(() => {
+    const el = outer_ref.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(([entry]) => setScale(Math.min(1, entry.contentRect.width / DESIGN_WIDTH)));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  return (
+    <Box ref={outer_ref} sx={{ width: '100%', maxWidth: DESIGN_WIDTH, mx: 'auto', height: height * scale, overflow: 'hidden' }}>
+      <DemoFrameInner height={height} still={still} scale={scale}>
+        {children}
+      </DemoFrameInner>
+    </Box>
+  );
+};
+
+const DemoFrameInner: React.FC<FrameProps & { scale: number }> = ({ children, height = 260, still, scale }) => (
   <Box
     sx={{
       position: 'relative',
       height,
-      maxWidth: 760,
-      mx: 'auto',
+      width: DESIGN_WIDTH,
+      transform: scale < 1 ? `scale(${scale})` : undefined,
+      transformOrigin: 'top left',
       border: '1px solid',
       borderColor: 'divider',
       borderRadius: 2,

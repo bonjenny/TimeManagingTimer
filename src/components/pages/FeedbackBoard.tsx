@@ -21,8 +21,12 @@ import {
   CircularProgress,
   FormControlLabel,
   Switch,
+  ButtonBase,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
+import CloseIcon from '@mui/icons-material/Close';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -66,7 +70,69 @@ const getCategoryInfo = (category: string | undefined) => {
   return CATEGORY_LABELS[category || 'etc'] || CATEGORY_LABELS.etc;
 };
 
+// 카테고리 칩 (목록·상세 공용)
+const renderCategoryChip = (category: string | undefined) => {
+  const info = getCategoryInfo(category);
+  return (
+    <Chip
+      label={info.label}
+      size="small"
+      variant="outlined"
+      sx={{
+        height: 20,
+        fontSize: '0.7rem',
+        borderColor: info.color,
+        color: info.color,
+        bgcolor: 'transparent',
+      }}
+    />
+  );
+};
+
+// 관리자 상태 칩 (목록·상세 공용)
+const renderStatusChip = (post: FeedbackPost) =>
+  post.admin_status && (
+    <Chip
+      label={
+        post.admin_status === 'completed' && post.completed_version
+          ? `완료 ${post.completed_version}`
+          : ADMIN_STATUS_LABELS[post.admin_status].label
+      }
+      size="small"
+      sx={{
+        height: 20,
+        fontSize: '0.7rem',
+        bgcolor: ADMIN_STATUS_LABELS[post.admin_status].color,
+        color: '#fff',
+      }}
+    />
+  );
+
+// 모바일(< md) 터치 높이 / 휴대폰 전체화면 대화상자 하단 버튼
+const TOUCH_MIN_HEIGHT = { xs: 44, md: 'auto' };
+const PHONE_ACTIONS_SX = { '& > .MuiButton-root': { flex: { xs: 1, sm: '0 1 auto' }, minHeight: { xs: 44, sm: 'auto' } } };
+
+// 대화상자 제목: 휴대폰 전체화면일 때 왼쪽에 ✕
+const DialogHeader: React.FC<{ is_phone: boolean; onClose: () => void; children: React.ReactNode }> = ({
+  is_phone,
+  onClose,
+  children,
+}) => (
+  <DialogTitle sx={is_phone ? { display: 'flex', alignItems: 'center', gap: 1 } : undefined}>
+    {is_phone && (
+      <IconButton edge="start" aria-label="닫기" onClick={onClose}>
+        <CloseIcon />
+      </IconButton>
+    )}
+    {children}
+  </DialogTitle>
+);
+
 const FeedbackBoard: React.FC = () => {
+  const theme = useTheme();
+  const is_mobile = useMediaQuery(theme.breakpoints.down('md'));
+  const is_phone = useMediaQuery(theme.breakpoints.down('sm'));
+
   // 게시글 목록
   const [posts, setPosts] = useState<FeedbackPost[]>([]);
   const [loading, setLoading] = useState(true);
@@ -484,6 +550,30 @@ const FeedbackBoard: React.FC = () => {
   // 목록 뷰
   const renderListView = () => (
     <>
+      {is_mobile ? (
+        // 모바일 헤더: 제목 + 새로고침 + 글쓰기 한 줄, 설명은 아래
+        <Box sx={{ mb: 1.5 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <Typography component="h2" sx={{ fontSize: 17, fontWeight: 700, flex: 1, minWidth: 0 }}>
+              건의사항
+            </Typography>
+            <IconButton onClick={loadPosts} disabled={loading} title="새로고침" sx={{ width: 44, height: 44 }}>
+              <RefreshIcon />
+            </IconButton>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={handleWriteClick}
+              sx={{ minHeight: 44, whiteSpace: 'nowrap', bgcolor: 'var(--primary-color)', color: 'white', '&:hover': { bgcolor: 'var(--accent-color)' } }}
+            >
+              글쓰기
+            </Button>
+          </Box>
+          <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
+            앱 개선 아이디어나 버그 리포트를 남겨주세요.
+          </Typography>
+        </Box>
+      ) : (
       <Paper
         variant="outlined"
         sx={{
@@ -517,7 +607,54 @@ const FeedbackBoard: React.FC = () => {
           </Box>
         </Box>
       </Paper>
+      )}
 
+      {is_mobile && !loading && posts.length > 0 ? (
+        // 모바일 목록: 카드 (칩 행 → 제목 2줄 → 작성자 · 날짜 · 댓글 수)
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          {posts.map((post) => (
+            <ButtonBase
+              key={post.id}
+              component="div"
+              onClick={() => handlePostClick(post)}
+              onContextMenu={(e: React.MouseEvent) => handlePostContextMenu(post, e)}
+              sx={{
+                display: 'block',
+                width: '100%',
+                textAlign: 'left',
+                p: 1.5,
+                borderRadius: 2,
+                border: 1,
+                borderColor: 'divider',
+                bgcolor: post.category === 'release' ? 'rgba(255, 235, 59, 0.15)' : 'var(--card-bg)',
+              }}
+            >
+              <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap', mb: 0.75 }}>
+                {renderCategoryChip(post.category)}
+                {renderStatusChip(post)}
+              </Box>
+              <Typography
+                sx={{
+                  fontSize: 15,
+                  fontWeight: 600,
+                  lineHeight: 1.4,
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                  overflowWrap: 'anywhere',
+                }}
+              >
+                {post.title}
+              </Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                {post.nickname} · {formatDate(post.created_at)}
+                {post.comments && post.comments.length > 0 && ` · 댓글 ${post.comments.length}`}
+              </Typography>
+            </ButtonBase>
+          ))}
+        </Box>
+      ) : (
       <Paper variant="outlined" sx={{ borderColor: 'var(--border-color)' }}>
         {loading ? (
           <Box sx={{ p: 6, textAlign: 'center' }}>
@@ -555,38 +692,12 @@ const FeedbackBoard: React.FC = () => {
                     <ListItemText
                       primary={
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5, flexWrap: 'wrap' }}>
-                          <Chip
-                            label={getCategoryInfo(post.category).label}
-                            size="small"
-                            variant="outlined"
-                            sx={{
-                              height: 20,
-                              fontSize: '0.7rem',
-                              borderColor: getCategoryInfo(post.category).color,
-                              color: getCategoryInfo(post.category).color,
-                              bgcolor: 'transparent',
-                            }}
-                          />
-                          <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                          {renderCategoryChip(post.category)}
+                          <Typography variant="body1" sx={{ fontWeight: 500, minWidth: 0, overflowWrap: 'anywhere' }}>
                             {post.title}
                           </Typography>
                           {/* 관리자 상태 라벨 */}
-                          {post.admin_status && (
-                            <Chip
-                              label={
-                                post.admin_status === 'completed' && post.completed_version
-                                  ? `완료 ${post.completed_version}`
-                                  : ADMIN_STATUS_LABELS[post.admin_status].label
-                              }
-                              size="small"
-                              sx={{
-                                height: 20,
-                                fontSize: '0.7rem',
-                                bgcolor: ADMIN_STATUS_LABELS[post.admin_status].color,
-                                color: '#fff',
-                              }}
-                            />
-                          )}
+                          {renderStatusChip(post)}
                           {post.comments && post.comments.length > 0 && (
                             <Typography variant="caption" color="primary">
                               [{post.comments.length}]
@@ -607,6 +718,7 @@ const FeedbackBoard: React.FC = () => {
           </List>
         )}
       </Paper>
+      )}
     </>
   );
 
@@ -616,48 +728,25 @@ const FeedbackBoard: React.FC = () => {
 
     return (
       <>
-        <Box sx={{ mb: 2 }}>
-          <Button startIcon={<ArrowBackIcon />} onClick={handleBack} sx={{ color: 'text.secondary' }}>
+        <Box sx={{ mb: { xs: 1, md: 2 } }}>
+          <Button startIcon={<ArrowBackIcon />} onClick={handleBack} sx={{ color: 'text.secondary', minHeight: TOUCH_MIN_HEIGHT }}>
             목록으로
           </Button>
         </Box>
 
-        <Paper variant="outlined" sx={{ p: 3, borderColor: 'var(--border-color)', mb: 3 }}>
+        <Paper
+          variant="outlined"
+          sx={{ p: { xs: 2, md: 3 }, borderRadius: { xs: 2, md: 1 }, borderColor: 'var(--border-color)', mb: { xs: 2, md: 3 } }}
+        >
           {/* 헤더 */}
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-            <Box>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2, gap: 1 }}>
+            <Box sx={{ minWidth: 0 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, flexWrap: 'wrap' }}>
-                <Chip
-                  label={getCategoryInfo(selected_post.category).label}
-                  size="small"
-                  variant="outlined"
-                  sx={{
-                    height: 20,
-                    fontSize: '0.7rem',
-                    borderColor: getCategoryInfo(selected_post.category).color,
-                    color: getCategoryInfo(selected_post.category).color,
-                    bgcolor: 'transparent',
-                  }}
-                />
+                {renderCategoryChip(selected_post.category)}
                 {/* 관리자 상태 라벨 */}
-                {selected_post.admin_status && (
-                  <Chip
-                    label={
-                      selected_post.admin_status === 'completed' && selected_post.completed_version
-                        ? `완료 ${selected_post.completed_version}`
-                        : ADMIN_STATUS_LABELS[selected_post.admin_status].label
-                    }
-                    size="small"
-                    sx={{
-                      height: 20,
-                      fontSize: '0.7rem',
-                      bgcolor: ADMIN_STATUS_LABELS[selected_post.admin_status].color,
-                      color: '#fff',
-                    }}
-                  />
-                )}
+                {renderStatusChip(selected_post)}
               </Box>
-              <Typography variant="h5" sx={{ fontWeight: 600 }}>
+              <Typography variant="h5" sx={{ fontWeight: 600, fontSize: { xs: 19, md: '1.5rem' }, overflowWrap: 'anywhere' }}>
                 {selected_post.title}
               </Typography>
               <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
@@ -665,7 +754,8 @@ const FeedbackBoard: React.FC = () => {
                 {selected_post.updated_at !== selected_post.created_at && ' (수정됨)'}
               </Typography>
             </Box>
-            <Box sx={{ display: 'flex', gap: 1 }}>
+            {/* 모바일: 아이콘 버튼 터치 영역 40px */}
+            <Box sx={{ display: 'flex', gap: { xs: 0, md: 1 }, flexShrink: 0, mr: { xs: -1, md: 0 }, mt: { xs: -1, md: 0 }, '& .MuiIconButton-root': { p: { xs: '10px', md: '5px' } } }}>
               <IconButton size="small" onClick={handleEditClick} disabled={saving}>
                 <EditIcon fontSize="small" />
               </IconButton>
@@ -680,20 +770,26 @@ const FeedbackBoard: React.FC = () => {
           {/* 본문 */}
           <Typography
             variant="body1"
-            sx={{ whiteSpace: 'pre-wrap', lineHeight: 1.8, minHeight: 100 }}
+            sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', lineHeight: 1.8, minHeight: 100 }}
           >
             {selected_post.content}
           </Typography>
         </Paper>
 
         {/* 댓글 영역 */}
-        <Box sx={{ mt: 4 }}>
-          <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+        <Box sx={{ mt: { xs: 3, md: 4 } }}>
+          <Typography
+            variant="h6"
+            sx={{ mb: { xs: 1.5, md: 2 }, fontWeight: { xs: 700, md: 600 }, fontSize: { xs: 17, md: '1.25rem' } }}
+          >
             댓글 {selected_post.comments?.length || 0}
           </Typography>
 
           {/* 댓글 목록 */}
-          <Paper variant="outlined" sx={{ borderColor: 'var(--border-color, #eaeaea)', mb: 3 }}>
+          <Paper
+            variant="outlined"
+            sx={{ borderColor: 'var(--border-color, #eaeaea)', borderRadius: { xs: 2, md: 1 }, overflow: 'hidden', mb: { xs: 2, md: 3 } }}
+          >
             {!selected_post.comments || selected_post.comments.length === 0 ? (
               <Box sx={{ p: 3, textAlign: 'center', color: 'text.secondary' }}>
                 <Typography variant="body2">첫 번째 댓글을 남겨보세요.</Typography>
@@ -707,14 +803,15 @@ const FeedbackBoard: React.FC = () => {
                       alignItems="flex-start"
                       sx={{
                         py: 2,
+                        px: { xs: 1.5, md: 2 },
                         bgcolor: comment.is_admin ? 'rgba(16, 185, 129, 0.08)' : 'inherit',
                         borderLeft: comment.is_admin ? '3px solid #10b981' : 'none',
                       }}
                     >
                       <ListItemText
                         primary={
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5, flexWrap: 'wrap', columnGap: 1 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
                               <Typography
                                 variant="subtitle2"
                                 sx={{
@@ -745,7 +842,7 @@ const FeedbackBoard: React.FC = () => {
                                 size="small"
                                 onClick={() => handleCommentDeleteClick(comment.id)}
                                 disabled={saving}
-                                sx={{ color: 'text.secondary', p: 0.5 }}
+                                sx={{ color: 'text.secondary', p: { xs: 1.5, md: 0.5 }, m: { xs: -1, md: 0 } }}
                               >
                                 <DeleteIcon sx={{ fontSize: 16 }} />
                               </IconButton>
@@ -753,7 +850,7 @@ const FeedbackBoard: React.FC = () => {
                           </Box>
                         }
                         secondary={
-                          <Typography variant="body2" color="text.primary" sx={{ whiteSpace: 'pre-wrap' }}>
+                          <Typography variant="body2" color="text.primary" sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
                             {comment.content}
                           </Typography>
                         }
@@ -766,9 +863,14 @@ const FeedbackBoard: React.FC = () => {
           </Paper>
 
           {/* 댓글 작성 폼 */}
-          <Paper variant="outlined" sx={{ p: 2, borderColor: 'var(--border-color)', bgcolor: 'var(--bg-tertiary)' }}>
-            <Box sx={{ display: 'flex', gap: 2, mb: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* 모바일: 스위치 한 줄 → 닉네임·비밀번호(폭 되면 나란히) → 입력칸 → 전체 폭 등록 버튼 */}
+          <Paper
+            variant="outlined"
+            sx={{ p: 2, borderRadius: { xs: 2, md: 1 }, borderColor: 'var(--border-color)', bgcolor: 'var(--bg-tertiary)' }}
+          >
+            <Box sx={{ display: 'flex', gap: { xs: 1.5, md: 2 }, mb: 2, alignItems: 'center', flexWrap: 'wrap' }}>
               <FormControlLabel
+                sx={{ flexBasis: { xs: '100%', md: 'auto' } }}
                 control={
                   <Switch
                     checked={is_admin_comment}
@@ -793,7 +895,7 @@ const FeedbackBoard: React.FC = () => {
                     placeholder="익명"
                     value={comment_nickname}
                     onChange={(e) => setCommentNickname(e.target.value)}
-                    sx={{ width: 150 }}
+                    sx={{ width: { md: 150 }, flex: { xs: '1 1 140px', md: '0 1 auto' }, minWidth: 0 }}
                   />
                   <TextField
                     size="small"
@@ -802,7 +904,7 @@ const FeedbackBoard: React.FC = () => {
                     placeholder="삭제 시 필요"
                     value={comment_password}
                     onChange={(e) => setCommentPassword(e.target.value)}
-                    sx={{ width: 150 }}
+                    sx={{ width: { md: 150 }, flex: { xs: '1 1 140px', md: '0 1 auto' }, minWidth: 0 }}
                   />
                 </>
               )}
@@ -821,7 +923,10 @@ const FeedbackBoard: React.FC = () => {
                 variant="contained"
                 onClick={handleCommentSubmit}
                 disabled={!comment_content.trim() || (!is_admin_comment && !comment_password.trim()) || saving}
-                sx={{ 
+                sx={{
+                  width: { xs: '100%', md: 'auto' },
+                  minHeight: TOUCH_MIN_HEIGHT,
+                  whiteSpace: 'nowrap',
                   bgcolor: is_admin_comment ? '#10b981' : 'var(--primary-color)', 
                   color: 'white', 
                   '&:hover': { bgcolor: is_admin_comment ? '#059669' : 'var(--accent-color)' } 
@@ -839,26 +944,27 @@ const FeedbackBoard: React.FC = () => {
   // 글쓰기/수정 뷰
   const renderWriteView = () => (
     <>
-      <Box sx={{ mb: 2 }}>
-        <Button startIcon={<ArrowBackIcon />} onClick={handleBack} sx={{ color: 'text.secondary' }}>
+      <Box sx={{ mb: { xs: 1, md: 2 } }}>
+        <Button startIcon={<ArrowBackIcon />} onClick={handleBack} sx={{ color: 'text.secondary', minHeight: TOUCH_MIN_HEIGHT }}>
           {is_editing ? '취소' : '목록으로'}
         </Button>
       </Box>
 
-      <Paper variant="outlined" sx={{ p: 3, borderColor: 'var(--border-color)' }}>
-        <Typography variant="h5" sx={{ fontWeight: 600, mb: 3 }}>
+      <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 }, borderRadius: { xs: 2, md: 1 }, borderColor: 'var(--border-color)' }}>
+        <Typography variant="h5" sx={{ fontWeight: 600, mb: { xs: 2, md: 3 }, fontSize: { xs: 19, md: '1.5rem' } }}>
           {is_editing ? '게시글 수정' : '새 게시글 작성'}
         </Typography>
 
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 2, md: 2.5 } }}>
           {/* 카테고리 선택 */}
-          <Box sx={{ display: 'flex', gap: 1 }}>
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
             {Object.entries(CATEGORY_LABELS).map(([key, { label, color }]) => (
               <Chip
                 key={key}
                 label={label}
                 onClick={() => setFormCategory(key as 'idea' | 'bug' | 'release' | 'etc')}
                 sx={{
+                  height: { xs: 36, md: 32 },
                   bgcolor: form_category === key ? color : 'var(--bg-hover)',
                   color: form_category === key ? '#fff' : 'text.primary',
                   cursor: 'pointer',
@@ -919,7 +1025,17 @@ const FeedbackBoard: React.FC = () => {
           )}
 
           {/* 버튼 */}
-          <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end', mt: 2 }}>
+          {/* 모바일: 전체 폭 등록 버튼 위, 취소 아래 */}
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: { xs: 'column-reverse', md: 'row' },
+              gap: { xs: 1, md: 2 },
+              justifyContent: 'flex-end',
+              mt: { xs: 1, md: 2 },
+              '& .MuiButton-root': { minHeight: TOUCH_MIN_HEIGHT, whiteSpace: 'nowrap' },
+            }}
+          >
             <Button onClick={handleBack} color="inherit" disabled={saving}>
               취소
             </Button>
@@ -945,8 +1061,9 @@ const FeedbackBoard: React.FC = () => {
 
       {/* 비밀번호 확인 모달 */}
       <Dialog 
-        open={password_modal_open} 
+        open={password_modal_open}
         onClose={() => setPasswordModalOpen(false)}
+        fullScreen={is_phone}
         onKeyDown={(e) => {
           if (e.key === 'Enter' && !e.shiftKey && password_input.trim()) {
             e.preventDefault();
@@ -954,7 +1071,9 @@ const FeedbackBoard: React.FC = () => {
           }
         }}
       >
-        <DialogTitle>비밀번호 확인</DialogTitle>
+        <DialogHeader is_phone={is_phone} onClose={() => setPasswordModalOpen(false)}>
+          비밀번호 확인
+        </DialogHeader>
         <DialogContent>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
             {password_modal_type === 'edit'
@@ -980,7 +1099,7 @@ const FeedbackBoard: React.FC = () => {
             }}
           />
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={PHONE_ACTIONS_SX}>
           <Button onClick={() => setPasswordModalOpen(false)} color="inherit" disabled={saving}>
             취소
           </Button>
@@ -1000,6 +1119,7 @@ const FeedbackBoard: React.FC = () => {
       <Dialog
         open={admin_modal_open}
         onClose={() => setAdminModalOpen(false)}
+        fullScreen={is_phone}
         onKeyDown={(e) => {
           if (e.key === 'Enter' && !e.shiftKey && admin_password.trim() && admin_status_to_set) {
             e.preventDefault();
@@ -1007,20 +1127,23 @@ const FeedbackBoard: React.FC = () => {
           }
         }}
       >
-        <DialogTitle>관리자 상태 변경</DialogTitle>
+        <DialogHeader is_phone={is_phone} onClose={() => setAdminModalOpen(false)}>
+          관리자 상태 변경
+        </DialogHeader>
         <DialogContent>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
             변경할 상태를 선택하고 관리자 비밀번호를 입력하세요.
           </Typography>
           
           {/* 상태 선택 버튼 */}
-          <Box sx={{ display: 'flex', gap: 1, mb: 3 }}>
+          <Box sx={{ display: 'flex', gap: 1, mb: 3, flexWrap: 'wrap' }}>
             <Button
               size="small"
               variant={admin_status_to_set === 'reviewing' ? 'contained' : 'outlined'}
               onClick={() => setAdminStatusToSet('reviewing')}
               sx={{
-                flex: 1,
+                flex: { xs: '1 1 40%', sm: 1 },
+                minHeight: { xs: 44, sm: 'auto' },
                 color: admin_status_to_set === 'reviewing' ? '#fff' : '#f59e0b',
                 borderColor: '#f59e0b',
                 bgcolor: admin_status_to_set === 'reviewing' ? '#f59e0b' : 'transparent',
@@ -1034,7 +1157,8 @@ const FeedbackBoard: React.FC = () => {
               variant={admin_status_to_set === 'rejected' ? 'contained' : 'outlined'}
               onClick={() => setAdminStatusToSet('rejected')}
               sx={{
-                flex: 1,
+                flex: { xs: '1 1 40%', sm: 1 },
+                minHeight: { xs: 44, sm: 'auto' },
                 color: admin_status_to_set === 'rejected' ? '#fff' : '#ef4444',
                 borderColor: '#ef4444',
                 bgcolor: admin_status_to_set === 'rejected' ? '#ef4444' : 'transparent',
@@ -1048,7 +1172,8 @@ const FeedbackBoard: React.FC = () => {
               variant={admin_status_to_set === 'completed' ? 'contained' : 'outlined'}
               onClick={() => setAdminStatusToSet('completed')}
               sx={{
-                flex: 1,
+                flex: { xs: '1 1 40%', sm: 1 },
+                minHeight: { xs: 44, sm: 'auto' },
                 color: admin_status_to_set === 'completed' ? '#fff' : '#10b981',
                 borderColor: '#10b981',
                 bgcolor: admin_status_to_set === 'completed' ? '#10b981' : 'transparent',
@@ -1062,7 +1187,8 @@ const FeedbackBoard: React.FC = () => {
               variant={admin_status_to_set === 'clear' ? 'contained' : 'outlined'}
               onClick={() => setAdminStatusToSet('clear')}
               sx={{
-                flex: 1,
+                flex: { xs: '1 1 40%', sm: 1 },
+                minHeight: { xs: 44, sm: 'auto' },
                 color: admin_status_to_set === 'clear' ? '#fff' : '#6b7280',
                 borderColor: '#6b7280',
                 bgcolor: admin_status_to_set === 'clear' ? '#6b7280' : 'transparent',
@@ -1097,7 +1223,7 @@ const FeedbackBoard: React.FC = () => {
             helperText={admin_password_error ? '관리자 비밀번호가 일치하지 않습니다.' : ''}
           />
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={PHONE_ACTIONS_SX}>
           <Button onClick={() => setAdminModalOpen(false)} color="inherit" disabled={saving}>
             취소
           </Button>
@@ -1151,6 +1277,7 @@ const FeedbackBoard: React.FC = () => {
       <Dialog
         open={admin_comment_modal_open}
         onClose={() => setAdminCommentModalOpen(false)}
+        fullScreen={is_phone}
         onKeyDown={(e) => {
           if (e.key === 'Enter' && admin_comment_password_input.trim()) {
             e.preventDefault();
@@ -1158,7 +1285,9 @@ const FeedbackBoard: React.FC = () => {
           }
         }}
       >
-        <DialogTitle>관리자 인증</DialogTitle>
+        <DialogHeader is_phone={is_phone} onClose={() => setAdminCommentModalOpen(false)}>
+          관리자 인증
+        </DialogHeader>
         <DialogContent>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
             관리자로 답글을 작성하려면 관리자 비밀번호를 입력하세요.
@@ -1177,7 +1306,7 @@ const FeedbackBoard: React.FC = () => {
             helperText={admin_comment_password_error ? '관리자 비밀번호가 일치하지 않습니다.' : ''}
           />
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={PHONE_ACTIONS_SX}>
           <Button onClick={() => setAdminCommentModalOpen(false)} color="inherit">
             취소
           </Button>

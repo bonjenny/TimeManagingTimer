@@ -26,7 +26,18 @@ import {
   ListItem,
   ListItemText,
   Autocomplete,
+  Chip,
+  Divider,
+  ListItemIcon,
+  ListSubheader,
+  Menu,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
+import SortIcon from '@mui/icons-material/Sort';
+import CheckIcon from '@mui/icons-material/Check';
+import ChecklistIcon from '@mui/icons-material/Checklist';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import TodayIcon from '@mui/icons-material/Today';
@@ -62,6 +73,30 @@ import ErpRegisterDialog from './ErpRegisterDialog';
 
 const DAY_START_HOUR = 0;
 const WORK_TYPE_OPTIONS = ['작업', '개발'];
+
+// 모바일(< md) 카드 뷰: 정렬 메뉴 항목 · 편집 시트 필드
+const MOBILE_SORT_COLUMNS: { column: keyof TimeManagementRow; label: string }[] = [
+  { column: 'project_name', label: '작업' },
+  { column: 'work_type', label: '업무형' },
+  { column: 'schedule_name', label: '거래형(일정명)' },
+  { column: 'category_code', label: '카테고리' },
+  { column: 'time_minutes', label: '시간(분)' },
+  { column: 'end_date', label: '종료예정일' },
+  { column: 'note', label: '비고' },
+];
+type SheetField = 'project_name' | 'work_type' | 'schedule_name' | 'category_code' | 'category_name' | 'time_minutes' | 'end_date' | 'note';
+type SheetDraft = Record<SheetField, string>;
+const SHEET_FIELDS: SheetField[] = ['project_name', 'work_type', 'schedule_name', 'category_code', 'category_name', 'time_minutes', 'end_date', 'note'];
+const toSheetDraft = (row: TimeManagementRow): SheetDraft => ({
+  project_name: row.project_name,
+  work_type: row.work_type,
+  schedule_name: row.schedule_name,
+  category_code: row.category_code,
+  category_name: row.category_name,
+  time_minutes: String(row.time_minutes),
+  end_date: row.end_date || row.date,
+  note: row.note || '',
+});
 
 const TimeManagement: React.FC = () => {
   const [selected_date, setSelectedDate] = useState<Date>(() => {
@@ -116,6 +151,15 @@ const TimeManagement: React.FC = () => {
   const [erp_open, setErpOpen] = useState(false);
   const [new_project_code, setNewProjectCode] = useState<string | null>(null);
   const [new_project_work_type, setNewProjectWorkType] = useState<string>('작업');
+
+  const theme = useTheme();
+  const is_mobile = useMediaQuery(theme.breakpoints.down('md'));
+  const is_phone = useMediaQuery(theme.breakpoints.down('sm'));
+  const [menu_anchor, setMenuAnchor] = useState<HTMLElement | null>(null);
+  const [sort_anchor, setSortAnchor] = useState<HTMLElement | null>(null);
+  const [select_mode, setSelectMode] = useState(false);
+  const [sheet_row, setSheetRow] = useState<TimeManagementRow | null>(null);
+  const [sheet_draft, setSheetDraft] = useState<SheetDraft | null>(null);
 
   const isToday = (() => {
     const now = new Date();
@@ -277,25 +321,20 @@ const TimeManagement: React.FC = () => {
     setEditValue(field === 'end_date' ? row.end_date || row.date : String(row[field]));
   };
 
+  // 인라인 셀 편집과 모바일 편집 시트가 같은 변환으로 저장
+  const getFieldPatch = (field: keyof TimeManagementRow, value: string): Partial<TimeManagementRow> => {
+    if (field === 'category_code') return { category_code: value, category_name: getCategoryName(value) };
+    if (field === 'category_name') return { category_code: getCategoryCode(value), category_name: value };
+    if (field === 'time_minutes') return { time_minutes: parseInt(value) || 0 };
+    return { [field]: value };
+  };
+
   const handleSaveEdit = () => {
     if (!editing_cell) return;
 
     const { row_id, field } = editing_cell;
 
-    if (field === 'category_code') {
-      const new_code = edit_value;
-      const new_name = getCategoryName(new_code);
-      updateRow(row_id, { category_code: new_code, category_name: new_name });
-    } else if (field === 'category_name') {
-      const new_name = edit_value;
-      const new_code = getCategoryCode(new_name);
-      updateRow(row_id, { category_code: new_code, category_name: new_name });
-    } else if (field === 'time_minutes') {
-      const value = parseInt(edit_value) || 0;
-      updateRow(row_id, { [field]: value });
-    } else {
-      updateRow(row_id, { [field]: edit_value });
-    }
+    updateRow(row_id, getFieldPatch(field, edit_value));
 
     setEditingCell(null);
     setEditValue('');
@@ -411,6 +450,54 @@ const TimeManagement: React.FC = () => {
 
   const handleRemoveProjectMapping = (project_code: string) => {
     removeProjectWorkType(project_code);
+  };
+
+  // ── 모바일 편집 시트 ──
+  const openSheet = (row: TimeManagementRow) => {
+    setSheetRow(row);
+    setSheetDraft(toSheetDraft(row));
+  };
+
+  const closeSheet = () => {
+    setSheetRow(null);
+    setSheetDraft(null);
+  };
+
+  const setDraftField = (field: SheetField, value: string) => {
+    setSheetDraft((prev) => {
+      if (!prev) return prev;
+      if (field === 'category_code' || field === 'category_name') {
+        const patch = getFieldPatch(field, value);
+        return { ...prev, category_code: patch.category_code as string, category_name: patch.category_name as string };
+      }
+      return { ...prev, [field]: value };
+    });
+  };
+
+  const handleSheetSave = () => {
+    if (!sheet_row || !sheet_draft) return;
+    const initial = toSheetDraft(sheet_row);
+    // 바뀐 필드만 인라인 편집과 같은 patch 로 반영 (카테고리는 코드 우선)
+    const patch = SHEET_FIELDS.reduce<Partial<TimeManagementRow>>((acc, field) => {
+      if (sheet_draft[field] === initial[field]) return acc;
+      if (field === 'category_name' && sheet_draft.category_code !== initial.category_code) return acc;
+      return { ...acc, ...getFieldPatch(field, sheet_draft[field]) };
+    }, {});
+    if (Object.keys(patch).length > 0) updateRow(sheet_row.id, patch);
+    closeSheet();
+  };
+
+  const handleSheetDelete = () => {
+    if (!sheet_row) return;
+    deleteRows([sheet_row.id]);
+    closeSheet();
+  };
+
+  const closeMenu = () => setMenuAnchor(null);
+
+  const exitSelectMode = () => {
+    if (checked_count > 0) toggleAllChecks(date_string, false);
+    setSelectMode(false);
   };
 
   const renderCell = (row: TimeManagementRow, field: keyof TimeManagementRow) => {
@@ -583,293 +670,546 @@ const TimeManagement: React.FC = () => {
     );
   };
 
-  return (
-    <Box>
-      <Box
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          mb: 2,
-          flexWrap: 'wrap',
-          gap: 2,
-        }}
-      >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Tooltip title="이전 날짜">
-            <IconButton size="small" onClick={handlePrevDay}>
-              <ChevronLeftIcon />
-            </IconButton>
-          </Tooltip>
+  const date_picker_input = (
+    <input
+      ref={date_input_ref}
+      type="date"
+      value={getFormattedDateValue()}
+      onChange={handleDateChange}
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        opacity: 0,
+        zIndex: 1,
+        cursor: 'pointer',
+      }}
+    />
+  );
 
-          <Box
+  const one_line_sx = { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } as const;
+  const touch_icon_sx = { width: 44, height: 44, border: 1, borderColor: 'divider', borderRadius: 2, flexShrink: 0 } as const;
+
+  const renderRowCard = (row: TimeManagementRow) => (
+    <Box
+      key={row.id}
+      role="button"
+      tabIndex={0}
+      onClick={() => (select_mode ? toggleCheck(row.id) : openSheet(row))}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          if (select_mode) toggleCheck(row.id);
+          else openSheet(row);
+        }
+      }}
+      sx={{
+        display: 'flex',
+        gap: 1,
+        p: { xs: 1.5, sm: 2 },
+        border: '1px solid',
+        borderColor: select_mode && row.checked ? 'primary.main' : 'divider',
+        borderRadius: 2,
+        bgcolor: 'background.paper',
+        cursor: 'pointer',
+        '&:active': { bgcolor: 'action.hover' },
+      }}
+    >
+      {select_mode && (
+        <Checkbox
+          checked={row.checked}
+          onClick={(e) => e.stopPropagation()}
+          onChange={() => toggleCheck(row.id)}
+          sx={{ p: 0.5, ml: -0.5, alignSelf: 'flex-start' }}
+        />
+      )}
+      <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 0.75 }}>
+        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+          <Typography
             sx={{
-              position: 'relative',
-              px: 3,
-              py: 0.75,
-              borderRadius: 2,
-              bgcolor: 'var(--bg-tertiary)',
-              color: 'var(--text-primary)',
-              minWidth: 180,
-              textAlign: 'center',
-              cursor: 'pointer',
-              '&:hover': {
-                bgcolor: 'var(--bg-hover)',
-              },
+              flex: 1,
+              minWidth: 0,
+              fontSize: 15,
+              fontWeight: 600,
+              lineHeight: 1.4,
+              wordBreak: 'break-word',
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+              color: row.schedule_name ? 'text.primary' : 'text.disabled',
             }}
           >
-            <input
-              ref={date_input_ref}
-              type="date"
-              value={getFormattedDateValue()}
-              onChange={handleDateChange}
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100%',
-                height: '100%',
-                opacity: 0,
-                zIndex: 1,
-                cursor: 'pointer',
-              }}
-            />
-            <Typography variant="body1" sx={{ fontWeight: 600 }}>
-              {formatSelectedDate()}
-            </Typography>
-          </Box>
-
-          <Tooltip title="다음 날짜">
-            <IconButton size="small" onClick={handleNextDay}>
-              <ChevronRightIcon />
-            </IconButton>
-          </Tooltip>
-
-          <Tooltip title="날짜 선택">
-            <IconButton
-              size="small"
-              onClick={() => date_input_ref.current?.showPicker?.()}
-              sx={{ ml: 0.5 }}
-            >
-              <CalendarMonthIcon />
-            </IconButton>
-          </Tooltip>
-
-          {!isToday && (
-            <Tooltip title="오늘로 이동">
-              <IconButton size="small" onClick={handleToday}>
-                <TodayIcon />
-              </IconButton>
-            </Tooltip>
-          )}
+            {row.schedule_name || '일정명 없음'}
+          </Typography>
+          <Typography sx={{ fontSize: 16, fontWeight: 700, lineHeight: 1.4, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+            {row.time_minutes}분
+          </Typography>
         </Box>
+        <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', minWidth: 0 }}>
+          <Chip size="small" label={row.project_name ? getProjectName(row.project_name) : '작업 없음'} sx={{ maxWidth: '100%' }} />
+          <Chip size="small" variant="outlined" label={row.work_type} />
+          <Chip size="small" variant="outlined" label={`${row.category_code} ${row.category_name}`} sx={{ maxWidth: '100%' }} />
+        </Box>
+        <Typography sx={{ fontSize: 12.5, color: 'text.secondary', ...one_line_sx }}>
+          종료 {row.end_date || row.date}
+          {row.note ? ` · ${row.note.replace(/\n/g, ' ')}` : ''}
+        </Typography>
+      </Box>
+    </Box>
+  );
 
-        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-          <FormControl size="small" sx={{ minWidth: 120 }}>
-            <InputLabel>기본 업무형</InputLabel>
-            <Select
-              value={default_work_type}
-              label="기본 업무형"
-              onChange={(e) => setDefaultWorkType(e.target.value)}
-            >
-              {WORK_TYPE_OPTIONS.map((type) => (
-                <MenuItem key={type} value={type}>
-                  {type}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <Tooltip title="카테고리별 업무형 설정">
-            <IconButton size="small" onClick={() => setSettingsOpen(true)}>
-              <SettingsIcon />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="프로젝트별 업무형 설정">
-            <IconButton size="small" onClick={() => setProjectSettingsOpen(true)}>
-              <SettingsIcon color="primary" />
-            </IconButton>
-          </Tooltip>
-          <Button
-            variant="outlined"
-            size="small"
-            onClick={handleLoadFromLogs}
-            startIcon={<DownloadIcon />}
-          >
-            {current_rows.length > 0 ? '일간 타이머에서 다시 불러오기' : '일간 타이머에서 불러오기'}
-          </Button>
-          <Button
-            variant="outlined"
-            size="small"
-            onClick={handleExportExcel}
-            startIcon={<FileUploadIcon />}
-            disabled={current_rows.length === 0}
-          >
-            엑셀 Export
+  const renderMobileView = () => (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1.5, sm: 2 } }}>
+      {/* 날짜 전환 */}
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+        <IconButton aria-label="이전 날짜" onClick={handlePrevDay} sx={{ width: 40, height: 40 }}>
+          <ChevronLeftIcon />
+        </IconButton>
+        <Box
+          sx={{
+            position: 'relative',
+            flex: 1,
+            minWidth: 0,
+            height: 40,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderRadius: 2,
+            bgcolor: 'var(--bg-tertiary)',
+            color: 'var(--text-primary)',
+          }}
+        >
+          {date_picker_input}
+          <Typography sx={{ fontSize: 15, fontWeight: 600, fontVariantNumeric: 'tabular-nums', ...one_line_sx }}>
+            {formatSelectedDate()}
+          </Typography>
+        </Box>
+        <IconButton aria-label="다음 날짜" onClick={handleNextDay} sx={{ width: 40, height: 40 }}>
+          <ChevronRightIcon />
+        </IconButton>
+        {!isToday && <Chip label="오늘" size="small" onClick={handleToday} sx={{ flexShrink: 0 }} />}
+        <IconButton aria-label="날짜 선택" onClick={() => date_input_ref.current?.showPicker?.()} sx={{ width: 40, height: 40 }}>
+          <CalendarMonthIcon />
+        </IconButton>
+      </Box>
+
+      {/* 액션 바 */}
+      <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+        <Button
+          variant="contained"
+          onClick={() => setErpOpen(true)}
+          startIcon={<CloudUploadIcon />}
+          disabled={current_rows.length === 0}
+          sx={{ flex: 1, minHeight: 44, whiteSpace: 'nowrap' }}
+        >
+          시간관리 등록
+        </Button>
+        <IconButton aria-label="새 행 추가" onClick={handleAddRow} sx={touch_icon_sx}>
+          <AddIcon />
+        </IconButton>
+        <IconButton aria-label="더보기" onClick={(e) => setMenuAnchor(e.currentTarget)} sx={touch_icon_sx}>
+          <MoreVertIcon />
+        </IconButton>
+      </Box>
+      <Menu anchorEl={menu_anchor} open={!!menu_anchor} onClose={closeMenu}>
+        <MenuItem onClick={() => { closeMenu(); handleLoadFromLogs(); }}>
+          <ListItemIcon><DownloadIcon fontSize="small" /></ListItemIcon>
+          {current_rows.length > 0 ? '일간 타이머에서 다시 불러오기' : '일간 타이머에서 불러오기'}
+        </MenuItem>
+        <MenuItem disabled={current_rows.length === 0} onClick={() => { closeMenu(); handleExportExcel(); }}>
+          <ListItemIcon><FileUploadIcon fontSize="small" /></ListItemIcon>
+          엑셀 Export
+        </MenuItem>
+        <MenuItem disabled={current_rows.length === 0} onClick={() => { closeMenu(); setSelectMode(true); }}>
+          <ListItemIcon><ChecklistIcon fontSize="small" /></ListItemIcon>
+          선택 삭제 모드
+        </MenuItem>
+        <Divider />
+        <ListSubheader sx={{ lineHeight: '32px' }}>기본 업무형</ListSubheader>
+        {WORK_TYPE_OPTIONS.map((type) => (
+          <MenuItem key={type} selected={type === default_work_type} onClick={() => setDefaultWorkType(type)}>
+            <ListItemIcon>{type === default_work_type && <CheckIcon fontSize="small" />}</ListItemIcon>
+            {type}
+          </MenuItem>
+        ))}
+        <Divider />
+        <MenuItem onClick={() => { closeMenu(); setSettingsOpen(true); }}>
+          <ListItemIcon><SettingsIcon fontSize="small" /></ListItemIcon>
+          카테고리별 업무형 설정
+        </MenuItem>
+        <MenuItem onClick={() => { closeMenu(); setProjectSettingsOpen(true); }}>
+          <ListItemIcon><SettingsIcon fontSize="small" color="primary" /></ListItemIcon>
+          프로젝트별 업무형 설정
+        </MenuItem>
+      </Menu>
+
+      {/* 합계 + 정렬 */}
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+        <Typography sx={{ fontSize: 13, color: 'text.secondary', fontVariantNumeric: 'tabular-nums', minWidth: 0, ...one_line_sx }}>
+          총 <Box component="span" sx={{ color: 'text.primary', fontWeight: 700 }}>{total_minutes}분</Box>
+          {' '}({(total_minutes / 60).toFixed(1)}시간) · {current_rows.length}건
+        </Typography>
+        <Button
+          size="small"
+          startIcon={<SortIcon />}
+          onClick={(e) => setSortAnchor(e.currentTarget)}
+          sx={{ minHeight: 40, whiteSpace: 'nowrap', flexShrink: 0 }}
+        >
+          정렬{sort_keys.length > 0 ? ` (${sort_keys.length})` : ''}
+        </Button>
+      </Box>
+      <Menu anchorEl={sort_anchor} open={!!sort_anchor} onClose={() => setSortAnchor(null)}>
+        {MOBILE_SORT_COLUMNS.map(({ column, label }) => (
+          <MenuItem key={column} selected={sort_keys.some((k) => k.column === column)} onClick={() => handleHeaderClick(column)}>
+            <ListItemText>{label}</ListItemText>
+            <Box sx={{ display: 'flex', alignItems: 'center', ml: 2, minWidth: 36, justifyContent: 'flex-end' }}>
+              {renderSortIcon(column)}
+            </Box>
+          </MenuItem>
+        ))}
+        <Divider />
+        <MenuItem disabled={sort_keys.length === 0} onClick={() => setSortKeys([])}>
+          정렬 초기화
+        </MenuItem>
+      </Menu>
+
+      {/* 행 카드 */}
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+        {sorted_rows.map(renderRowCard)}
+        {current_rows.length === 0 && (
+          <Box sx={{ py: 5, px: 2, textAlign: 'center', color: 'text.secondary', border: '1px dashed', borderColor: 'divider', borderRadius: 2 }}>
+            <Typography sx={{ fontSize: 14 }}>데이터가 없습니다.</Typography>
+            <Typography sx={{ fontSize: 13, mt: 0.5 }}>⋮ 메뉴의 「일간 타이머에서 불러오기」나 + 버튼으로 시작하세요.</Typography>
+          </Box>
+        )}
+      </Box>
+
+      {/* 선택 삭제 바 */}
+      {select_mode && (
+        <Box
+          sx={{
+            position: 'sticky',
+            bottom: 64,
+            zIndex: 2,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+            p: 1,
+            pl: 0.5,
+            border: '1px solid',
+            borderColor: 'divider',
+            borderRadius: 2,
+            bgcolor: 'background.paper',
+            boxShadow: 3,
+          }}
+        >
+          <Checkbox
+            checked={all_checked}
+            indeterminate={checked_count > 0 && !all_checked}
+            onChange={handleToggleAll}
+            inputProps={{ 'aria-label': '전체 선택' }}
+          />
+          <Typography sx={{ flex: 1, minWidth: 0, fontSize: 13, ...one_line_sx }}>{checked_count}개 선택</Typography>
+          <Button onClick={exitSelectMode} sx={{ minHeight: 44, whiteSpace: 'nowrap' }}>
+            취소
           </Button>
           <Button
             variant="contained"
-            size="small"
-            onClick={() => setErpOpen(true)}
-            startIcon={<CloudUploadIcon />}
-            disabled={current_rows.length === 0}
-          >
-            시간관리 등록
-          </Button>
-          <Button
-            variant="outlined"
-            size="small"
-            onClick={handleAddRow}
-            startIcon={<AddIcon />}
-          >
-            새 행 추가
-          </Button>
-          <Button
-            variant="outlined"
-            size="small"
-            onClick={handleDeleteChecked}
+            color="error"
             startIcon={<DeleteIcon />}
             disabled={checked_count === 0}
-            color="error"
+            onClick={() => { handleDeleteChecked(); setSelectMode(false); }}
+            sx={{ minHeight: 44, whiteSpace: 'nowrap' }}
           >
             삭제 ({checked_count})
           </Button>
         </Box>
-      </Box>
+      )}
+    </Box>
+  );
 
-      <TableContainer component={Paper} sx={{ maxHeight: 'calc(100vh - 280px)' }}>
-        <Table stickyHeader size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell padding="checkbox">
-                <Checkbox
-                  checked={all_checked}
-                  indeterminate={checked_count > 0 && !all_checked}
-                  onChange={handleToggleAll}
-                />
-              </TableCell>
-              <TableCell
-                sx={{ fontWeight: 600, minWidth: 150, cursor: 'pointer', userSelect: 'none' }}
-                onClick={() => handleHeaderClick('project_name')}
+  return (
+    <Box>
+      {is_mobile ? (
+        renderMobileView()
+      ) : (
+        <>
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            mb: 2,
+            flexWrap: 'wrap',
+            gap: 2,
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Tooltip title="이전 날짜">
+              <IconButton size="small" onClick={handlePrevDay}>
+                <ChevronLeftIcon />
+              </IconButton>
+            </Tooltip>
+
+            <Box
+              sx={{
+                position: 'relative',
+                px: 3,
+                py: 0.75,
+                borderRadius: 2,
+                bgcolor: 'var(--bg-tertiary)',
+                color: 'var(--text-primary)',
+                minWidth: 180,
+                textAlign: 'center',
+                cursor: 'pointer',
+                '&:hover': {
+                  bgcolor: 'var(--bg-hover)',
+                },
+              }}
+            >
+              {date_picker_input}
+              <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                {formatSelectedDate()}
+              </Typography>
+            </Box>
+
+            <Tooltip title="다음 날짜">
+              <IconButton size="small" onClick={handleNextDay}>
+                <ChevronRightIcon />
+              </IconButton>
+            </Tooltip>
+
+            <Tooltip title="날짜 선택">
+              <IconButton
+                size="small"
+                onClick={() => date_input_ref.current?.showPicker?.()}
+                sx={{ ml: 0.5 }}
               >
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  작업
-                  {renderSortIcon('project_name')}
-                </Box>
-              </TableCell>
-              <TableCell
-                sx={{ fontWeight: 600, minWidth: 100, cursor: 'pointer', userSelect: 'none' }}
-                onClick={() => handleHeaderClick('work_type')}
+                <CalendarMonthIcon />
+              </IconButton>
+            </Tooltip>
+
+            {!isToday && (
+              <Tooltip title="오늘로 이동">
+                <IconButton size="small" onClick={handleToday}>
+                  <TodayIcon />
+                </IconButton>
+              </Tooltip>
+            )}
+          </Box>
+
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+            <FormControl size="small" sx={{ minWidth: 120 }}>
+              <InputLabel>기본 업무형</InputLabel>
+              <Select
+                value={default_work_type}
+                label="기본 업무형"
+                onChange={(e) => setDefaultWorkType(e.target.value)}
               >
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  업무형
-                  {renderSortIcon('work_type')}
-                </Box>
-              </TableCell>
-              <TableCell
-                sx={{ fontWeight: 600, minWidth: 200, cursor: 'pointer', userSelect: 'none' }}
-                onClick={() => handleHeaderClick('schedule_name')}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  거래형(일정명)
-                  {renderSortIcon('schedule_name')}
-                </Box>
-              </TableCell>
-              <TableCell
-                sx={{ fontWeight: 600, minWidth: 100, cursor: 'pointer', userSelect: 'none' }}
-                onClick={() => handleHeaderClick('category_code')}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  카테고리 코드
-                  {renderSortIcon('category_code')}
-                </Box>
-              </TableCell>
-              <TableCell
-                sx={{ fontWeight: 600, minWidth: 120, cursor: 'pointer', userSelect: 'none' }}
-                onClick={() => handleHeaderClick('category_name')}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  카테고리명
-                  {renderSortIcon('category_name')}
-                </Box>
-              </TableCell>
-              <TableCell
-                sx={{ fontWeight: 600, minWidth: 100, cursor: 'pointer', userSelect: 'none' }}
-                onClick={() => handleHeaderClick('time_minutes')}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  시간(분)
-                  {renderSortIcon('time_minutes')}
-                </Box>
-              </TableCell>
-              <TableCell
-                sx={{ fontWeight: 600, minWidth: 130, cursor: 'pointer', userSelect: 'none' }}
-                onClick={() => handleHeaderClick('end_date')}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  종료예정일
-                  {renderSortIcon('end_date')}
-                </Box>
-              </TableCell>
-              <TableCell
-                sx={{ fontWeight: 600, minWidth: 200, cursor: 'pointer', userSelect: 'none' }}
-                onClick={() => handleHeaderClick('note')}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  비고
-                  {renderSortIcon('note')}
-                </Box>
-              </TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {sorted_rows.map((row) => (
-              <TableRow key={row.id} hover>
+                {WORK_TYPE_OPTIONS.map((type) => (
+                  <MenuItem key={type} value={type}>
+                    {type}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <Tooltip title="카테고리별 업무형 설정">
+              <IconButton size="small" onClick={() => setSettingsOpen(true)}>
+                <SettingsIcon />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="프로젝트별 업무형 설정">
+              <IconButton size="small" onClick={() => setProjectSettingsOpen(true)}>
+                <SettingsIcon color="primary" />
+              </IconButton>
+            </Tooltip>
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={handleLoadFromLogs}
+              startIcon={<DownloadIcon />}
+            >
+              {current_rows.length > 0 ? '일간 타이머에서 다시 불러오기' : '일간 타이머에서 불러오기'}
+            </Button>
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={handleExportExcel}
+              startIcon={<FileUploadIcon />}
+              disabled={current_rows.length === 0}
+            >
+              엑셀 Export
+            </Button>
+            <Button
+              variant="contained"
+              size="small"
+              onClick={() => setErpOpen(true)}
+              startIcon={<CloudUploadIcon />}
+              disabled={current_rows.length === 0}
+            >
+              시간관리 등록
+            </Button>
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={handleAddRow}
+              startIcon={<AddIcon />}
+            >
+              새 행 추가
+            </Button>
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={handleDeleteChecked}
+              startIcon={<DeleteIcon />}
+              disabled={checked_count === 0}
+              color="error"
+            >
+              삭제 ({checked_count})
+            </Button>
+          </Box>
+        </Box>
+
+        <TableContainer component={Paper} sx={{ maxHeight: 'calc(100vh - 280px)' }}>
+          <Table stickyHeader size="small">
+            <TableHead>
+              <TableRow>
                 <TableCell padding="checkbox">
                   <Checkbox
-                    checked={row.checked}
-                    onChange={() => toggleCheck(row.id)}
+                    checked={all_checked}
+                    indeterminate={checked_count > 0 && !all_checked}
+                    onChange={handleToggleAll}
                   />
                 </TableCell>
-                <TableCell>{renderCell(row, 'project_name')}</TableCell>
-                <TableCell>{renderCell(row, 'work_type')}</TableCell>
-                <TableCell>{renderCell(row, 'schedule_name')}</TableCell>
-                <TableCell>{renderCell(row, 'category_code')}</TableCell>
-                <TableCell>{renderCell(row, 'category_name')}</TableCell>
-                <TableCell>{renderCell(row, 'time_minutes')}</TableCell>
-                <TableCell>{renderCell(row, 'end_date')}</TableCell>
-                <TableCell>{renderCell(row, 'note')}</TableCell>
-              </TableRow>
-            ))}
-            {current_rows.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={9} align="center" sx={{ py: 4, color: 'text.secondary' }}>
-                  데이터가 없습니다. "일간 타이머에서 불러오기" 버튼을 클릭하거나 "새 행 추가"를 눌러 시작하세요.
+                <TableCell
+                  sx={{ fontWeight: 600, minWidth: 150, cursor: 'pointer', userSelect: 'none' }}
+                  onClick={() => handleHeaderClick('project_name')}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    작업
+                    {renderSortIcon('project_name')}
+                  </Box>
+                </TableCell>
+                <TableCell
+                  sx={{ fontWeight: 600, minWidth: 100, cursor: 'pointer', userSelect: 'none' }}
+                  onClick={() => handleHeaderClick('work_type')}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    업무형
+                    {renderSortIcon('work_type')}
+                  </Box>
+                </TableCell>
+                <TableCell
+                  sx={{ fontWeight: 600, minWidth: 200, cursor: 'pointer', userSelect: 'none' }}
+                  onClick={() => handleHeaderClick('schedule_name')}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    거래형(일정명)
+                    {renderSortIcon('schedule_name')}
+                  </Box>
+                </TableCell>
+                <TableCell
+                  sx={{ fontWeight: 600, minWidth: 100, cursor: 'pointer', userSelect: 'none' }}
+                  onClick={() => handleHeaderClick('category_code')}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    카테고리 코드
+                    {renderSortIcon('category_code')}
+                  </Box>
+                </TableCell>
+                <TableCell
+                  sx={{ fontWeight: 600, minWidth: 120, cursor: 'pointer', userSelect: 'none' }}
+                  onClick={() => handleHeaderClick('category_name')}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    카테고리명
+                    {renderSortIcon('category_name')}
+                  </Box>
+                </TableCell>
+                <TableCell
+                  sx={{ fontWeight: 600, minWidth: 100, cursor: 'pointer', userSelect: 'none' }}
+                  onClick={() => handleHeaderClick('time_minutes')}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    시간(분)
+                    {renderSortIcon('time_minutes')}
+                  </Box>
+                </TableCell>
+                <TableCell
+                  sx={{ fontWeight: 600, minWidth: 130, cursor: 'pointer', userSelect: 'none' }}
+                  onClick={() => handleHeaderClick('end_date')}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    종료예정일
+                    {renderSortIcon('end_date')}
+                  </Box>
+                </TableCell>
+                <TableCell
+                  sx={{ fontWeight: 600, minWidth: 200, cursor: 'pointer', userSelect: 'none' }}
+                  onClick={() => handleHeaderClick('note')}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    비고
+                    {renderSortIcon('note')}
+                  </Box>
                 </TableCell>
               </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
+            </TableHead>
+            <TableBody>
+              {sorted_rows.map((row) => (
+                <TableRow key={row.id} hover>
+                  <TableCell padding="checkbox">
+                    <Checkbox
+                      checked={row.checked}
+                      onChange={() => toggleCheck(row.id)}
+                    />
+                  </TableCell>
+                  <TableCell>{renderCell(row, 'project_name')}</TableCell>
+                  <TableCell>{renderCell(row, 'work_type')}</TableCell>
+                  <TableCell>{renderCell(row, 'schedule_name')}</TableCell>
+                  <TableCell>{renderCell(row, 'category_code')}</TableCell>
+                  <TableCell>{renderCell(row, 'category_name')}</TableCell>
+                  <TableCell>{renderCell(row, 'time_minutes')}</TableCell>
+                  <TableCell>{renderCell(row, 'end_date')}</TableCell>
+                  <TableCell>{renderCell(row, 'note')}</TableCell>
+                </TableRow>
+              ))}
+              {current_rows.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={9} align="center" sx={{ py: 4, color: 'text.secondary' }}>
+                    데이터가 없습니다. "일간 타이머에서 불러오기" 버튼을 클릭하거나 "새 행 추가"를 눌러 시작하세요.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
 
-      <Box
-        sx={{
-          mt: 2,
-          display: 'flex',
-          justifyContent: 'flex-end',
-          alignItems: 'center',
-          gap: 2,
-        }}
-      >
-        <Typography variant="body2" sx={{ fontWeight: 600 }}>
-          총 시간: {total_minutes}분 ({(total_minutes / 60).toFixed(1)}시간)
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          총 {current_rows.length}건
-        </Typography>
-      </Box>
+        <Box
+          sx={{
+            mt: 2,
+            display: 'flex',
+            justifyContent: 'flex-end',
+            alignItems: 'center',
+            gap: 2,
+          }}
+        >
+          <Typography variant="body2" sx={{ fontWeight: 600 }}>
+            총 시간: {total_minutes}분 ({(total_minutes / 60).toFixed(1)}시간)
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            총 {current_rows.length}건
+          </Typography>
+        </Box>
+        </>
+      )}
+
 
       {/* 카테고리별 업무형 설정 다이얼로그 */}
-      <Dialog open={settings_open} onClose={() => setSettingsOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog open={settings_open} onClose={() => setSettingsOpen(false)} maxWidth="sm" fullWidth fullScreen={is_phone}>
         <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           카테고리별 업무형 설정
           <IconButton size="small" onClick={() => setSettingsOpen(false)}>
@@ -914,14 +1254,14 @@ const TimeManagement: React.FC = () => {
             )}
           </Box>
 
-          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: { xs: 'wrap', sm: 'nowrap' } }}>
             <Autocomplete
               size="small"
               options={getAllCategoryNames()}
               value={new_category}
               onChange={(_, newValue) => setNewCategory(newValue)}
               renderInput={(params) => <TextField {...params} label="카테고리" />}
-              sx={{ flex: 1 }}
+              sx={{ flex: { xs: '1 1 100%', sm: 1 } }}
             />
             <FormControl size="small" sx={{ minWidth: 100 }}>
               <InputLabel>업무형</InputLabel>
@@ -954,7 +1294,7 @@ const TimeManagement: React.FC = () => {
       </Dialog>
 
       {/* 프로젝트별 업무형 설정 다이얼로그 */}
-      <Dialog open={project_settings_open} onClose={() => setProjectSettingsOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog open={project_settings_open} onClose={() => setProjectSettingsOpen(false)} maxWidth="sm" fullWidth fullScreen={is_phone}>
         <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           프로젝트별 업무형 설정
           <IconButton size="small" onClick={() => setProjectSettingsOpen(false)}>
@@ -999,7 +1339,7 @@ const TimeManagement: React.FC = () => {
             )}
           </Box>
 
-          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: { xs: 'wrap', sm: 'nowrap' } }}>
             <Autocomplete
               size="small"
               options={projects.map(p => p.code)}
@@ -1010,7 +1350,7 @@ const TimeManagement: React.FC = () => {
               value={new_project_code}
               onChange={(_, newValue) => setNewProjectCode(newValue)}
               renderInput={(params) => <TextField {...params} label="프로젝트" />}
-              sx={{ flex: 1 }}
+              sx={{ flex: { xs: '1 1 100%', sm: 1 } }}
             />
             <FormControl size="small" sx={{ minWidth: 100 }}>
               <InputLabel>업무형</InputLabel>
@@ -1039,6 +1379,80 @@ const TimeManagement: React.FC = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setProjectSettingsOpen(false)}>닫기</Button>
+        </DialogActions>
+      </Dialog>
+      {/* 모바일 행 편집 시트 */}
+      <Dialog open={!!sheet_draft} onClose={closeSheet} fullScreen={is_phone} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 1, py: 1 }}>
+          <IconButton aria-label="닫기" onClick={closeSheet} sx={{ width: 44, height: 44 }}>
+            <CloseIcon />
+          </IconButton>
+          <Typography component="span" sx={{ flex: 1, fontSize: 17, fontWeight: 600 }}>
+            행 편집
+          </Typography>
+        </DialogTitle>
+        {sheet_draft && (
+          <DialogContent
+            dividers
+            sx={{ display: 'flex', flexDirection: 'column', gap: 2, '& .MuiInputBase-input': { fontSize: 16 } }}
+          >
+            <TextField select fullWidth label="작업" value={sheet_draft.project_name} onChange={(e) => setDraftField('project_name', e.target.value)}>
+              <MenuItem value="">없음</MenuItem>
+              {projects.map((project) => (
+                <MenuItem key={project.code} value={project.code}>
+                  {project.name}
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField select fullWidth label="업무형" value={sheet_draft.work_type} onChange={(e) => setDraftField('work_type', e.target.value)}>
+              {WORK_TYPE_OPTIONS.map((type) => (
+                <MenuItem key={type} value={type}>
+                  {type}
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField fullWidth label="거래형(일정명)" value={sheet_draft.schedule_name} onChange={(e) => setDraftField('schedule_name', e.target.value)} />
+            <TextField select fullWidth label="카테고리 코드" value={sheet_draft.category_code} onChange={(e) => setDraftField('category_code', e.target.value)}>
+              {getAllCategoryCodes().map((code) => (
+                <MenuItem key={code} value={code}>
+                  {code} - {getCategoryName(code)}
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField select fullWidth label="카테고리명" value={sheet_draft.category_name} onChange={(e) => setDraftField('category_name', e.target.value)}>
+              {getAllCategoryNames().map((name) => (
+                <MenuItem key={name} value={name}>
+                  {name}
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              fullWidth
+              type="number"
+              label="시간(분)"
+              value={sheet_draft.time_minutes}
+              onChange={(e) => setDraftField('time_minutes', e.target.value)}
+              inputProps={{ inputMode: 'numeric', min: 0 }}
+            />
+            <TextField
+              fullWidth
+              type="date"
+              label="종료예정일"
+              value={sheet_draft.end_date}
+              onChange={(e) => setDraftField('end_date', e.target.value)}
+              InputLabelProps={{ shrink: true }}
+            />
+            <TextField fullWidth multiline minRows={3} label="비고" value={sheet_draft.note} onChange={(e) => setDraftField('note', e.target.value)} />
+          </DialogContent>
+        )}
+        <DialogActions disableSpacing sx={{ gap: 1, px: 2, pt: 1.5, pb: 'calc(12px + env(safe-area-inset-bottom))' }}>
+          <Button color="error" startIcon={<DeleteIcon />} onClick={handleSheetDelete} sx={{ minHeight: 44, whiteSpace: 'nowrap' }}>
+            삭제
+          </Button>
+          <Box sx={{ flex: 1 }} />
+          <Button variant="contained" onClick={handleSheetSave} sx={{ minHeight: 44, minWidth: 120, whiteSpace: 'nowrap' }}>
+            저장
+          </Button>
         </DialogActions>
       </Dialog>
       <ErpRegisterDialog open={erp_open} onClose={() => setErpOpen(false)} rows={current_rows} date={date_string} />

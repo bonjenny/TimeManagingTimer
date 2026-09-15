@@ -21,7 +21,13 @@ import {
   Alert,
   Button,
   ClickAwayListener,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import TodayIcon from '@mui/icons-material/Today';
@@ -97,6 +103,11 @@ const formatDate = (timestamp: number): string => {
   return `${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getDate().toString().padStart(2, '0')}`;
 };
 
+const formatDateWithDay = (timestamp: number): string => {
+  const d = new Date(timestamp);
+  return `${d.getMonth() + 1}/${d.getDate()} (${['일', '월', '화', '수', '목', '금', '토'][d.getDay()]})`;
+};
+
 const formatTime = (timestamp: number): string => {
   return new Date(timestamp).toLocaleTimeString('ko-KR', {
     hour: '2-digit',
@@ -137,6 +148,11 @@ const ProjectAnalysis: React.FC = () => {
   // Note inline edit
   const [editing_note_id, setEditingNoteId] = useState<string | null>(null);
   const [editing_note_value, setEditingNoteValue] = useState('');
+
+  // Responsive
+  const theme = useTheme();
+  const is_mobile = useMediaQuery(theme.breakpoints.down('md'));
+  const [menu_anchor, setMenuAnchor] = useState<HTMLElement | null>(null);
 
   // Snackbar
   const [snackbar_open, setSnackbarOpen] = useState(false);
@@ -619,6 +635,223 @@ const ProjectAnalysis: React.FC = () => {
   ];
 
   // ──────────────────────────────────────────────
+  // Mobile (< md) renderers — 같은 state/handler 사용, 표 대신 카드
+  // ──────────────────────────────────────────────
+
+  const clamp_sx = (lines: number) => ({
+    display: '-webkit-box',
+    WebkitLineClamp: lines,
+    WebkitBoxOrient: 'vertical' as const,
+    overflow: 'hidden',
+    wordBreak: 'break-word' as const,
+  });
+  const card_sx = { border: '1px solid', borderColor: 'divider', borderRadius: 2, bgcolor: 'background.paper' } as const;
+  const num_sx = { fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' } as const;
+
+  const renderMobileNote = (log: TimerLog) =>
+    editing_note_id === log.id ? (
+      <ClickAwayListener onClickAway={handleSaveNote}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
+          <TextField
+            size="small"
+            value={editing_note_value}
+            onChange={(e) => setEditingNoteValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleSaveNote();
+              if (e.key === 'Escape') handleCancelEditNote();
+            }}
+            autoFocus
+            fullWidth
+            placeholder="메모 입력..."
+            sx={{ '& .MuiInputBase-input': { fontSize: 16 } }}
+          />
+          <IconButton aria-label="메모 저장" onClick={handleSaveNote} sx={{ width: 40, height: 40 }}>
+            <CheckIcon fontSize="small" color="success" />
+          </IconButton>
+          <IconButton aria-label="메모 취소" onClick={handleCancelEditNote} sx={{ width: 40, height: 40 }}>
+            <CloseIcon fontSize="small" color="error" />
+          </IconButton>
+        </Box>
+      </ClickAwayListener>
+    ) : (
+      <Box
+        role="button"
+        onClick={(e) => { e.stopPropagation(); handleStartEditNote(log.id, log.note || ''); }}
+        sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minHeight: 32, cursor: 'pointer' }}
+      >
+        <Typography
+          sx={{ flex: 1, minWidth: 0, fontSize: 13, color: log.note ? 'text.primary' : 'text.disabled', fontStyle: log.note ? 'normal' : 'italic', ...clamp_sx(2) }}
+        >
+          {log.note || '메모 추가...'}
+        </Typography>
+        <EditNoteIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+      </Box>
+    );
+
+  const renderMobileCategoryCards = (summary: ProjectSummary) => (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, p: 1.5 }}>
+      {summary.category_groups.map((cg, cat_idx) => {
+        const cat_key = `${summary.project_code}::${cg.category}`;
+        const is_cat_expanded = expanded_category === cat_key;
+        const color = bar_colors[cat_idx % bar_colors.length];
+
+        return (
+          <Box key={cg.category} sx={{ ...card_sx, overflow: 'hidden' }}>
+            <Box
+              role="button"
+              aria-expanded={is_cat_expanded}
+              onClick={() => handleToggleCategory(summary.project_code, cg.category)}
+              sx={{ p: 1.5, cursor: 'pointer', '&:active': { bgcolor: 'action.hover' } }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                <Typography sx={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 600, lineHeight: 1.4, ...clamp_sx(2) }}>
+                  {cg.category}
+                </Typography>
+                <Typography sx={{ fontSize: 15, fontWeight: 700, lineHeight: 1.4, ...num_sx }}>{formatSeconds(cg.total_seconds)}</Typography>
+                {is_cat_expanded ? <ExpandLessIcon fontSize="small" color="action" /> : <ExpandMoreIcon fontSize="small" color="action" />}
+              </Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
+                <Box sx={{ flex: 1, height: 6, borderRadius: 3, bgcolor: 'var(--bg-primary)', overflow: 'hidden' }}>
+                  <Box sx={{ width: `${cg.percentage}%`, height: '100%', bgcolor: color, borderRadius: 3 }} />
+                </Box>
+                <Typography sx={{ fontSize: 12, color: 'text.secondary', minWidth: 40, textAlign: 'right', ...num_sx }}>
+                  {cg.percentage.toFixed(1)}%
+                </Typography>
+              </Box>
+              <Typography sx={{ fontSize: 12, color: 'text.secondary', mt: 0.5 }}>
+                {cg.tasks.length}개 작업 · 세션 {cg.session_count}
+              </Typography>
+            </Box>
+
+            <Collapse in={is_cat_expanded} timeout="auto" unmountOnExit>
+              <Box sx={{ borderTop: '1px solid', borderColor: 'divider' }}>
+                {cg.tasks.map((task) => {
+                  const task_key = `${summary.project_code}::${cg.category}::${task.title}`;
+                  const is_task_expanded = expanded_task === task_key;
+
+                  return (
+                    <Box key={task.title} sx={{ '&:not(:last-of-type)': { borderBottom: '1px solid', borderColor: 'divider' } }}>
+                      <Box
+                        role="button"
+                        aria-expanded={is_task_expanded}
+                        onClick={() => handleToggleTask(summary.project_code, cg.category, task.title)}
+                        sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, px: 1.5, py: 1.25, minHeight: 44, cursor: 'pointer', '&:active': { bgcolor: 'action.hover' } }}
+                      >
+                        <Box sx={{ width: 3, alignSelf: 'stretch', borderRadius: 2, bgcolor: color, opacity: 0.6, flexShrink: 0 }} />
+                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                          <Typography sx={{ fontSize: 14, fontWeight: 500, lineHeight: 1.4, ...clamp_sx(2) }}>{task.title}</Typography>
+                          <Typography sx={{ fontSize: 12, color: 'text.secondary', mt: 0.25, fontVariantNumeric: 'tabular-nums' }}>
+                            세션 {task.session_count} · {formatSeconds(task.total_seconds)} · {task.percentage.toFixed(1)}%
+                          </Typography>
+                        </Box>
+                        {is_task_expanded ? <ExpandLessIcon fontSize="small" color="action" /> : <ExpandMoreIcon fontSize="small" color="action" />}
+                      </Box>
+
+                      <Collapse in={is_task_expanded} timeout="auto" unmountOnExit>
+                        <Box sx={{ mx: 1.5, mb: 1.25, borderRadius: 1.5, bgcolor: 'var(--bg-primary)' }}>
+                          {task.logs.map((log) => {
+                            const dur = getDurationSecondsExcludingLunch(log.startTime, log.endTime, log.pausedDuration);
+                            return (
+                              <Box key={log.id} sx={{ px: 1.25, py: 1, '&:not(:last-of-type)': { borderBottom: '1px solid', borderColor: 'divider' } }}>
+                                <Typography sx={{ fontSize: 13, fontVariantNumeric: 'tabular-nums' }}>
+                                  {formatDateWithDay(log.startTime)} · {formatTime(log.startTime)}–{log.endTime ? formatTime(log.endTime) : '진행중'} ·{' '}
+                                  <Box component="span" sx={{ fontWeight: 700 }}>{formatSeconds(dur)}</Box>
+                                </Typography>
+                                {renderMobileNote(log)}
+                              </Box>
+                            );
+                          })}
+                        </Box>
+                      </Collapse>
+                    </Box>
+                  );
+                })}
+              </Box>
+            </Collapse>
+          </Box>
+        );
+      })}
+    </Box>
+  );
+
+  const renderMobileHeatmap = (data: NonNullable<typeof interrupt_data>) => {
+    const grid_sx = { display: 'grid', gridTemplateColumns: '52px repeat(5, minmax(0, 1fr)) 56px', gap: 0.5, alignItems: 'center' } as const;
+    return (
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+        <Box sx={grid_sx}>
+          <Box />
+          {data.day_names.map((d) => (
+            <Typography key={d} sx={{ fontSize: 11, fontWeight: 600, color: 'text.secondary', textAlign: 'center' }}>{d}</Typography>
+          ))}
+          <Typography sx={{ fontSize: 11, fontWeight: 600, color: 'text.secondary', textAlign: 'right' }}>합계</Typography>
+        </Box>
+        {data.weekly_heatmap.map((week, wi) => (
+          <Box key={wi} sx={grid_sx}>
+            <Typography sx={{ fontSize: 11, fontWeight: 500, ...num_sx, overflow: 'hidden', textOverflow: 'ellipsis' }}>{week.week_label}</Typography>
+            {week.days.map((val, di) => {
+              const intensity = data.heatmap_max! > 0 ? val / data.heatmap_max! : 0;
+              return (
+                <Box
+                  key={di}
+                  title={val > 0 ? `${data.day_names[di]}: ${formatSeconds(val)}` : undefined}
+                  sx={{
+                    minWidth: 0,
+                    height: 32,
+                    borderRadius: 0.5,
+                    bgcolor: val > 0 ? `rgba(239, 83, 80, ${0.15 + intensity * 0.75})` : 'var(--bg-primary)',
+                    border: '1px solid',
+                    borderColor: val > 0 ? `rgba(239, 83, 80, ${0.3 + intensity * 0.5})` : 'var(--border-color)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    overflow: 'hidden',
+                  }}
+                >
+                  {val > 0 && (
+                    <Typography sx={{ fontSize: 10, fontWeight: 600, ...num_sx, color: intensity > 0.5 ? '#fff' : 'text.primary' }}>
+                      {Math.round(val / 60)}m
+                    </Typography>
+                  )}
+                </Box>
+              );
+            })}
+            <Typography sx={{ fontSize: 11, fontWeight: 600, textAlign: 'right', lineHeight: 1.2, fontVariantNumeric: 'tabular-nums', wordBreak: 'keep-all' }}>
+              {formatSeconds(week.total)}
+            </Typography>
+          </Box>
+        ))}
+      </Box>
+    );
+  };
+
+  const renderMobileInterruptCards = (matched: TimerLog[]) => (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+      {matched
+        .sort((a, b) => a.startTime - b.startTime)
+        .map((log) => {
+          const dur = getDurationSecondsExcludingLunch(log.startTime, log.endTime, log.pausedDuration);
+          return (
+            <Box key={log.id} sx={{ ...card_sx, p: 1.5 }}>
+              <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                <Typography sx={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 600, lineHeight: 1.4, ...clamp_sx(2) }}>{log.title}</Typography>
+                <Typography sx={{ fontSize: 15, fontWeight: 700, lineHeight: 1.4, ...num_sx }}>{formatSeconds(dur)}</Typography>
+              </Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5, flexWrap: 'wrap' }}>
+                <Typography sx={{ fontSize: 12, color: 'text.secondary', ...num_sx }}>
+                  {formatDateWithDay(log.startTime)} · {formatTime(log.startTime)}–{log.endTime ? formatTime(log.endTime) : '진행중'}
+                </Typography>
+                <Chip label={log.category || '-'} size="small" variant="outlined" sx={{ fontSize: 11, height: 20, maxWidth: '100%' }} />
+              </Box>
+              {log.note && (
+                <Typography sx={{ fontSize: 13, color: 'text.secondary', mt: 0.5, ...clamp_sx(2) }}>{log.note}</Typography>
+              )}
+            </Box>
+          );
+        })}
+    </Box>
+  );
+
+  // ──────────────────────────────────────────────
   // Render
   // ──────────────────────────────────────────────
 
@@ -629,27 +862,57 @@ const ProjectAnalysis: React.FC = () => {
         elevation={0}
         sx={{ p: 2, mb: 3, bgcolor: 'var(--bg-secondary)', border: '1px solid var(--border-color)' }}
       >
-        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, justifyContent: 'space-between', alignItems: { md: 'center' }, gap: 2, mb: 2 }}>
-          <Typography variant="h6" sx={{ fontWeight: 700 }}>
-            프로젝트 분석
-          </Typography>
-          <Box sx={{ display: 'flex', gap: 1 }}>
-            <Button variant="outlined" size="small" startIcon={<ContentCopyIcon />} onClick={handleCopy} disabled={display_data.length === 0}>
-              복사
-            </Button>
-            <Button variant="outlined" size="small" startIcon={<DownloadIcon />} onClick={handleDownloadCSV} disabled={display_data.length === 0}>
-              CSV
-            </Button>
+        {is_mobile ? (
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, mb: 1 }}>
+            {/* 화면 제목은 상단 앱 바에 있으므로 카드에는 조회 조건 라벨만 */}
+            <Typography sx={{ fontSize: 13, fontWeight: 600, color: 'text.secondary' }}>
+              조회 기간 · 프로젝트
+            </Typography>
+            <IconButton aria-label="더보기" onClick={(e) => setMenuAnchor(e.currentTarget)} sx={{ width: 44, height: 44 }}>
+              <MoreVertIcon />
+            </IconButton>
+            <Menu anchorEl={menu_anchor} open={!!menu_anchor} onClose={() => setMenuAnchor(null)}>
+              <MenuItem disabled={display_data.length === 0} onClick={() => { setMenuAnchor(null); handleCopy(); }}>
+                <ListItemIcon><ContentCopyIcon fontSize="small" /></ListItemIcon>
+                복사
+              </MenuItem>
+              <MenuItem disabled={display_data.length === 0} onClick={() => { setMenuAnchor(null); handleDownloadCSV(); }}>
+                <ListItemIcon><DownloadIcon fontSize="small" /></ListItemIcon>
+                CSV 다운로드
+              </MenuItem>
+            </Menu>
           </Box>
-        </Box>
+        ) : (
+          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, justifyContent: 'space-between', alignItems: { md: 'center' }, gap: 2, mb: 2 }}>
+            <Typography variant="h6" sx={{ fontWeight: 700 }}>
+              프로젝트 분석
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Button variant="outlined" size="small" startIcon={<ContentCopyIcon />} onClick={handleCopy} disabled={display_data.length === 0}>
+                복사
+              </Button>
+              <Button variant="outlined" size="small" startIcon={<DownloadIcon />} onClick={handleDownloadCSV} disabled={display_data.length === 0}>
+                CSV
+              </Button>
+            </Box>
+          </Box>
+        )}
 
         {/* Period selector */}
-        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, alignItems: { sm: 'center' } }}>
+        <Box
+          sx={
+            is_mobile
+              ? { display: 'flex', flexDirection: 'column', gap: 1.5, alignItems: 'stretch', '& .MuiInputBase-input': { fontSize: 16 } }
+              : { display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, alignItems: { sm: 'center' } }
+          }
+        >
           <ToggleButtonGroup
             value={period_type}
             exclusive
             onChange={(_, val) => val && setPeriodType(val)}
             size="small"
+            fullWidth={is_mobile}
+            sx={is_mobile ? { '& .MuiToggleButton-root': { minHeight: 40, whiteSpace: 'nowrap' } } : undefined}
           >
             <ToggleButton value="month">월간</ToggleButton>
             <ToggleButton value="quarter">분기</ToggleButton>
@@ -660,7 +923,7 @@ const ProjectAnalysis: React.FC = () => {
           {period_type !== 'custom' && (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
               <Tooltip title={period_type === 'month' ? '이전 달' : '이전 분기'}>
-                <IconButton size="small" onClick={handlePrev}>
+                <IconButton size="small" onClick={handlePrev} sx={is_mobile ? { width: 40, height: 40 } : undefined}>
                   <ChevronLeftIcon />
                 </IconButton>
               </Tooltip>
@@ -673,18 +936,19 @@ const ProjectAnalysis: React.FC = () => {
                   color: is_current_period ? 'var(--text-inverse)' : 'text.primary',
                   minWidth: 140,
                   textAlign: 'center',
+                  ...(is_mobile && { flex: 1, py: 1 }),
                 }}
               >
                 <Typography variant="body2" sx={{ fontWeight: 500, color: 'inherit' }}>{period_label}</Typography>
               </Box>
               <Tooltip title={period_type === 'month' ? '다음 달' : '다음 분기'}>
-                <IconButton size="small" onClick={handleNext}>
+                <IconButton size="small" onClick={handleNext} sx={is_mobile ? { width: 40, height: 40 } : undefined}>
                   <ChevronRightIcon />
                 </IconButton>
               </Tooltip>
               {!is_current_period && (
                 <Tooltip title="현재로 이동">
-                  <IconButton size="small" onClick={handleCurrent}>
+                  <IconButton size="small" onClick={handleCurrent} sx={is_mobile ? { width: 40, height: 40 } : undefined}>
                     <TodayIcon />
                   </IconButton>
                 </Tooltip>
@@ -695,9 +959,9 @@ const ProjectAnalysis: React.FC = () => {
           {/* Custom date range */}
           {period_type === 'custom' && (
             <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-              <TextField type="date" size="small" value={custom_start} onChange={(e) => setCustomStart(e.target.value)} sx={{ width: 160 }} />
+              <TextField type="date" size="small" value={custom_start} onChange={(e) => setCustomStart(e.target.value)} sx={is_mobile ? { flex: 1, minWidth: 0 } : { width: 160 }} />
               <Typography variant="body2">~</Typography>
-              <TextField type="date" size="small" value={custom_end} onChange={(e) => setCustomEnd(e.target.value)} sx={{ width: 160 }} />
+              <TextField type="date" size="small" value={custom_end} onChange={(e) => setCustomEnd(e.target.value)} sx={is_mobile ? { flex: 1, minWidth: 0 } : { width: 160 }} />
             </Box>
           )}
 
@@ -713,7 +977,7 @@ const ProjectAnalysis: React.FC = () => {
               setExpandedTask(null);
             }}
             renderInput={(params) => <TextField {...params} placeholder="프로젝트 선택 (전체)" />}
-            sx={{ minWidth: 260 }}
+            sx={is_mobile ? { width: '100%' } : { minWidth: 260 }}
             isOptionEqualToValue={(opt, val) => opt.code === val.code}
           />
         </Box>
@@ -837,211 +1101,215 @@ const ProjectAnalysis: React.FC = () => {
               sx={{ mb: 3, bgcolor: 'var(--bg-secondary)', border: '1px solid var(--border-color)', overflow: 'hidden' }}
             >
               {/* Project header */}
-              <Box sx={{ px: 2, py: 1.5, bgcolor: 'var(--bg-tertiary)', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                  <Chip label={summary.project_name} size="small" variant="outlined" title={summary.project_code} />
+              <Box sx={{ px: is_mobile ? 1.5 : 2, py: 1.5, bgcolor: 'var(--bg-tertiary)', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', ...(is_mobile && { gap: 1 }) }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: is_mobile ? 0.5 : 1.5, ...(is_mobile && { flexWrap: 'wrap', minWidth: 0 }) }}>
+                  <Chip label={summary.project_name} size="small" variant="outlined" title={summary.project_code} sx={is_mobile ? { maxWidth: '100%' } : undefined} />
                   <Typography variant="body2" color="text.secondary">
                     {total_cat_count}개 카테고리 · {total_task_count}개 작업
                   </Typography>
                 </Box>
-                <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700, ...(is_mobile && { fontSize: 16, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }) }}>
                   {formatSeconds(summary.total_seconds)}
                 </Typography>
               </Box>
 
               {/* Level 1: Category breakdown */}
-              <TableContainer>
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell sx={{ fontWeight: 600, width: 40 }} />
-                      <TableCell sx={{ fontWeight: 600 }}>카테고리</TableCell>
-                      <TableCell sx={{ fontWeight: 600, width: 70 }} align="center">세션</TableCell>
-                      <TableCell sx={{ fontWeight: 600, width: 120 }} align="right">소요 시간</TableCell>
-                      <TableCell sx={{ fontWeight: 600, width: '30%' }}>비율</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {summary.category_groups.map((cg, cat_idx) => {
-                      const cat_key = `${summary.project_code}::${cg.category}`;
-                      const is_cat_expanded = expanded_category === cat_key;
+              {is_mobile ? (
+                renderMobileCategoryCards(summary)
+              ) : (
+                <TableContainer>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell sx={{ fontWeight: 600, width: 40 }} />
+                        <TableCell sx={{ fontWeight: 600 }}>카테고리</TableCell>
+                        <TableCell sx={{ fontWeight: 600, width: 70 }} align="center">세션</TableCell>
+                        <TableCell sx={{ fontWeight: 600, width: 120 }} align="right">소요 시간</TableCell>
+                        <TableCell sx={{ fontWeight: 600, width: '30%' }}>비율</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {summary.category_groups.map((cg, cat_idx) => {
+                        const cat_key = `${summary.project_code}::${cg.category}`;
+                        const is_cat_expanded = expanded_category === cat_key;
 
-                      return (
-                        <React.Fragment key={cg.category}>
-                          {/* Category row */}
-                          <TableRow
-                            hover
-                            sx={{ cursor: 'pointer', '& > td': { borderBottom: is_cat_expanded ? 'none' : undefined } }}
-                            onClick={() => handleToggleCategory(summary.project_code, cg.category)}
-                          >
-                            <TableCell sx={{ pr: 0 }}>
-                              {is_cat_expanded ? <ExpandLessIcon fontSize="small" color="action" /> : <ExpandMoreIcon fontSize="small" color="action" />}
-                            </TableCell>
-                            <TableCell>
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <Chip label={cg.category} size="small" variant="outlined" sx={{ fontWeight: 600, fontSize: '0.75rem' }} />
-                                <Typography variant="caption" color="text.secondary">{cg.tasks.length}개 작업</Typography>
-                              </Box>
-                            </TableCell>
-                            <TableCell align="center">
-                              <Typography variant="body2" color="text.secondary">{cg.session_count}건</Typography>
-                            </TableCell>
-                            <TableCell align="right">
-                              <Typography variant="body2" sx={{ fontWeight: 600 }}>{formatSeconds(cg.total_seconds)}</Typography>
-                            </TableCell>
-                            <TableCell>
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <Box sx={{ flex: 1, bgcolor: 'var(--bg-primary)', borderRadius: 0.5, height: 16, overflow: 'hidden' }}>
-                                  <Box sx={{ width: `${cg.percentage}%`, height: '100%', bgcolor: bar_colors[cat_idx % bar_colors.length], borderRadius: 0.5, transition: 'width 0.3s ease' }} />
+                        return (
+                          <React.Fragment key={cg.category}>
+                            {/* Category row */}
+                            <TableRow
+                              hover
+                              sx={{ cursor: 'pointer', '& > td': { borderBottom: is_cat_expanded ? 'none' : undefined } }}
+                              onClick={() => handleToggleCategory(summary.project_code, cg.category)}
+                            >
+                              <TableCell sx={{ pr: 0 }}>
+                                {is_cat_expanded ? <ExpandLessIcon fontSize="small" color="action" /> : <ExpandMoreIcon fontSize="small" color="action" />}
+                              </TableCell>
+                              <TableCell>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                  <Chip label={cg.category} size="small" variant="outlined" sx={{ fontWeight: 600, fontSize: '0.75rem' }} />
+                                  <Typography variant="caption" color="text.secondary">{cg.tasks.length}개 작업</Typography>
                                 </Box>
-                                <Typography variant="caption" sx={{ minWidth: 40, textAlign: 'right', fontWeight: 500 }}>
-                                  {cg.percentage.toFixed(1)}%
-                                </Typography>
-                              </Box>
-                            </TableCell>
-                          </TableRow>
+                              </TableCell>
+                              <TableCell align="center">
+                                <Typography variant="body2" color="text.secondary">{cg.session_count}건</Typography>
+                              </TableCell>
+                              <TableCell align="right">
+                                <Typography variant="body2" sx={{ fontWeight: 600 }}>{formatSeconds(cg.total_seconds)}</Typography>
+                              </TableCell>
+                              <TableCell>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                  <Box sx={{ flex: 1, bgcolor: 'var(--bg-primary)', borderRadius: 0.5, height: 16, overflow: 'hidden' }}>
+                                    <Box sx={{ width: `${cg.percentage}%`, height: '100%', bgcolor: bar_colors[cat_idx % bar_colors.length], borderRadius: 0.5, transition: 'width 0.3s ease' }} />
+                                  </Box>
+                                  <Typography variant="caption" sx={{ minWidth: 40, textAlign: 'right', fontWeight: 500 }}>
+                                    {cg.percentage.toFixed(1)}%
+                                  </Typography>
+                                </Box>
+                              </TableCell>
+                            </TableRow>
 
-                          {/* Level 2: Task list within category */}
-                          <TableRow>
-                            <TableCell colSpan={5} sx={{ p: 0, border: 'none' }}>
-                              <Collapse in={is_cat_expanded} timeout="auto" unmountOnExit>
-                                <Box sx={{ pl: 4, pr: 2, py: 1 }}>
-                                  <Table size="small">
-                                    <TableHead>
-                                      <TableRow>
-                                        <TableCell sx={{ fontWeight: 600, width: 32, fontSize: '0.7rem', py: 0.5 }} />
-                                        <TableCell sx={{ fontWeight: 600, fontSize: '0.7rem', py: 0.5 }}>작업명</TableCell>
-                                        <TableCell sx={{ fontWeight: 600, width: 60, fontSize: '0.7rem', py: 0.5 }} align="center">세션</TableCell>
-                                        <TableCell sx={{ fontWeight: 600, width: 100, fontSize: '0.7rem', py: 0.5 }} align="right">소요 시간</TableCell>
-                                        <TableCell sx={{ fontWeight: 600, width: '28%', fontSize: '0.7rem', py: 0.5 }}>카테고리 내 비율</TableCell>
-                                      </TableRow>
-                                    </TableHead>
-                                    <TableBody>
-                                      {cg.tasks.map((task) => {
-                                        const task_key = `${summary.project_code}::${cg.category}::${task.title}`;
-                                        const is_task_expanded = expanded_task === task_key;
+                            {/* Level 2: Task list within category */}
+                            <TableRow>
+                              <TableCell colSpan={5} sx={{ p: 0, border: 'none' }}>
+                                <Collapse in={is_cat_expanded} timeout="auto" unmountOnExit>
+                                  <Box sx={{ pl: 4, pr: 2, py: 1 }}>
+                                    <Table size="small">
+                                      <TableHead>
+                                        <TableRow>
+                                          <TableCell sx={{ fontWeight: 600, width: 32, fontSize: '0.7rem', py: 0.5 }} />
+                                          <TableCell sx={{ fontWeight: 600, fontSize: '0.7rem', py: 0.5 }}>작업명</TableCell>
+                                          <TableCell sx={{ fontWeight: 600, width: 60, fontSize: '0.7rem', py: 0.5 }} align="center">세션</TableCell>
+                                          <TableCell sx={{ fontWeight: 600, width: 100, fontSize: '0.7rem', py: 0.5 }} align="right">소요 시간</TableCell>
+                                          <TableCell sx={{ fontWeight: 600, width: '28%', fontSize: '0.7rem', py: 0.5 }}>카테고리 내 비율</TableCell>
+                                        </TableRow>
+                                      </TableHead>
+                                      <TableBody>
+                                        {cg.tasks.map((task) => {
+                                          const task_key = `${summary.project_code}::${cg.category}::${task.title}`;
+                                          const is_task_expanded = expanded_task === task_key;
 
-                                        return (
-                                          <React.Fragment key={task.title}>
-                                            <TableRow
-                                              hover
-                                              sx={{ cursor: 'pointer', '& > td': { borderBottom: is_task_expanded ? 'none' : undefined } }}
-                                              onClick={() => handleToggleTask(summary.project_code, cg.category, task.title)}
-                                            >
-                                              <TableCell sx={{ pr: 0, py: 0.5 }}>
-                                                {is_task_expanded ? <ExpandLessIcon sx={{ fontSize: 16 }} color="action" /> : <ExpandMoreIcon sx={{ fontSize: 16 }} color="action" />}
-                                              </TableCell>
-                                              <TableCell sx={{ py: 0.5 }}>
-                                                <Typography variant="body2" sx={{ fontSize: '0.8rem' }}>{task.title}</Typography>
-                                              </TableCell>
-                                              <TableCell align="center" sx={{ py: 0.5 }}>
-                                                <Typography variant="caption" color="text.secondary">{task.session_count}건</Typography>
-                                              </TableCell>
-                                              <TableCell align="right" sx={{ py: 0.5 }}>
-                                                <Typography variant="body2" sx={{ fontWeight: 500, fontSize: '0.8rem' }}>{formatSeconds(task.total_seconds)}</Typography>
-                                              </TableCell>
-                                              <TableCell sx={{ py: 0.5 }}>
-                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                  <Box sx={{ flex: 1, bgcolor: 'var(--bg-primary)', borderRadius: 0.5, height: 12, overflow: 'hidden' }}>
-                                                    <Box sx={{ width: `${task.percentage}%`, height: '100%', bgcolor: bar_colors[cat_idx % bar_colors.length], opacity: 0.6, borderRadius: 0.5, transition: 'width 0.3s ease' }} />
-                                                  </Box>
-                                                  <Typography variant="caption" sx={{ minWidth: 36, textAlign: 'right', fontSize: '0.65rem' }}>
-                                                    {task.percentage.toFixed(1)}%
-                                                  </Typography>
-                                                </Box>
-                                              </TableCell>
-                                            </TableRow>
-
-                                            {/* Level 3: Session detail */}
-                                            <TableRow>
-                                              <TableCell colSpan={5} sx={{ p: 0, border: 'none' }}>
-                                                <Collapse in={is_task_expanded} timeout="auto" unmountOnExit>
-                                                  <Box sx={{ pl: 4, pr: 1, py: 1, bgcolor: 'var(--bg-primary)', borderRadius: 1, mx: 1, mb: 1 }}>
-                                                    <Typography variant="caption" sx={{ fontWeight: 600, mb: 0.5, display: 'block', fontSize: '0.65rem' }}>
-                                                      세션 상세 ({task.session_count}건)
+                                          return (
+                                            <React.Fragment key={task.title}>
+                                              <TableRow
+                                                hover
+                                                sx={{ cursor: 'pointer', '& > td': { borderBottom: is_task_expanded ? 'none' : undefined } }}
+                                                onClick={() => handleToggleTask(summary.project_code, cg.category, task.title)}
+                                              >
+                                                <TableCell sx={{ pr: 0, py: 0.5 }}>
+                                                  {is_task_expanded ? <ExpandLessIcon sx={{ fontSize: 16 }} color="action" /> : <ExpandMoreIcon sx={{ fontSize: 16 }} color="action" />}
+                                                </TableCell>
+                                                <TableCell sx={{ py: 0.5 }}>
+                                                  <Typography variant="body2" sx={{ fontSize: '0.8rem' }}>{task.title}</Typography>
+                                                </TableCell>
+                                                <TableCell align="center" sx={{ py: 0.5 }}>
+                                                  <Typography variant="caption" color="text.secondary">{task.session_count}건</Typography>
+                                                </TableCell>
+                                                <TableCell align="right" sx={{ py: 0.5 }}>
+                                                  <Typography variant="body2" sx={{ fontWeight: 500, fontSize: '0.8rem' }}>{formatSeconds(task.total_seconds)}</Typography>
+                                                </TableCell>
+                                                <TableCell sx={{ py: 0.5 }}>
+                                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                    <Box sx={{ flex: 1, bgcolor: 'var(--bg-primary)', borderRadius: 0.5, height: 12, overflow: 'hidden' }}>
+                                                      <Box sx={{ width: `${task.percentage}%`, height: '100%', bgcolor: bar_colors[cat_idx % bar_colors.length], opacity: 0.6, borderRadius: 0.5, transition: 'width 0.3s ease' }} />
+                                                    </Box>
+                                                    <Typography variant="caption" sx={{ minWidth: 36, textAlign: 'right', fontSize: '0.65rem' }}>
+                                                      {task.percentage.toFixed(1)}%
                                                     </Typography>
-                                                    <Table size="small">
-                                                      <TableHead>
-                                                        <TableRow>
-                                                          <TableCell sx={{ fontSize: '0.65rem', fontWeight: 600, py: 0.25 }}>날짜</TableCell>
-                                                          <TableCell sx={{ fontSize: '0.65rem', fontWeight: 600, py: 0.25 }}>시간</TableCell>
-                                                          <TableCell sx={{ fontSize: '0.65rem', fontWeight: 600, py: 0.25 }} align="right">소요</TableCell>
-                                                          <TableCell sx={{ fontSize: '0.65rem', fontWeight: 600, py: 0.25 }}>비고</TableCell>
-                                                        </TableRow>
-                                                      </TableHead>
-                                                      <TableBody>
-                                                        {task.logs.map((log) => {
-                                                          const dur = getDurationSecondsExcludingLunch(log.startTime, log.endTime, log.pausedDuration);
-                                                          return (
-                                                            <TableRow key={log.id}>
-                                                              <TableCell sx={{ fontSize: '0.7rem', py: 0.25 }}>{formatDate(log.startTime)}</TableCell>
-                                                              <TableCell sx={{ fontSize: '0.7rem', py: 0.25 }}>
-                                                                {formatTime(log.startTime)} ~ {log.endTime ? formatTime(log.endTime) : '진행중'}
-                                                              </TableCell>
-                                                              <TableCell sx={{ fontSize: '0.7rem', py: 0.25, fontWeight: 500 }} align="right">
-                                                                {formatSeconds(dur)}
-                                                              </TableCell>
-                                                              <TableCell sx={{ py: 0.25, minWidth: 160 }}>
-                                                                {editing_note_id === log.id ? (
-                                                                  <ClickAwayListener onClickAway={handleSaveNote}>
-                                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                                                      <TextField
-                                                                        size="small"
-                                                                        value={editing_note_value}
-                                                                        onChange={(e) => setEditingNoteValue(e.target.value)}
-                                                                        onKeyDown={(e) => {
-                                                                          if (e.key === 'Enter') handleSaveNote();
-                                                                          if (e.key === 'Escape') handleCancelEditNote();
-                                                                        }}
-                                                                        autoFocus
-                                                                        fullWidth
-                                                                        placeholder="메모 입력..."
-                                                                        sx={{ '& .MuiInputBase-input': { fontSize: '0.7rem', py: 0.25 } }}
-                                                                      />
-                                                                      <IconButton size="small" onClick={handleSaveNote} sx={{ p: 0.25 }}>
-                                                                        <CheckIcon sx={{ fontSize: 14 }} color="success" />
-                                                                      </IconButton>
-                                                                      <IconButton size="small" onClick={handleCancelEditNote} sx={{ p: 0.25 }}>
-                                                                        <CloseIcon sx={{ fontSize: 14 }} color="error" />
-                                                                      </IconButton>
-                                                                    </Box>
-                                                                  </ClickAwayListener>
-                                                                ) : (
-                                                                  <Box
-                                                                    sx={{ display: 'flex', alignItems: 'center', gap: 0.5, cursor: 'pointer', '&:hover .edit-icon': { opacity: 1 } }}
-                                                                    onClick={(e) => { e.stopPropagation(); handleStartEditNote(log.id, log.note || ''); }}
-                                                                  >
-                                                                    <Typography variant="caption" sx={{ fontSize: '0.7rem', color: log.note ? 'text.primary' : 'text.disabled', fontStyle: log.note ? 'normal' : 'italic' }}>
-                                                                      {log.note || '메모 추가...'}
-                                                                    </Typography>
-                                                                    <EditNoteIcon className="edit-icon" sx={{ fontSize: 12, opacity: 0, transition: 'opacity 0.2s', color: 'text.secondary' }} />
-                                                                  </Box>
-                                                                )}
-                                                              </TableCell>
-                                                            </TableRow>
-                                                          );
-                                                        })}
-                                                      </TableBody>
-                                                    </Table>
                                                   </Box>
-                                                </Collapse>
-                                              </TableCell>
-                                            </TableRow>
-                                          </React.Fragment>
-                                        );
-                                      })}
-                                    </TableBody>
-                                  </Table>
-                                </Box>
-                              </Collapse>
-                            </TableCell>
-                          </TableRow>
-                        </React.Fragment>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+                                                </TableCell>
+                                              </TableRow>
+
+                                              {/* Level 3: Session detail */}
+                                              <TableRow>
+                                                <TableCell colSpan={5} sx={{ p: 0, border: 'none' }}>
+                                                  <Collapse in={is_task_expanded} timeout="auto" unmountOnExit>
+                                                    <Box sx={{ pl: 4, pr: 1, py: 1, bgcolor: 'var(--bg-primary)', borderRadius: 1, mx: 1, mb: 1 }}>
+                                                      <Typography variant="caption" sx={{ fontWeight: 600, mb: 0.5, display: 'block', fontSize: '0.65rem' }}>
+                                                        세션 상세 ({task.session_count}건)
+                                                      </Typography>
+                                                      <Table size="small">
+                                                        <TableHead>
+                                                          <TableRow>
+                                                            <TableCell sx={{ fontSize: '0.65rem', fontWeight: 600, py: 0.25 }}>날짜</TableCell>
+                                                            <TableCell sx={{ fontSize: '0.65rem', fontWeight: 600, py: 0.25 }}>시간</TableCell>
+                                                            <TableCell sx={{ fontSize: '0.65rem', fontWeight: 600, py: 0.25 }} align="right">소요</TableCell>
+                                                            <TableCell sx={{ fontSize: '0.65rem', fontWeight: 600, py: 0.25 }}>비고</TableCell>
+                                                          </TableRow>
+                                                        </TableHead>
+                                                        <TableBody>
+                                                          {task.logs.map((log) => {
+                                                            const dur = getDurationSecondsExcludingLunch(log.startTime, log.endTime, log.pausedDuration);
+                                                            return (
+                                                              <TableRow key={log.id}>
+                                                                <TableCell sx={{ fontSize: '0.7rem', py: 0.25 }}>{formatDate(log.startTime)}</TableCell>
+                                                                <TableCell sx={{ fontSize: '0.7rem', py: 0.25 }}>
+                                                                  {formatTime(log.startTime)} ~ {log.endTime ? formatTime(log.endTime) : '진행중'}
+                                                                </TableCell>
+                                                                <TableCell sx={{ fontSize: '0.7rem', py: 0.25, fontWeight: 500 }} align="right">
+                                                                  {formatSeconds(dur)}
+                                                                </TableCell>
+                                                                <TableCell sx={{ py: 0.25, minWidth: 160 }}>
+                                                                  {editing_note_id === log.id ? (
+                                                                    <ClickAwayListener onClickAway={handleSaveNote}>
+                                                                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                                                        <TextField
+                                                                          size="small"
+                                                                          value={editing_note_value}
+                                                                          onChange={(e) => setEditingNoteValue(e.target.value)}
+                                                                          onKeyDown={(e) => {
+                                                                            if (e.key === 'Enter') handleSaveNote();
+                                                                            if (e.key === 'Escape') handleCancelEditNote();
+                                                                          }}
+                                                                          autoFocus
+                                                                          fullWidth
+                                                                          placeholder="메모 입력..."
+                                                                          sx={{ '& .MuiInputBase-input': { fontSize: '0.7rem', py: 0.25 } }}
+                                                                        />
+                                                                        <IconButton size="small" onClick={handleSaveNote} sx={{ p: 0.25 }}>
+                                                                          <CheckIcon sx={{ fontSize: 14 }} color="success" />
+                                                                        </IconButton>
+                                                                        <IconButton size="small" onClick={handleCancelEditNote} sx={{ p: 0.25 }}>
+                                                                          <CloseIcon sx={{ fontSize: 14 }} color="error" />
+                                                                        </IconButton>
+                                                                      </Box>
+                                                                    </ClickAwayListener>
+                                                                  ) : (
+                                                                    <Box
+                                                                      sx={{ display: 'flex', alignItems: 'center', gap: 0.5, cursor: 'pointer', '&:hover .edit-icon': { opacity: 1 } }}
+                                                                      onClick={(e) => { e.stopPropagation(); handleStartEditNote(log.id, log.note || ''); }}
+                                                                    >
+                                                                      <Typography variant="caption" sx={{ fontSize: '0.7rem', color: log.note ? 'text.primary' : 'text.disabled', fontStyle: log.note ? 'normal' : 'italic' }}>
+                                                                        {log.note || '메모 추가...'}
+                                                                      </Typography>
+                                                                      <EditNoteIcon className="edit-icon" sx={{ fontSize: 12, opacity: 0, transition: 'opacity 0.2s', color: 'text.secondary' }} />
+                                                                    </Box>
+                                                                  )}
+                                                                </TableCell>
+                                                              </TableRow>
+                                                            );
+                                                          })}
+                                                        </TableBody>
+                                                      </Table>
+                                                    </Box>
+                                                  </Collapse>
+                                                </TableCell>
+                                              </TableRow>
+                                            </React.Fragment>
+                                          );
+                                        })}
+                                      </TableBody>
+                                    </Table>
+                                  </Box>
+                                </Collapse>
+                              </TableCell>
+                            </TableRow>
+                          </React.Fragment>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              )}
             </Paper>
           );
         })
@@ -1080,7 +1348,7 @@ const ProjectAnalysis: React.FC = () => {
                 placeholder="키워드 입력 (예: TP 대응)"
               />
             )}
-            sx={{ minWidth: 260, flex: 1 }}
+            sx={is_mobile ? { width: '100%', '& .MuiInputBase-input': { fontSize: 16 } } : { minWidth: 260, flex: 1 }}
           />
           {interrupt_keywords.map((kw) => (
             <Chip key={kw} label={kw} onDelete={() => handleRemoveInterruptKeyword(kw)} size="small" color="warning" variant="outlined" />
@@ -1118,60 +1386,64 @@ const ProjectAnalysis: React.FC = () => {
                     <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
                       색이 진할수록 해당 요일에 인터럽트 소요시간이 많았음을 의미합니다.
                     </Typography>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                      {/* Header */}
-                      <Box sx={{ display: 'flex', gap: 0.5 }}>
-                        <Box sx={{ width: 70 }} />
-                        {interrupt_data.day_names.map((d) => (
-                          <Box key={d} sx={{ width: 48, textAlign: 'center' }}>
-                            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>{d}</Typography>
+                    {is_mobile ? (
+                      renderMobileHeatmap(interrupt_data)
+                    ) : (
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                        {/* Header */}
+                        <Box sx={{ display: 'flex', gap: 0.5 }}>
+                          <Box sx={{ width: 70 }} />
+                          {interrupt_data.day_names.map((d) => (
+                            <Box key={d} sx={{ width: 48, textAlign: 'center' }}>
+                              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>{d}</Typography>
+                            </Box>
+                          ))}
+                          <Box sx={{ flex: 1, ml: 1, textAlign: 'right' }}>
+                            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>합계</Typography>
+                          </Box>
+                        </Box>
+                        {/* Rows */}
+                        {interrupt_data.weekly_heatmap.map((week, wi) => (
+                          <Box key={wi} sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
+                            <Typography variant="caption" sx={{ width: 70, textAlign: 'right', pr: 1, fontWeight: 500 }}>
+                              {week.week_label}
+                            </Typography>
+                            {week.days.map((val, di) => {
+                              const intensity = interrupt_data.heatmap_max! > 0 ? val / interrupt_data.heatmap_max! : 0;
+                              return (
+                                <Tooltip key={di} title={val > 0 ? `${interrupt_data.day_names[di]}: ${formatSeconds(val)}` : ''}>
+                                  <Box
+                                    sx={{
+                                      width: 48,
+                                      height: 32,
+                                      borderRadius: 0.5,
+                                      bgcolor: val > 0
+                                        ? `rgba(239, 83, 80, ${0.15 + intensity * 0.75})`
+                                        : 'var(--bg-primary)',
+                                      border: '1px solid',
+                                      borderColor: val > 0 ? `rgba(239, 83, 80, ${0.3 + intensity * 0.5})` : 'var(--border-color)',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      transition: 'all 0.2s',
+                                    }}
+                                  >
+                                    {val > 0 && (
+                                      <Typography variant="caption" sx={{ fontSize: '0.6rem', fontWeight: 600, color: intensity > 0.5 ? '#fff' : 'text.primary' }}>
+                                        {Math.round(val / 60)}m
+                                      </Typography>
+                                    )}
+                                  </Box>
+                                </Tooltip>
+                              );
+                            })}
+                            <Typography variant="caption" sx={{ flex: 1, ml: 1, textAlign: 'right', fontWeight: 500 }}>
+                              {formatSeconds(week.total)}
+                            </Typography>
                           </Box>
                         ))}
-                        <Box sx={{ flex: 1, ml: 1, textAlign: 'right' }}>
-                          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>합계</Typography>
-                        </Box>
                       </Box>
-                      {/* Rows */}
-                      {interrupt_data.weekly_heatmap.map((week, wi) => (
-                        <Box key={wi} sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
-                          <Typography variant="caption" sx={{ width: 70, textAlign: 'right', pr: 1, fontWeight: 500 }}>
-                            {week.week_label}
-                          </Typography>
-                          {week.days.map((val, di) => {
-                            const intensity = interrupt_data.heatmap_max! > 0 ? val / interrupt_data.heatmap_max! : 0;
-                            return (
-                              <Tooltip key={di} title={val > 0 ? `${interrupt_data.day_names[di]}: ${formatSeconds(val)}` : ''}>
-                                <Box
-                                  sx={{
-                                    width: 48,
-                                    height: 32,
-                                    borderRadius: 0.5,
-                                    bgcolor: val > 0
-                                      ? `rgba(239, 83, 80, ${0.15 + intensity * 0.75})`
-                                      : 'var(--bg-primary)',
-                                    border: '1px solid',
-                                    borderColor: val > 0 ? `rgba(239, 83, 80, ${0.3 + intensity * 0.5})` : 'var(--border-color)',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    transition: 'all 0.2s',
-                                  }}
-                                >
-                                  {val > 0 && (
-                                    <Typography variant="caption" sx={{ fontSize: '0.6rem', fontWeight: 600, color: intensity > 0.5 ? '#fff' : 'text.primary' }}>
-                                      {Math.round(val / 60)}m
-                                    </Typography>
-                                  )}
-                                </Box>
-                              </Tooltip>
-                            );
-                          })}
-                          <Typography variant="caption" sx={{ flex: 1, ml: 1, textAlign: 'right', fontWeight: 500 }}>
-                            {formatSeconds(week.total)}
-                          </Typography>
-                        </Box>
-                      ))}
-                    </Box>
+                    )}
                   </Box>
                 )}
 
@@ -1212,43 +1484,47 @@ const ProjectAnalysis: React.FC = () => {
 
                 {/* Interrupt session list */}
                 <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>발생 이력 ({interrupt_data.total_sessions}건)</Typography>
-                <TableContainer>
-                  <Table size="small">
-                    <TableHead>
-                      <TableRow>
-                        <TableCell sx={{ fontSize: '0.7rem', fontWeight: 600, py: 0.5 }}>날짜</TableCell>
-                        <TableCell sx={{ fontSize: '0.7rem', fontWeight: 600, py: 0.5 }}>시간</TableCell>
-                        <TableCell sx={{ fontSize: '0.7rem', fontWeight: 600, py: 0.5 }}>작업명</TableCell>
-                        <TableCell sx={{ fontSize: '0.7rem', fontWeight: 600, py: 0.5 }}>카테고리</TableCell>
-                        <TableCell sx={{ fontSize: '0.7rem', fontWeight: 600, py: 0.5 }} align="right">소요</TableCell>
-                        <TableCell sx={{ fontSize: '0.7rem', fontWeight: 600, py: 0.5 }}>비고</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {interrupt_data.matched
-                        .sort((a, b) => a.startTime - b.startTime)
-                        .map((log) => {
-                          const dur = getDurationSecondsExcludingLunch(log.startTime, log.endTime, log.pausedDuration);
-                          return (
-                            <TableRow key={log.id}>
-                              <TableCell sx={{ fontSize: '0.75rem', py: 0.5 }}>{formatDate(log.startTime)}</TableCell>
-                              <TableCell sx={{ fontSize: '0.75rem', py: 0.5 }}>
-                                {formatTime(log.startTime)} ~ {log.endTime ? formatTime(log.endTime) : '진행중'}
-                              </TableCell>
-                              <TableCell sx={{ fontSize: '0.75rem', py: 0.5 }}>{log.title}</TableCell>
-                              <TableCell sx={{ fontSize: '0.75rem', py: 0.5 }}>
-                                <Chip label={log.category || '-'} size="small" variant="outlined" sx={{ fontSize: '0.65rem', height: 20 }} />
-                              </TableCell>
-                              <TableCell sx={{ fontSize: '0.75rem', py: 0.5, fontWeight: 500 }} align="right">{formatSeconds(dur)}</TableCell>
-                              <TableCell sx={{ fontSize: '0.75rem', py: 0.5, color: log.note ? 'text.primary' : 'text.disabled', fontStyle: log.note ? 'normal' : 'italic' }}>
-                                {log.note || '-'}
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
+                {is_mobile ? (
+                  renderMobileInterruptCards(interrupt_data.matched)
+                ) : (
+                  <TableContainer>
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow>
+                          <TableCell sx={{ fontSize: '0.7rem', fontWeight: 600, py: 0.5 }}>날짜</TableCell>
+                          <TableCell sx={{ fontSize: '0.7rem', fontWeight: 600, py: 0.5 }}>시간</TableCell>
+                          <TableCell sx={{ fontSize: '0.7rem', fontWeight: 600, py: 0.5 }}>작업명</TableCell>
+                          <TableCell sx={{ fontSize: '0.7rem', fontWeight: 600, py: 0.5 }}>카테고리</TableCell>
+                          <TableCell sx={{ fontSize: '0.7rem', fontWeight: 600, py: 0.5 }} align="right">소요</TableCell>
+                          <TableCell sx={{ fontSize: '0.7rem', fontWeight: 600, py: 0.5 }}>비고</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {interrupt_data.matched
+                          .sort((a, b) => a.startTime - b.startTime)
+                          .map((log) => {
+                            const dur = getDurationSecondsExcludingLunch(log.startTime, log.endTime, log.pausedDuration);
+                            return (
+                              <TableRow key={log.id}>
+                                <TableCell sx={{ fontSize: '0.75rem', py: 0.5 }}>{formatDate(log.startTime)}</TableCell>
+                                <TableCell sx={{ fontSize: '0.75rem', py: 0.5 }}>
+                                  {formatTime(log.startTime)} ~ {log.endTime ? formatTime(log.endTime) : '진행중'}
+                                </TableCell>
+                                <TableCell sx={{ fontSize: '0.75rem', py: 0.5 }}>{log.title}</TableCell>
+                                <TableCell sx={{ fontSize: '0.75rem', py: 0.5 }}>
+                                  <Chip label={log.category || '-'} size="small" variant="outlined" sx={{ fontSize: '0.65rem', height: 20 }} />
+                                </TableCell>
+                                <TableCell sx={{ fontSize: '0.75rem', py: 0.5, fontWeight: 500 }} align="right">{formatSeconds(dur)}</TableCell>
+                                <TableCell sx={{ fontSize: '0.75rem', py: 0.5, color: log.note ? 'text.primary' : 'text.disabled', fontStyle: log.note ? 'normal' : 'italic' }}>
+                                  {log.note || '-'}
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                )}
               </>
             )}
           </>

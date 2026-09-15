@@ -17,7 +17,12 @@ import {
   Select,
   MenuItem,
   SelectChangeEvent,
+  Menu,
+  ListItemIcon,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import TodayIcon from '@mui/icons-material/Today';
@@ -131,6 +136,12 @@ const WeeklySchedule: React.FC = () => {
   const [snackbarMessage, setSnackbarMessage] = useState('');
   // 잡 색상 설정 모달
   const [colorManagerOpen, setColorManagerOpen] = useState(false);
+
+  // 모바일(< md) 레이아웃 전용 UI 상태
+  const theme = useTheme();
+  const is_mobile = useMediaQuery(theme.breakpoints.down('md'));
+  const [more_anchor, setMoreAnchor] = useState<HTMLElement | null>(null);
+  const [preview_open, setPreviewOpen] = useState(false);
 
   // 이번 주인지 확인
   const isCurrentWeek = useMemo(() => {
@@ -645,6 +656,434 @@ const WeeklySchedule: React.FC = () => {
     }
   };
 
+  // 관리업무 제외 토글 (Select 상태도 전체 보기로 리셋)
+  const applyViewMode = (new_mode: 'all' | 'exclude_management') => {
+    setViewMode(new_mode);
+    setStorageItem('weeklyScheduleViewMode', new_mode);
+    setFilterMode('all');
+    setExcludedProject('');
+    setStorageItem('weeklyScheduleFilterMode', 'all');
+    setStorageItem('weeklyScheduleExcludedProject', '');
+  };
+
+  const handleCopyFormatChange = (_: unknown, value: '1' | '2' | '3' | null) => {
+    if (value) {
+      setCopyFormat(value);
+      setStorageItem('weeklyScheduleCopyFormat', value);
+    }
+  };
+
+  const handleTimeDisplayChange = (_: unknown, value: 'cumulative' | 'daily' | 'none' | null) => {
+    if (value) {
+      setTimeDisplayMode(value);
+      setStorageItem('weeklyScheduleTimeDisplayMode', value);
+    }
+  };
+
+  const handleStatusChange = (project_key: string, new_value: string) => {
+    setStatusOverrides(prev => ({
+      ...prev,
+      [project_key]: new_value as 'completed' | 'in_progress',
+    }));
+  };
+
+  const filter_select_value =
+    viewMode === 'exclude_management'
+      ? 'exclude_management'
+      : filterMode === 'exclude'
+        ? excludedProject
+        : 'all';
+
+  const filter_menu_items = [
+    <MenuItem key="all" value="all">전체 보기</MenuItem>,
+    <MenuItem key="exclude_management" value="exclude_management">관리업무 제외</MenuItem>,
+    <Divider key="divider" />,
+    ...availableProjects.map(p => (
+      <MenuItem key={p.code} value={p.code}>
+        [{p.code}] {p.name} 제외
+      </MenuItem>
+    )),
+  ];
+
+  const preview_body =
+    copyFormat === '1' ? (
+      generateFormat1()
+    ) : copyFormat === '3' ? (
+      <div dangerouslySetInnerHTML={{ __html: generateFormatHtmlTable() }} />
+    ) : (
+      <div dangerouslySetInnerHTML={{ __html: generateFormatHtml() }} />
+    );
+
+  const shared_overlays = (
+    <>
+      {/* 잡 색상 설정 모달 (배포 캘린더와 동일 스토어로 동기화, localStorage+주간 잡 포함) */}
+      <JobColorManager
+        open={colorManagerOpen}
+        onClose={() => setColorManagerOpen(false)}
+        jobCodesOverride={job_codes_for_color_manager}
+      />
+
+      {/* 스낵바 */}
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={3000}
+        onClose={() => setSnackbarOpen(false)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert severity="success" onClose={() => setSnackbarOpen(false)}>
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
+    </>
+  );
+
+  // ------------------------------------------------------------------
+  // 모바일 레이아웃 (< md): 세로 카드 리스트, 가로 스크롤 없음
+  // ------------------------------------------------------------------
+  if (is_mobile) {
+    const segmented_sx = {
+      '& .MuiToggleButton-root': { minHeight: 44, whiteSpace: 'nowrap', fontSize: 14, px: 1 },
+    };
+    const has_logs = weeklyData.allLogs.length > 0;
+
+    return (
+      <Box sx={{ maxWidth: 1200, mx: 'auto', pb: 4 }}>
+        {/* 헤더 카드 */}
+        <Paper
+          variant="outlined"
+          sx={{
+            p: { xs: 1.5, sm: 2 },
+            mb: 2,
+            borderRadius: 2,
+            bgcolor: 'var(--bg-secondary)',
+            borderColor: 'var(--border-color)',
+          }}
+        >
+          {/* 1행: 주 선택 + 더보기 (화면 제목은 상단 앱 바에 있음) */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <IconButton aria-label="이전 주" onClick={handlePrevWeek} sx={{ width: 44, height: 44 }}>
+              <ChevronLeftIcon />
+            </IconButton>
+            <Typography
+              sx={{ flex: 1, fontSize: 16, fontWeight: 700, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', textAlign: 'center' }}
+            >
+              {formatWeekLabel()}
+            </Typography>
+            <IconButton aria-label="다음 주" onClick={handleNextWeek} sx={{ width: 44, height: 44 }}>
+              <ChevronRightIcon />
+            </IconButton>
+            <IconButton
+              aria-label="더보기"
+              onClick={(e) => setMoreAnchor(e.currentTarget)}
+              sx={{ width: 40, height: 40 }}
+            >
+              <MoreVertIcon />
+            </IconButton>
+            <Menu
+              anchorEl={more_anchor}
+              open={Boolean(more_anchor)}
+              onClose={() => setMoreAnchor(null)}
+              anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+              transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+            >
+              <MenuItem
+                disabled={!has_logs}
+                onClick={() => {
+                  setMoreAnchor(null);
+                  handleCopy();
+                }}
+                sx={{ minHeight: 44 }}
+              >
+                <ListItemIcon><ContentCopyIcon fontSize="small" /></ListItemIcon>
+                복사
+              </MenuItem>
+              {copyFormat === '3' && (
+                <MenuItem
+                  onClick={() => {
+                    setMoreAnchor(null);
+                    setColorManagerOpen(true);
+                  }}
+                  sx={{ minHeight: 44 }}
+                >
+                  <ListItemIcon><PaletteIcon fontSize="small" /></ListItemIcon>
+                  잡 색상 설정
+                </MenuItem>
+              )}
+            </Menu>
+          </Box>
+
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, flexWrap: 'wrap' }}>
+            <Typography sx={{ fontSize: 12, color: 'text.secondary', whiteSpace: 'nowrap' }}>
+              {formatWeekRange()}
+            </Typography>
+            {!isCurrentWeek && (
+              <Chip label="이번 주" size="small" color="primary" variant="outlined" onClick={handleThisWeek} />
+            )}
+          </Box>
+
+          {/* 3행: 필터 */}
+          <ToggleButtonGroup
+            value={viewMode}
+            exclusive
+            fullWidth
+            size="small"
+            onChange={(_, value: 'all' | 'exclude_management' | null) => {
+              if (value && value !== viewMode) applyViewMode(value);
+            }}
+            sx={{ mt: 1.5, ...segmented_sx }}
+          >
+            <ToggleButton value="all">전체</ToggleButton>
+            <ToggleButton value="exclude_management">관리업무 제외</ToggleButton>
+          </ToggleButtonGroup>
+
+          {availableProjects.length > 0 && (
+            <FormControl size="small" fullWidth sx={{ mt: 1 }}>
+              <Select
+                value={filter_select_value}
+                onChange={handleFilterChange}
+                displayEmpty
+                sx={{ fontSize: 16, minHeight: 44 }}
+              >
+                {filter_menu_items}
+              </Select>
+            </FormControl>
+          )}
+        </Paper>
+
+        {/* 날짜별 업무 목록 */}
+        {weeklyData.days.length === 0 ? (
+          <Paper
+            variant="outlined"
+            sx={{ p: 4, borderRadius: 2, textAlign: 'center', bgcolor: 'var(--bg-secondary)' }}
+          >
+            <Typography color="text.secondary">
+              이 주에 기록된 업무가 없습니다.
+            </Typography>
+          </Paper>
+        ) : (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+            {weeklyData.days.map(day => (
+              <Box key={day.dateKey}>
+                {/* 날짜 섹션 헤더 */}
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'baseline',
+                    justifyContent: 'space-between',
+                    gap: 1,
+                    mb: 1,
+                    pb: 0.5,
+                    borderBottom: '2px solid var(--border-color)',
+                  }}
+                >
+                  <Typography sx={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>
+                    {day.dayLabel}
+                  </Typography>
+                  <Typography sx={{ fontSize: 15, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+                    {formatTimeHHMM(day.totalSeconds)}
+                  </Typography>
+                </Box>
+
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  {day.projects.map(project => {
+                    const projectKey = `${day.dateKey}-${project.projectCode}`;
+                    const isExpanded = expandedProjects.has(projectKey);
+                    const display_name = getDisplayProjectName(project);
+                    const time_label = getTimeLabel();
+
+                    return (
+                      <Paper
+                        key={projectKey}
+                        variant="outlined"
+                        onClick={() => toggleProject(projectKey)}
+                        sx={{
+                          p: { xs: 1.5, sm: 2 },
+                          borderRadius: 2,
+                          cursor: 'pointer',
+                          bgcolor: 'var(--card-bg)',
+                          borderColor: 'var(--border-color)',
+                        }}
+                      >
+                        {/* 1줄: 코드 칩 + 진행상태 */}
+                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+                          <Chip
+                            label={`[${project.projectCode}]`}
+                            size="small"
+                            variant="outlined"
+                            sx={{ fontWeight: 600, color: 'var(--primary-color)', minWidth: 0 }}
+                          />
+                          <Box onClick={(e) => e.stopPropagation()} sx={{ flexShrink: 0 }}>
+                            <StatusSelect
+                              value={statusOverrides[projectKey] || project.status}
+                              onChange={(new_value) => handleStatusChange(projectKey, new_value)}
+                              size="small"
+                              sx={{
+                                minWidth: 96,
+                                width: 128,
+                                '& .MuiAutocomplete-inputRoot': { minHeight: 36 },
+                                '& .MuiAutocomplete-inputRoot .MuiInputBase-input': { fontSize: 16 },
+                              }}
+                            />
+                          </Box>
+                        </Box>
+
+                        {/* 2줄: 프로젝트명 */}
+                        {display_name && (
+                          <Typography
+                            sx={{
+                              mt: 1,
+                              fontSize: 15,
+                              fontWeight: 600,
+                              lineHeight: 1.4,
+                              display: '-webkit-box',
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical',
+                              overflow: 'hidden',
+                              overflowWrap: 'anywhere',
+                            }}
+                          >
+                            {display_name}
+                          </Typography>
+                        )}
+
+                        {/* 3줄: 시작일자 · 시간 */}
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.75 }}>
+                          <Typography sx={{ fontSize: 12, color: 'text.secondary', flex: 1, minWidth: 0 }}>
+                            시작일자 {project.startDate}
+                          </Typography>
+                          {timeDisplayMode !== 'none' && (
+                            <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5, whiteSpace: 'nowrap' }}>
+                              {time_label && (
+                                <Typography component="span" sx={{ fontSize: 12, color: 'text.secondary' }}>
+                                  {time_label}
+                                </Typography>
+                              )}
+                              <Typography component="span" sx={{ fontSize: 15, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+                                {formatTimeHHMM(getProjectTime(project))}
+                              </Typography>
+                            </Box>
+                          )}
+                          {isExpanded
+                            ? <ExpandLessIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+                            : <ExpandMoreIcon fontSize="small" sx={{ color: 'text.secondary' }} />}
+                        </Box>
+
+                        {/* 하위 업무 목록 */}
+                        <Collapse in={isExpanded}>
+                          <Box sx={{ mt: 1, pt: 1, borderTop: '1px solid var(--border-color)' }}>
+                            {project.tasks.map((task, taskIdx) => (
+                              <Box key={taskIdx} sx={{ display: 'flex', alignItems: 'baseline', gap: 0.75, py: 0.5 }}>
+                                <Typography sx={{ fontSize: 14, color: 'text.secondary' }}>›</Typography>
+                                <Typography sx={{ fontSize: 14, flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}>
+                                  {task.title}
+                                </Typography>
+                                {timeDisplayMode !== 'none' && (
+                                  <Typography sx={{ fontSize: 13, color: 'text.secondary', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+                                    ({formatTimePart(getTaskTime(task))})
+                                  </Typography>
+                                )}
+                              </Box>
+                            ))}
+                          </Box>
+                        </Collapse>
+                      </Paper>
+                    );
+                  })}
+                </Box>
+              </Box>
+            ))}
+          </Box>
+        )}
+
+        {/* 복사 미리보기 (접이식) */}
+        {has_logs && (
+          <Paper
+            variant="outlined"
+            sx={{
+              mt: 3,
+              borderRadius: 2,
+              bgcolor: 'var(--bg-secondary)',
+              borderColor: 'var(--border-color)',
+              overflow: 'hidden',
+            }}
+          >
+            <Box
+              role="button"
+              aria-expanded={preview_open}
+              onClick={() => setPreviewOpen(o => !o)}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                minHeight: 48,
+                px: { xs: 1.5, sm: 2 },
+                cursor: 'pointer',
+              }}
+            >
+              <Typography sx={{ fontSize: 15, fontWeight: 600 }}>복사 미리보기</Typography>
+              {preview_open ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+            </Box>
+
+            <Collapse in={preview_open}>
+              <Box sx={{ px: { xs: 1.5, sm: 2 }, pb: { xs: 1.5, sm: 2 }, display: 'flex', flexDirection: 'column', gap: 1 }}>
+                <ToggleButtonGroup value={copyFormat} exclusive fullWidth size="small" onChange={handleCopyFormatChange} sx={segmented_sx}>
+                  <ToggleButton value="1">간단형</ToggleButton>
+                  <ToggleButton value="2">상세형</ToggleButton>
+                  <ToggleButton value="3">라벨형</ToggleButton>
+                </ToggleButtonGroup>
+                <ToggleButtonGroup
+                  value={timeDisplayMode}
+                  exclusive
+                  fullWidth
+                  size="small"
+                  onChange={handleTimeDisplayChange}
+                  sx={segmented_sx}
+                  data-testid="time-display-toggle"
+                >
+                  <ToggleButton value="cumulative">누적시간</ToggleButton>
+                  <ToggleButton value="daily">당일시간</ToggleButton>
+                  <ToggleButton value="none">시간없이</ToggleButton>
+                </ToggleButtonGroup>
+
+                <Paper
+                  variant="outlined"
+                  data-testid="copy-preview-content"
+                  sx={{
+                    p: 1.5,
+                    bgcolor: 'var(--bg-primary)',
+                    maxHeight: '50vh',
+                    overflowY: 'auto',
+                    overflowX: 'hidden',
+                    overflowWrap: 'anywhere',
+                    fontFamily: copyFormat === '1' ? 'monospace' : 'inherit',
+                    fontSize: 13,
+                    whiteSpace: copyFormat === '1' ? 'pre-wrap' : 'normal',
+                    lineHeight: 1.6,
+                  }}
+                >
+                  {preview_body}
+                </Paper>
+
+                <Button
+                  variant="contained"
+                  fullWidth
+                  startIcon={<ContentCopyIcon />}
+                  onClick={handleCopy}
+                  sx={{ minHeight: 44, whiteSpace: 'nowrap' }}
+                  data-testid="copy-preview"
+                >
+                  복사
+                </Button>
+              </Box>
+            </Collapse>
+          </Paper>
+        )}
+
+        {shared_overlays}
+      </Box>
+    );
+  }
+
   return (
     <Box sx={{ maxWidth: 1200, mx: 'auto', pb: 4 }}>
       {/* 헤더 */}
@@ -709,17 +1148,7 @@ const WeeklySchedule: React.FC = () => {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <ToggleButton 
               value={viewMode}
-              onClick={() => { 
-                const new_mode = viewMode === 'all' ? 'exclude_management' : 'all';
-                setViewMode(new_mode);
-                setStorageItem('weeklyScheduleViewMode', new_mode);
-                
-                // Select 상태도 동기화 (전체 보기로 리셋)
-                setFilterMode('all');
-                setExcludedProject('');
-                setStorageItem('weeklyScheduleFilterMode', 'all');
-                setStorageItem('weeklyScheduleExcludedProject', '');
-              }}
+              onClick={() => applyViewMode(viewMode === 'all' ? 'exclude_management' : 'all')}
               sx={{ px: 2 }}
               size="small"
             >
@@ -729,25 +1158,12 @@ const WeeklySchedule: React.FC = () => {
             {availableProjects.length > 0 && (
               <FormControl size="small" sx={{ minWidth: 200 }}>
                 <Select
-                  value={
-                    viewMode === 'exclude_management' 
-                      ? 'exclude_management' 
-                      : filterMode === 'exclude' 
-                        ? excludedProject 
-                        : 'all'
-                  }
+                  value={filter_select_value}
                   onChange={handleFilterChange}
                   displayEmpty
                   sx={{ fontSize: '0.875rem' }}
                 >
-                  <MenuItem value="all">전체 보기</MenuItem>
-                  <MenuItem value="exclude_management">관리업무 제외</MenuItem>
-                  <Divider />
-                  {availableProjects.map(p => (
-                    <MenuItem key={p.code} value={p.code}>
-                      [{p.code}] {p.name} 제외
-                    </MenuItem>
-                  ))}
+                  {filter_menu_items}
                 </Select>
               </FormControl>
             )}
@@ -855,12 +1271,7 @@ const WeeklySchedule: React.FC = () => {
                           </Typography>
                           <StatusSelect
                             value={statusOverrides[projectKey] || project.status}
-                            onChange={(newValue) => {
-                              setStatusOverrides(prev => ({
-                                ...prev,
-                                [projectKey]: newValue
-                              }));
-                            }}
+                            onChange={(newValue) => handleStatusChange(projectKey, newValue)}
                             size="small"
                             sx={{ 
                               height: 22, 
@@ -942,12 +1353,7 @@ const WeeklySchedule: React.FC = () => {
               <ToggleButtonGroup
                 value={copyFormat}
                 exclusive
-                onChange={(_, value: '1' | '2' | '3' | null) => {
-                  if (value) {
-                    setCopyFormat(value);
-                    setStorageItem('weeklyScheduleCopyFormat', value);
-                  }
-                }}
+                onChange={handleCopyFormatChange}
                 size="small"
               >
                 <ToggleButton value="1" sx={{ px: 2 }}>
@@ -963,12 +1369,7 @@ const WeeklySchedule: React.FC = () => {
               <ToggleButtonGroup
                 value={timeDisplayMode}
                 exclusive
-                onChange={(_, value: 'cumulative' | 'daily' | 'none' | null) => {
-                  if (value) {
-                    setTimeDisplayMode(value);
-                    setStorageItem('weeklyScheduleTimeDisplayMode', value);
-                  }
-                }}
+                onChange={handleTimeDisplayChange}
                 size="small"
                 data-testid="time-display-toggle"
               >
@@ -1009,13 +1410,7 @@ const WeeklySchedule: React.FC = () => {
               lineHeight: 1.6,
             }}
           >
-            {copyFormat === '1' ? (
-              generateFormat1()
-            ) : copyFormat === '3' ? (
-              <div dangerouslySetInnerHTML={{ __html: generateFormatHtmlTable() }} />
-            ) : (
-              <div dangerouslySetInnerHTML={{ __html: generateFormatHtml() }} />
-            )}
+            {preview_body}
           </Paper>
 
           {copyFormat === '3' && (
@@ -1033,24 +1428,7 @@ const WeeklySchedule: React.FC = () => {
         </Paper>
       )}
 
-      {/* 잡 색상 설정 모달 (배포 캘린더와 동일 스토어로 동기화, localStorage+주간 잡 포함) */}
-      <JobColorManager
-        open={colorManagerOpen}
-        onClose={() => setColorManagerOpen(false)}
-        jobCodesOverride={job_codes_for_color_manager}
-      />
-
-      {/* 스낵바 */}
-      <Snackbar
-        open={snackbarOpen}
-        autoHideDuration={3000}
-        onClose={() => setSnackbarOpen(false)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert severity="success" onClose={() => setSnackbarOpen(false)}>
-          {snackbarMessage}
-        </Alert>
-      </Snackbar>
+      {shared_overlays}
     </Box>
   );
 };

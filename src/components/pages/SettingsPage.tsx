@@ -19,7 +19,11 @@ import {
   Slider,
   ToggleButton,
   ToggleButtonGroup,
+  IconButton,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
+import CloseIcon from '@mui/icons-material/Close';
 import { LocalizationProvider, TimePicker } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import DeleteForeverIcon from '@mui/icons-material/DeleteForever';
@@ -191,7 +195,57 @@ const DEFAULT_SETTINGS = {
   screenScale: 1.0,
 };
 
+// 모바일(< md) 공통 스타일 — md 이상은 기존 데스크톱 값 그대로
+const TOUCH_MIN_HEIGHT = { xs: 44, md: 'auto' };
+const SECTION_SX = { p: { xs: 2, md: 3 }, mb: { xs: 1.5, md: 3 }, borderRadius: { xs: 2, md: 1 } };
+const SECTION_TITLE_SX = { fontWeight: { xs: 700, md: 600 }, fontSize: { xs: 17, md: '1.25rem' } };
+const TOUCH_INPUT_SX = { '& .MuiInputBase-root': { minHeight: TOUCH_MIN_HEIGHT } };
+// 설정 행 목록: 행 사이 구분선
+const MOBILE_ROWS_SX = { '& > :not(:last-child)': { borderBottom: 1, borderColor: 'divider' } };
+// 「기본값으로 초기화」 텍스트 버튼: 모바일은 오른쪽 정렬
+const RESET_ROW_SX = { display: 'flex', justifyContent: { xs: 'flex-end', md: 'flex-start' } };
+// 휴대폰 전체화면 대화상자: 하단 버튼을 반반·44px로
+const PHONE_ACTIONS_SX = { '& > .MuiButton-root': { flex: { xs: 1, sm: '0 1 auto' }, minHeight: { xs: 44, sm: 'auto' } } };
+
+// 모바일 설정 행: 라벨(+도움말) 왼쪽, 스위치 오른쪽
+interface MobileSwitchRowProps {
+  label: string;
+  helper?: string;
+  checked: boolean;
+  onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
+}
+
+const MobileSwitchRow: React.FC<MobileSwitchRowProps> = ({ label, helper, checked, onChange }) => (
+  <FormControlLabel
+    labelPlacement="start"
+    control={<Switch checked={checked} onChange={onChange} />}
+    label={
+      <>
+        <Typography component="span" sx={{ display: 'block', fontSize: 15, fontWeight: 500 }}>
+          {label}
+        </Typography>
+        {helper && (
+          <Typography component="span" sx={{ display: 'block', fontSize: 13, color: 'text.secondary', mt: 0.25 }}>
+            {helper}
+          </Typography>
+        )}
+      </>
+    }
+    sx={{
+      m: 0,
+      py: 1,
+      minHeight: 56,
+      width: '100%',
+      gap: 2,
+      '& .MuiFormControlLabel-label': { flex: 1, minWidth: 0 },
+    }}
+  />
+);
+
 const SettingsPage: React.FC = () => {
+  const theme = useTheme();
+  const is_mobile = useMediaQuery(theme.breakpoints.down('md'));
+  const is_phone = useMediaQuery(theme.breakpoints.down('sm'));
   const { setThemeConfig, themeConfig } = useTimerStore();
   const { categories, addCategory, removeCategory, reorderCategories, resetToDefault: resetCategories } = useCategoryStore();
   const { statuses, addStatus, removeStatus, reorderStatuses, resetToDefault: resetStatuses } = useStatusStore();
@@ -512,13 +566,58 @@ const SettingsPage: React.FC = () => {
     event.target.value = '';
   };
 
+  const lunch_start_picker = (
+    <TimePicker
+      label="점심시간 시작"
+      value={(() => {
+        const [h, m] = lunch_start.split(':').map(Number);
+        const d = new Date();
+        d.setHours(h, m, 0, 0);
+        return d;
+      })()}
+      onChange={(newValue) => {
+        if (newValue) {
+          const h = String(newValue.getHours()).padStart(2, '0');
+          const m = String(newValue.getMinutes()).padStart(2, '0');
+          setLunchStart(`${h}:${m}`);
+        }
+      }}
+      slotProps={{
+        textField: { size: 'small', fullWidth: true }
+      }}
+    />
+  );
+
+  const lunch_end_picker = (
+    <TimePicker
+      label="점심시간 종료"
+      value={(() => {
+        const [h, m] = lunch_end.split(':').map(Number);
+        const d = new Date();
+        d.setHours(h, m, 0, 0);
+        return d;
+      })()}
+      onChange={(newValue) => {
+        if (newValue) {
+          const h = String(newValue.getHours()).padStart(2, '0');
+          const m = String(newValue.getMinutes()).padStart(2, '0');
+          setLunchEnd(`${h}:${m}`);
+        }
+      }}
+      slotProps={{
+        textField: { size: 'small', fullWidth: true }
+      }}
+    />
+  );
+
   return (
     <Box sx={{ maxWidth: 800, mx: 'auto' }}>
       <Paper
         variant="outlined"
         sx={{
-          p: 3,
-          mb: 3,
+          ...SECTION_SX,
+          // 모바일은 상단 앱 바에 페이지 제목이 있으므로 숨김
+          display: { xs: 'none', md: 'block' },
           bgcolor: 'var(--card-bg)',
           borderColor: 'var(--border-color)',
         }}
@@ -532,10 +631,10 @@ const SettingsPage: React.FC = () => {
       </Paper>
 
       {/* 화면 크기 설정 */}
-      <Paper variant="outlined" sx={{ p: 3, mb: 3 }}>
+      <Paper variant="outlined" sx={SECTION_SX}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
           <ZoomInIcon sx={{ color: 'text.secondary' }} />
-          <Typography variant="h6" sx={{ fontWeight: 600 }}>
+          <Typography variant="h6" sx={SECTION_TITLE_SX}>
             화면 크기
           </Typography>
         </Box>
@@ -545,14 +644,29 @@ const SettingsPage: React.FC = () => {
         </Typography>
 
         {/* 프리셋 버튼 */}
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
+        {/* 모바일: 같은 폭 버튼 그리드 (폭이 좁으면 3열 → 2열) */}
+        <Box
+          sx={{
+            display: { xs: 'grid', md: 'flex' },
+            gridTemplateColumns: 'repeat(auto-fit, minmax(94px, 1fr))',
+            flexWrap: 'wrap',
+            gap: 1,
+            mb: 2,
+          }}
+        >
           {SCREEN_SCALE_OPTIONS.map((opt) => (
             <Button
               key={opt.value}
               variant={screen_scale === opt.value ? 'contained' : 'outlined'}
               size="small"
               onClick={() => setScreenScale(opt.value)}
-              sx={{ minWidth: 80, fontSize: '0.8rem' }}
+              sx={{
+                minWidth: { xs: 0, md: 80 },
+                minHeight: TOUCH_MIN_HEIGHT,
+                px: { xs: 0.5, md: 1.25 },
+                fontSize: { xs: '0.75rem', md: '0.8rem' },
+                whiteSpace: 'nowrap',
+              }}
             >
               {opt.label}
             </Button>
@@ -560,7 +674,7 @@ const SettingsPage: React.FC = () => {
         </Box>
 
         {/* 화면 크기 슬라이더 */}
-        <Box sx={{ px: 2 }}>
+        <Box sx={{ px: { xs: 1.5, md: 2 } }}>
           <Slider
             value={screen_scale * 100}
             onChange={(_, new_value) => {
@@ -588,7 +702,7 @@ const SettingsPage: React.FC = () => {
         </Box>
 
         {/* 현재 설정 표시 */}
-        <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <Typography variant="body2" color="text.secondary">
               현재 화면 크기:
@@ -614,10 +728,10 @@ const SettingsPage: React.FC = () => {
       </Paper>
 
       {/* 배포 캘린더 표시 주 수 */}
-      <Paper variant="outlined" sx={{ p: 3, mb: 3 }}>
+      <Paper variant="outlined" sx={SECTION_SX}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
           <CalendarMonthIcon sx={{ color: 'text.secondary' }} />
-          <Typography variant="h6" sx={{ fontWeight: 600 }}>
+          <Typography variant="h6" sx={SECTION_TITLE_SX}>
             배포 캘린더
           </Typography>
         </Box>
@@ -637,11 +751,13 @@ const SettingsPage: React.FC = () => {
           aria-label="배포 캘린더 표시 주 수"
           sx={{
             display: 'flex',
-            flexWrap: 'wrap',
+            // 모바일: 한 줄 꽉 찬 세그먼트
+            flexWrap: { xs: 'nowrap', md: 'wrap' },
             gap: 1,
             '& .MuiToggleButton-root': {
-              minWidth: 64,
-              py: 1.5,
+              flex: { xs: 1, md: '0 1 auto' },
+              minWidth: { xs: 0, md: 64 },
+              py: { xs: 1.25, md: 1.5 },
               borderRadius: '8px !important',
               border: '1px solid',
               borderColor: 'divider',
@@ -680,10 +796,10 @@ const SettingsPage: React.FC = () => {
       </Paper>
 
       {/* 작업 컬러 팔레트 & 테마 */}
-      <Paper variant="outlined" sx={{ p: 3, mb: 3 }}>
+      <Paper variant="outlined" sx={SECTION_SX}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
           <PaletteIcon sx={{ color: 'text.secondary' }} />
-          <Typography variant="h6" sx={{ fontWeight: 600 }}>
+          <Typography variant="h6" sx={SECTION_TITLE_SX}>
             테마 및 컬러 팔레트
           </Typography>
         </Box>
@@ -695,16 +811,17 @@ const SettingsPage: React.FC = () => {
         {/* 팔레트 선택 그리드 */}
         <Box sx={{ 
           display: 'grid', 
-          gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr' },
-          gap: 2,
-          mb: 3 
+          gridTemplateColumns: { xs: '1fr 1fr', sm: '1fr 1fr 1fr' },
+          gap: { xs: 1, md: 2 },
+          mb: 3
         }}>
           {palette_list.map((palette) => (
             <Box
               key={palette.type}
               onClick={() => handlePaletteTypeChange(palette.type)}
               sx={{
-                p: 2,
+                p: { xs: 1.5, md: 2 },
+                minWidth: 0,
                 borderRadius: 2,
                 border: palette_type === palette.type ? '2px solid' : '1px solid',
                 borderColor: palette_type === palette.type ? 'primary.main' : 'divider',
@@ -760,16 +877,16 @@ const SettingsPage: React.FC = () => {
           </Typography>
           
           {/* 기본 색상 선택 */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, md: 2 }, mb: 2 }}>
             <TextField
               size="small"
               label="기본 색상"
               type="color"
               value={custom_base_color}
               onChange={(e) => setCustomBaseColor(e.target.value)}
-              sx={{ width: 100 }}
+              sx={{ width: { xs: 64, md: 100 }, flexShrink: 0 }}
               InputProps={{
-                sx: { height: 40 },
+                sx: { height: { xs: 44, md: 40 } },
               }}
             />
             <TextField
@@ -777,13 +894,13 @@ const SettingsPage: React.FC = () => {
               value={custom_base_color}
               onChange={(e) => setCustomBaseColor(e.target.value)}
               placeholder="#3b82f6"
-              sx={{ width: 120 }}
+              sx={{ width: { md: 120 }, flex: { xs: 1, md: '0 1 auto' }, minWidth: 0, ...TOUCH_INPUT_SX }}
             />
             <Button
               variant="outlined"
               size="small"
               onClick={handleGenerateCustomPalette}
-              sx={{ whiteSpace: 'nowrap' }}
+              sx={{ whiteSpace: 'nowrap', flexShrink: 0, minHeight: TOUCH_MIN_HEIGHT }}
             >
               팔레트 생성
             </Button>
@@ -818,8 +935,8 @@ const SettingsPage: React.FC = () => {
                       handleEditColor(index);
                     }}
                     sx={{
-                      width: 32,
-                      height: 32,
+                      width: { xs: 40, md: 32 },
+                      height: { xs: 40, md: 32 },
                       borderRadius: 1,
                       bgcolor: getAdjustedColor(color, isDark, 45),
                       border: editing_color_index === index ? '2px solid' : '1px solid',
@@ -852,8 +969,8 @@ const SettingsPage: React.FC = () => {
                       handleAddCustomColor();
                     }}
                     sx={{
-                      width: 32,
-                      height: 32,
+                      width: { xs: 40, md: 32 },
+                      height: { xs: 40, md: 32 },
                       borderRadius: 1,
                       border: '1px dashed',
                       borderColor: 'text.secondary',
@@ -873,28 +990,28 @@ const SettingsPage: React.FC = () => {
               
               {/* 색상 편집 입력 */}
               {editing_color_index !== null && (
-                <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
                   <TextField
                     size="small"
                     type="color"
                     value={temp_color}
                     onChange={(e) => setTempColor(e.target.value)}
                     sx={{ width: 60 }}
-                    InputProps={{ sx: { height: 32 } }}
+                    InputProps={{ sx: { height: { xs: 40, md: 32 } } }}
                   />
                   <TextField
                     size="small"
                     value={temp_color}
                     onChange={(e) => setTempColor(e.target.value)}
                     placeholder="#000000"
-                    sx={{ width: 100 }}
-                    InputProps={{ sx: { height: 32 } }}
+                    sx={{ width: { md: 100 }, flex: { xs: '1 1 96px', md: '0 1 auto' }, minWidth: 0 }}
+                    InputProps={{ sx: { height: { xs: 40, md: 32 } } }}
                   />
                   <Button
                     size="small"
                     variant="contained"
                     onClick={handleSaveColor}
-                    sx={{ minWidth: 48, height: 32 }}
+                    sx={{ minWidth: 48, height: { xs: 40, md: 32 } }}
                   >
                     확인
                   </Button>
@@ -902,7 +1019,7 @@ const SettingsPage: React.FC = () => {
                     size="small"
                     onClick={() => handleRemoveCustomColor(editing_color_index)}
                     color="error"
-                    sx={{ minWidth: 48, height: 32 }}
+                    sx={{ minWidth: 48, height: { xs: 40, md: 32 } }}
                   >
                     삭제
                   </Button>
@@ -912,7 +1029,7 @@ const SettingsPage: React.FC = () => {
                       setEditingColorIndex(null);
                       setTempColor('');
                     }}
-                    sx={{ minWidth: 48, height: 32 }}
+                    sx={{ minWidth: 48, height: { xs: 40, md: 32 } }}
                   >
                     취소
                   </Button>
@@ -946,74 +1063,79 @@ const SettingsPage: React.FC = () => {
         </Box>
         
         <Divider sx={{ my: 2 }} />
-        
-        <Button
-          variant="text"
-          size="small"
-          startIcon={<RestoreIcon />}
-          onClick={() => {
-            setPaletteType('navy-orange');
-            setCustomColors([]);
-            setCustomBaseColor('#3b82f6');
-            setSnackbarMessage('컬러 팔레트가 기본값(네이비 & 오렌지)으로 초기화되었습니다.');
-            setSnackbarSeverity('success');
-            setSnackbarOpen(true);
-          }}
-          color="warning"
-        >
-          기본값으로 초기화
-        </Button>
+
+        <Box sx={RESET_ROW_SX}>
+          <Button
+            variant="text"
+            size="small"
+            startIcon={<RestoreIcon />}
+            onClick={() => {
+              setPaletteType('navy-orange');
+              setCustomColors([]);
+              setCustomBaseColor('#3b82f6');
+              setSnackbarMessage('컬러 팔레트가 기본값(네이비 & 오렌지)으로 초기화되었습니다.');
+              setSnackbarSeverity('success');
+              setSnackbarOpen(true);
+            }}
+            color="warning"
+          >
+            기본값으로 초기화
+          </Button>
+        </Box>
       </Paper>
 
       {/* 업무 환경 설정 */}
-      <Paper variant="outlined" sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
+      <Paper variant="outlined" sx={SECTION_SX}>
+        <Typography variant="h6" sx={{ ...SECTION_TITLE_SX, mb: 2 }}>
           업무 환경
         </Typography>
 
+        {is_mobile ? (
+          <>
+            {/* 모바일: 시간 선택 2개는 400px 이상이면 나란히, 스위치는 설정 행 목록 */}
+            <LocalizationProvider dateAdapter={AdapterDateFns}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 1.5,
+                  mb: 1,
+                  '@media (min-width: 400px)': { flexDirection: 'row' },
+                  '& > *': { flex: 1, minWidth: 0 },
+                }}
+              >
+                {lunch_start_picker}
+                {lunch_end_picker}
+              </Box>
+            </LocalizationProvider>
+            <Box sx={MOBILE_ROWS_SX}>
+              <MobileSwitchRow
+                label="점심시간 소요 시간에서 제외"
+                helper="활성화 시 작업 소요 시간 계산에서 점심시간이 자동으로 제외됩니다."
+                checked={lunch_exclude_enabled}
+                onChange={(e) => setLunchExcludeEnabled(e.target.checked)}
+              />
+              <MobileSwitchRow
+                label="작업명 자동 완성 활성화"
+                checked={auto_complete_enabled}
+                onChange={(e) => setAutoCompleteEnabled(e.target.checked)}
+              />
+              <MobileSwitchRow
+                label="프리셋 작업 일별 고유 관리"
+                helper="활성화 시 프리셋으로 시작한 작업의 누적시간이 날짜별로 분리됩니다. 제목은 변경되지 않습니다."
+                checked={preset_daily_group}
+                onChange={(e) => setPresetDailyGroup(e.target.checked)}
+              />
+            </Box>
+          </>
+        ) : (
         <Grid container spacing={3}>
           <LocalizationProvider dateAdapter={AdapterDateFns}>
             <Grid item xs={12} md={6}>
-              <TimePicker
-                label="점심시간 시작"
-                value={(() => {
-                  const [h, m] = lunch_start.split(':').map(Number);
-                  const d = new Date();
-                  d.setHours(h, m, 0, 0);
-                  return d;
-                })()}
-                onChange={(newValue) => {
-                  if (newValue) {
-                    const h = String(newValue.getHours()).padStart(2, '0');
-                    const m = String(newValue.getMinutes()).padStart(2, '0');
-                    setLunchStart(`${h}:${m}`);
-                  }
-                }}
-                slotProps={{
-                  textField: { size: 'small', fullWidth: true }
-                }}
-              />
+              {lunch_start_picker}
             </Grid>
             <Grid item xs={12} md={6}>
-              <TimePicker
-                label="점심시간 종료"
-                value={(() => {
-                  const [h, m] = lunch_end.split(':').map(Number);
-                  const d = new Date();
-                  d.setHours(h, m, 0, 0);
-                  return d;
-                })()}
-                onChange={(newValue) => {
-                  if (newValue) {
-                    const h = String(newValue.getHours()).padStart(2, '0');
-                    const m = String(newValue.getMinutes()).padStart(2, '0');
-                    setLunchEnd(`${h}:${m}`);
-                  }
-                }}
-                slotProps={{
-                  textField: { size: 'small', fullWidth: true }
-                }}
-              />
+              {lunch_end_picker}
             </Grid>
           </LocalizationProvider>
           <Grid item xs={12}>
@@ -1056,6 +1178,7 @@ const SettingsPage: React.FC = () => {
             </Typography>
           </Grid>
         </Grid>
+        )}
 
         <Divider sx={{ my: 2 }} />
 
@@ -1094,6 +1217,7 @@ const SettingsPage: React.FC = () => {
                   fontSize: '0.75rem',
                 fontWeight: 600,
                 minWidth: 70,
+                flexShrink: 0,
                 textAlign: 'center',
                 color: 'var(--text-primary)'
               }}
@@ -1112,8 +1236,8 @@ const SettingsPage: React.FC = () => {
       </Paper>
 
       {/* 카테고리 관리 */}
-      <Paper variant="outlined" sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
+      <Paper variant="outlined" sx={SECTION_SX}>
+        <Typography variant="h6" sx={{ ...SECTION_TITLE_SX, mb: 2 }}>
           카테고리 관리
         </Typography>
         
@@ -1153,12 +1277,13 @@ const SettingsPage: React.FC = () => {
                 setNewCategory('');
               }
             }}
-            sx={{ width: 200 }}
+            sx={{ width: { md: 200 }, flex: { xs: 1, md: '0 1 auto' }, minWidth: 0, ...TOUCH_INPUT_SX }}
           />
           <Button
             variant="outlined"
             size="small"
             startIcon={<AddIcon />}
+            sx={{ whiteSpace: 'nowrap', flexShrink: 0, minHeight: TOUCH_MIN_HEIGHT }}
             onClick={() => {
               if (newCategory.trim()) {
                 addCategory(newCategory.trim());
@@ -1173,20 +1298,22 @@ const SettingsPage: React.FC = () => {
         
         <Divider sx={{ my: 2 }} />
         
-        <Button
-          variant="text"
-          size="small"
-          startIcon={<RestoreIcon />}
-          onClick={resetCategories}
-          color="warning"
-        >
-          기본값으로 초기화
-        </Button>
+        <Box sx={RESET_ROW_SX}>
+          <Button
+            variant="text"
+            size="small"
+            startIcon={<RestoreIcon />}
+            onClick={resetCategories}
+            color="warning"
+          >
+            기본값으로 초기화
+          </Button>
+        </Box>
       </Paper>
 
       {/* 진행상태 관리 */}
-      <Paper variant="outlined" sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
+      <Paper variant="outlined" sx={SECTION_SX}>
+        <Typography variant="h6" sx={{ ...SECTION_TITLE_SX, mb: 2 }}>
           진행상태 관리
         </Typography>
         
@@ -1215,7 +1342,7 @@ const SettingsPage: React.FC = () => {
         </DndContext>
         
         {/* 새 진행상태 추가 */}
-        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mb: 2 }}>
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mb: 2, flexWrap: 'wrap' }}>
           <TextField
             size="small"
             placeholder="표시명 (예: 검토중)"
@@ -1229,19 +1356,21 @@ const SettingsPage: React.FC = () => {
                 setNewStatusValue('');
               }
             }}
-            sx={{ width: 150 }}
+            sx={{ width: { md: 150 }, flex: { xs: '1 1 120px', md: '0 1 auto' }, minWidth: 0, ...TOUCH_INPUT_SX }}
           />
           <TextField
             size="small"
             placeholder="값 (자동생성)"
             value={newStatusValue}
             onChange={(e) => setNewStatusValue(e.target.value)}
-            sx={{ width: 150 }}
+            sx={{ width: { md: 150 }, flex: { xs: '1 1 120px', md: '0 1 auto' }, minWidth: 0, ...TOUCH_INPUT_SX }}
           />
+          {/* 휴대폰: 입력 2칸 아래 한 줄 전체 */}
           <Button
             variant="outlined"
             size="small"
             startIcon={<AddIcon />}
+            sx={{ whiteSpace: 'nowrap', minHeight: TOUCH_MIN_HEIGHT, width: { xs: '100%', sm: 'auto' } }}
             onClick={() => {
               if (newStatusLabel.trim()) {
                 const statusValue = newStatusValue.trim() || newStatusLabel.trim().toLowerCase().replace(/\s+/g, '_');
@@ -1258,23 +1387,35 @@ const SettingsPage: React.FC = () => {
         
         <Divider sx={{ my: 2 }} />
         
-        <Button
-          variant="text"
-          size="small"
-          startIcon={<RestoreIcon />}
-          onClick={resetStatuses}
-          color="warning"
-        >
-          기본값으로 초기화
-        </Button>
+        <Box sx={RESET_ROW_SX}>
+          <Button
+            variant="text"
+            size="small"
+            startIcon={<RestoreIcon />}
+            onClick={resetStatuses}
+            color="warning"
+          >
+            기본값으로 초기화
+          </Button>
+        </Box>
       </Paper>
 
       {/* 데이터 관리 */}
-      <Paper variant="outlined" sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
+      <Paper variant="outlined" sx={SECTION_SX}>
+        <Typography variant="h6" sx={{ ...SECTION_TITLE_SX, mb: 2 }}>
           데이터 관리
         </Typography>
 
+        {is_mobile ? (
+          <Box sx={{ mb: 1.5 }}>
+            <MobileSwitchRow
+              label="일일 자동 백업 사용"
+              helper="앱 실행 시 하루 1회 JSON 파일 자동 저장"
+              checked={autoBackupEnabled}
+              onChange={handleAutoBackupToggle}
+            />
+          </Box>
+        ) : (
         <Box sx={{ mb: 3 }}>
           <FormControlLabel
             control={
@@ -1291,10 +1432,21 @@ const SettingsPage: React.FC = () => {
             }
           />
         </Box>
+        )}
 
         {autoBackupEnabled && <BackupDirectorySetting />}
 
-        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mb: 3 }}>
+        {/* 모바일: 한 줄 전체 폭 버튼을 세로로 */}
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: { xs: 'column', md: 'row' },
+            flexWrap: { xs: 'nowrap', md: 'wrap' },
+            gap: { xs: 1, md: 2 },
+            mb: 3,
+            '& .MuiButton-root': { minHeight: TOUCH_MIN_HEIGHT, whiteSpace: 'nowrap' },
+          }}
+        >
           <Button variant="outlined" onClick={handleExportData}>
             데이터 수동 내보내기 (JSON)
           </Button>
@@ -1324,6 +1476,7 @@ const SettingsPage: React.FC = () => {
             color="error"
             startIcon={<DeleteForeverIcon />}
             onClick={() => setResetDialogOpen(true)}
+            sx={{ width: { xs: '100%', md: 'auto' }, minHeight: TOUCH_MIN_HEIGHT }}
           >
             모든 데이터 초기화
           </Button>
@@ -1342,15 +1495,17 @@ const SettingsPage: React.FC = () => {
           variant="outlined"
           startIcon={<RestoreIcon />}
           onClick={handleResetSettings}
+          sx={{ minHeight: TOUCH_MIN_HEIGHT }}
         >
           기본값 복원
         </Button>
       </Box>
 
-      {/* 초기화 확인 모달 */}
-      <Dialog 
-        open={reset_dialog_open} 
+      {/* 초기화 확인 모달 (휴대폰: 전체화면) */}
+      <Dialog
+        open={reset_dialog_open}
         onClose={() => setResetDialogOpen(false)}
+        fullScreen={is_phone}
         onKeyDown={(e) => {
           if (e.key === 'Enter' && !e.shiftKey && reset_confirm_text === '초기화') {
             e.preventDefault();
@@ -1359,6 +1514,11 @@ const SettingsPage: React.FC = () => {
         }}
       >
         <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'error.main' }}>
+          {is_phone && (
+            <IconButton edge="start" aria-label="닫기" onClick={() => setResetDialogOpen(false)} sx={{ color: 'text.primary' }}>
+              <CloseIcon />
+            </IconButton>
+          )}
           <WarningIcon />
           모든 데이터 초기화
         </DialogTitle>
@@ -1390,7 +1550,7 @@ const SettingsPage: React.FC = () => {
             autoFocus
           />
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={PHONE_ACTIONS_SX}>
           <Button onClick={() => {
             setResetDialogOpen(false);
             setResetConfirmText('');

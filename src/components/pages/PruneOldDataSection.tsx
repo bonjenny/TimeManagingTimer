@@ -47,7 +47,17 @@ const PruneOldDataSection: React.FC<Props> = ({ onBackup }) => {
       <Typography variant="subtitle2" sx={{ mb: 1 }}>
         오래된 기록 정리
       </Typography>
-      <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+      {/* 모바일(< md): 날짜 입력 한 줄 전체, 아래에 [먼저 백업] [삭제] 반반 */}
+      <Box
+        sx={{
+          display: { xs: 'grid', md: 'flex' },
+          gridTemplateColumns: '1fr 1fr',
+          gap: 1,
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          '& .MuiButton-root': { whiteSpace: 'nowrap', minHeight: { xs: 44, md: 'auto' } },
+        }}
+      >
         <TextField
           type="date"
           size="small"
@@ -55,6 +65,7 @@ const PruneOldDataSection: React.FC<Props> = ({ onBackup }) => {
           value={cutoff}
           onChange={(e) => setCutoff(e.target.value)}
           InputLabelProps={{ shrink: true }}
+          sx={{ gridColumn: '1 / -1', '& .MuiInputBase-root': { minHeight: { xs: 44, md: 'auto' } } }}
         />
         <Button variant="outlined" size="small" onClick={onBackup}>
           먼저 백업

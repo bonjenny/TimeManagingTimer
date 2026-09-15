@@ -1,10 +1,12 @@
-import React, { useState, useMemo, useCallback } from 'react';
-import { Paper, IconButton, Box, Autocomplete, TextField, Tooltip, Typography } from '@mui/material';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import { Paper, IconButton, Box, Autocomplete, TextField, Tooltip, Typography, Button, Collapse, FormControlLabel, Switch, useMediaQuery, useTheme } from '@mui/material';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import ScheduleIcon from '@mui/icons-material/Schedule';
 import EventNoteIcon from '@mui/icons-material/EventNote';
 import CloseIcon from '@mui/icons-material/Close';
 import PlaylistAddIcon from '@mui/icons-material/PlaylistAdd';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import { useTimerStore, TimerLog } from '../../store/useTimerStore';
 import { useProjectStore } from '../../store/useProjectStore';
 import CategoryAutocomplete from '../common/CategoryAutocomplete';
@@ -21,10 +23,15 @@ const getNextHourPlusOne = (): string => {
   return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 };
 
+// 모바일(md 미만) 입력칸: 전체 너비 + 16px 글자 (iOS 자동 확대 방지)
+const COMPACT_FIELD_SX = { width: '100%', '& .MuiInputBase-input': { fontSize: 16 } };
+
 const TimerInput: React.FC = () => {
   const { startTimer, addLog, getRecentTitles, removeRecentTitle } = useTimerStore();
   const { projects, addProject, getProjectByCode, deleteProject } = useProjectStore();
-  
+  const theme = useTheme();
+  const is_compact = useMediaQuery(theme.breakpoints.down('md'));
+
   const [title, setTitle] = useState('');
   const [projectCode, setProjectCode] = useState('');
   const [projectName, setProjectName] = useState('');
@@ -35,12 +42,19 @@ const TimerInput: React.FC = () => {
   const [schedule_start, setScheduleStart] = useState('');
   const [schedule_end, setScheduleEnd] = useState('');
 
+  // 모바일 전용: 상세 입력 패널 펼침 상태 (예약 모드이거나 보조 칸에 값이 있으면 자동으로 펼친다)
+  const [is_detail_open, setIsDetailOpen] = useState(false);
+  const has_detail_value = !!(projectCode || projectName || category || note);
+  useEffect(() => {
+    if (is_scheduling || has_detail_value) setIsDetailOpen(true);
+  }, [is_scheduling, has_detail_value]);
+
   const recentTitles = getRecentTitles();
-  
+
   const projectCodeOptions = useMemo(() => {
     return projects.map(p => p.code);
   }, [projects]);
-  
+
   const projectNameOptions = useMemo(() => {
     return projects.map(p => p.name);
   }, [projects]);
@@ -64,6 +78,7 @@ const TimerInput: React.FC = () => {
     setIsScheduling(false);
     setScheduleStart('');
     setScheduleEnd('');
+    setIsDetailOpen(false);
   };
 
   const handleAddTodo = () => {
@@ -91,7 +106,7 @@ const TimerInput: React.FC = () => {
 
   const handleStart = () => {
     if (!title.trim()) return;
-    
+
     if (projectCode.trim() && projectName.trim()) {
       addProject({ code: projectCode.trim(), name: projectName.trim() });
     }
@@ -115,18 +130,18 @@ const TimerInput: React.FC = () => {
     } else {
       startTimer(title, projectCode || undefined, category || undefined, note.trim() || undefined);
     }
-    
+
     resetForm();
   };
-  
+
   const handleProjectCodeChange = useCallback((value: string) => {
     setProjectCode(value);
-    
+
     if (!value) {
       setProjectName('');
       return;
     }
-    
+
     const matchedProject = getProjectByCode(value);
     if (matchedProject) {
       setProjectName(matchedProject.name);
@@ -137,13 +152,13 @@ const TimerInput: React.FC = () => {
       }
     }
   }, [projects, getProjectByCode]);
-  
+
   const handleProjectNameChange = useCallback((value: string) => {
     setProjectName(value);
-    
+
     // 이름을 지워도 코드는 유지한다 (코드만 넣고 이름을 다시 쓰는 흐름). 코드 지우기는 코드 칸에서.
     if (!value) return;
-    
+
     const matchedProject = projects.find(p => p.name === value);
     if (matchedProject) {
       setProjectCode(matchedProject.code);
@@ -171,14 +186,368 @@ const TimerInput: React.FC = () => {
     setIsScheduling(!is_scheduling);
   };
 
+  const is_start_disabled = !title.trim() || (is_scheduling && (!schedule_start || !schedule_end));
+
+  // 모바일은 outlined 입력칸, 데스크톱은 밑줄 없는 standard 입력칸
+  const field_variant = is_compact ? 'outlined' : 'standard';
+  const withUnderlineOff = <T extends object>(input_props?: T) =>
+    is_compact ? input_props : { ...input_props, disableUnderline: true };
+
+  // ---- 입력칸 (데스크톱/모바일 공용) ----
+  const title_field = (
+    <Autocomplete
+      freeSolo
+      options={recentTitles}
+      value={title}
+      onInputChange={(_e, newValue) => setTitle(newValue)}
+      renderOption={(props, option) => {
+        const { key, ...otherProps } = props;
+        return (
+          <Box
+            key={key}
+            component="li"
+            {...otherProps}
+            sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              '&.MuiAutocomplete-option': { py: 0.5, px: 1 }
+            }}
+          >
+            <Typography variant="body2" sx={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {option}
+            </Typography>
+            <IconButton
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                removeRecentTitle(option);
+              }}
+              sx={{ p: 0.25, opacity: 0.5, '&:hover': { opacity: 1, color: 'error.main' } }}
+            >
+              <CloseIcon sx={{ fontSize: 14 }} />
+            </IconButton>
+          </Box>
+        );
+      }}
+      renderInput={(params) => (
+        <TextField
+          {...params}
+          placeholder={is_scheduling ? "예약할 작업명을 입력하세요" : "무엇을 하고 계신가요? (Enter로 바로 시작)"}
+          variant="standard"
+          InputProps={{ ...params.InputProps, disableUnderline: true }}
+          onKeyDown={handleKeyDown}
+          autoFocus={!is_compact} // 모바일은 진입 시 키보드가 튀어나오지 않게
+        />
+      )}
+      sx={is_compact
+        ? { flex: 1, minWidth: 0, '& .MuiInputBase-input': { fontSize: 16 } }
+        : { flexGrow: 2, minWidth: 180 }}
+    />
+  );
+
+  const project_code_field = (
+    <Autocomplete
+      freeSolo
+      options={projectCodeOptions}
+      value={projectCode}
+      onInputChange={(_e, newValue) => handleProjectCodeChange(newValue || '')}
+      onChange={(_e, newValue) => {
+        if (newValue) {
+          handleProjectCodeChange(newValue);
+        }
+      }}
+      renderOption={(props, option) => {
+        const { key, ...otherProps } = props;
+        const project = projects.find(p => p.code === option);
+        return (
+          <Box
+            key={key}
+            component="li"
+            {...otherProps}
+            sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              '&.MuiAutocomplete-option': { py: 0.5, px: 1 }
+            }}
+          >
+            <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
+              <Typography variant="body2" sx={{ fontSize: '0.8rem', fontWeight: 500 }}>
+                {option}
+              </Typography>
+              {project && (
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ fontSize: '0.7rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                >
+                  {project.name}
+                </Typography>
+              )}
+            </Box>
+            <IconButton
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                deleteProject(option);
+              }}
+              sx={{ p: 0.25, opacity: 0.5, '&:hover': { opacity: 1, color: 'error.main' } }}
+            >
+              <CloseIcon sx={{ fontSize: 12 }} />
+            </IconButton>
+          </Box>
+        );
+      }}
+      renderInput={(params) => (
+        <TextField
+          {...params}
+          placeholder="프로젝트 코드"
+          variant={field_variant}
+          InputProps={withUnderlineOff(params.InputProps)}
+          size="small"
+        />
+      )}
+      sx={is_compact ? COMPACT_FIELD_SX : {
+        width: 120,
+        '& .MuiAutocomplete-input': { fontSize: '0.8rem', p: '0 !important' }
+      }}
+    />
+  );
+
+  const project_name_field = (
+    <Autocomplete
+      freeSolo
+      options={projectNameOptions}
+      value={projectName}
+      onInputChange={(_e, newValue) => handleProjectNameChange(newValue || '')}
+      onChange={(_e, newValue) => {
+        if (newValue) {
+          handleProjectNameChange(newValue);
+        }
+      }}
+      renderOption={(props, option) => {
+        const { key, ...otherProps } = props;
+        const project = projects.find(p => p.name === option);
+        return (
+          <Box
+            key={key}
+            component="li"
+            {...otherProps}
+            sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              '&.MuiAutocomplete-option': { py: 0.5, px: 1 }
+            }}
+          >
+            <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
+              <Typography variant="body2" sx={{ fontSize: '0.8rem', fontWeight: 500 }}>
+                {option}
+              </Typography>
+              {project && (
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ fontSize: '0.7rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                >
+                  {project.code}
+                </Typography>
+              )}
+            </Box>
+            <IconButton
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                if (project) {
+                  deleteProject(project.code);
+                }
+              }}
+              sx={{ p: 0.25, opacity: 0.5, '&:hover': { opacity: 1, color: 'error.main' } }}
+            >
+              <CloseIcon sx={{ fontSize: 12 }} />
+            </IconButton>
+          </Box>
+        );
+      }}
+      renderInput={(params) => (
+        <TextField
+          {...params}
+          placeholder="프로젝트 명"
+          variant={field_variant}
+          InputProps={withUnderlineOff(params.InputProps)}
+          size="small"
+        />
+      )}
+      sx={is_compact ? COMPACT_FIELD_SX : {
+        width: 140,
+        '& .MuiAutocomplete-input': { fontSize: '0.8rem', p: '0 !important' }
+      }}
+    />
+  );
+
+  const category_field = (
+    <CategoryAutocomplete
+      value={category}
+      onChange={(newValue) => setCategory(newValue)}
+      placeholder="카테고리"
+      variant={field_variant}
+      size={is_compact ? 'small' : undefined}
+      disableUnderline={!is_compact}
+      sx={is_compact ? COMPACT_FIELD_SX : {
+        width: 120,
+        '& .MuiAutocomplete-input': { fontSize: '0.8rem', p: '0 !important' }
+      }}
+    />
+  );
+
+  const note_field = (
+    <TextField
+      placeholder="비고"
+      variant={field_variant}
+      value={note}
+      onChange={(e) => setNote(e.target.value)}
+      onKeyDown={handleKeyDown}
+      InputProps={withUnderlineOff({})}
+      size="small"
+      sx={is_compact ? COMPACT_FIELD_SX : {
+        width: 120,
+        '& .MuiInputBase-input': { fontSize: '0.8rem', p: '0 !important' }
+      }}
+    />
+  );
+
+  const renderTimeField = (value: string, onChange: (v: string) => void, with_key_down: boolean) => (
+    <TextField
+      type="time"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      size="small"
+      variant="standard"
+      InputProps={{ disableUnderline: true }}
+      onKeyDown={with_key_down ? handleKeyDown : undefined}
+      sx={is_compact
+        ? { flex: 1, minWidth: 0, '& .MuiInputBase-input': { fontSize: 16, p: '4px 0' } }
+        : { width: 130, '& .MuiInputBase-input': { fontSize: '0.85rem', p: '2px 0' } }}
+    />
+  );
+
+  const schedule_start_field = renderTimeField(schedule_start, setScheduleStart, false);
+  const schedule_end_field = renderTimeField(schedule_end, setScheduleEnd, true);
+
+  // ---- 모바일 (md 미만) ----
+  if (is_compact) {
+    return (
+      <Paper
+        elevation={0}
+        sx={{
+          p: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          width: '100%',
+          border: '1px solid',
+          borderColor: is_scheduling ? 'var(--primary-color)' : 'var(--border-color)',
+          borderRadius: 2,
+          bgcolor: 'var(--card-bg)',
+          transition: 'all 0.2s',
+        }}
+      >
+        {/* 1줄: 제목 + 시작(예약 등록) */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, pl: 1 }}>
+          {title_field}
+          <IconButton
+            onClick={handleStart}
+            disabled={is_start_disabled}
+            aria-label={is_scheduling ? '예약 등록' : '타이머 시작'}
+            sx={{
+              width: 44,
+              height: 44,
+              flexShrink: 0,
+              color: '#fff',
+              bgcolor: is_scheduling ? 'warning.main' : 'primary.main',
+              '&:hover': { bgcolor: is_scheduling ? 'warning.dark' : 'primary.dark' },
+              '&.Mui-disabled': { bgcolor: 'action.disabledBackground', color: 'action.disabled' },
+            }}
+          >
+            {is_scheduling ? <EventNoteIcon /> : <PlayArrowIcon />}
+          </IconButton>
+        </Box>
+
+        <Button
+          size="small"
+          onClick={() => setIsDetailOpen(!is_detail_open)}
+          endIcon={is_detail_open ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+          sx={{ alignSelf: 'flex-start', color: 'text.secondary', whiteSpace: 'nowrap', minHeight: 36, ml: 0.5 }}
+        >
+          {is_detail_open ? '접기' : '상세 입력'}
+        </Button>
+
+        <Collapse in={is_detail_open}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, px: 0.5, pb: 0.5 }}>
+            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 1 }}>
+              {project_code_field}
+              {project_name_field}
+            </Box>
+            {category_field}
+            {note_field}
+
+            {is_scheduling && (
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                  px: 1.5,
+                  py: 0.5,
+                  border: '1px solid',
+                  borderColor: 'warning.main',
+                  borderRadius: 1,
+                  bgcolor: 'rgba(237, 108, 2, 0.06)',
+                }}
+              >
+                <ScheduleIcon sx={{ fontSize: 18, color: 'warning.main' }} />
+                {schedule_start_field}
+                <Typography variant="body2" color="text.secondary">~</Typography>
+                {schedule_end_field}
+              </Box>
+            )}
+
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+              <FormControlLabel
+                control={<Switch checked={is_scheduling} onChange={handleToggleScheduling} color="warning" />}
+                label="예약"
+                sx={{ ml: 0, minHeight: 44 }}
+              />
+              {!is_scheduling && (
+                <Button
+                  variant="outlined"
+                  startIcon={<PlaylistAddIcon />}
+                  onClick={handleAddTodo}
+                  disabled={!title.trim()}
+                  sx={{ minHeight: 44, whiteSpace: 'nowrap' }}
+                >
+                  할 일로 추가
+                </Button>
+              )}
+            </Box>
+          </Box>
+        </Collapse>
+      </Paper>
+    );
+  }
+
+  // ---- 데스크톱 ----
   return (
-    <Paper 
-      elevation={0} 
-      sx={{ 
-        p: '2px 4px', 
-        display: 'flex', 
+    <Paper
+      elevation={0}
+      sx={{
+        p: '2px 4px',
+        display: 'flex',
         flexDirection: 'column',
-        width: '100%', 
+        width: '100%',
         border: '1px solid',
         borderColor: is_scheduling ? 'var(--primary-color)' : 'var(--border-color)',
         bgcolor: 'var(--card-bg)',
@@ -191,222 +560,19 @@ const TimerInput: React.FC = () => {
     >
       <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', width: '100%', p: 1, gap: 1.5 }}>
         {/* 제목 입력 (가장 크게) */}
-        <Autocomplete
-          freeSolo
-          options={recentTitles}
-          value={title}
-          onInputChange={(_e, newValue) => setTitle(newValue)}
-          renderOption={(props, option) => {
-            const { key, ...otherProps } = props;
-            return (
-              <Box
-                key={key}
-                component="li"
-                {...otherProps}
-                sx={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  '&.MuiAutocomplete-option': { py: 0.5, px: 1 }
-                }}
-              >
-                <Typography variant="body2" sx={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {option}
-                </Typography>
-                <IconButton
-                  size="small"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    removeRecentTitle(option);
-                  }}
-                  sx={{ p: 0.25, opacity: 0.5, '&:hover': { opacity: 1, color: 'error.main' } }}
-                >
-                  <CloseIcon sx={{ fontSize: 14 }} />
-                </IconButton>
-              </Box>
-            );
-          }}
-          renderInput={(params) => (
-            <TextField 
-              {...params} 
-              placeholder={is_scheduling ? "예약할 작업명을 입력하세요" : "무엇을 하고 계신가요? (Enter로 바로 시작)"} 
-              variant="standard"
-              InputProps={{ ...params.InputProps, disableUnderline: true }}
-              onKeyDown={handleKeyDown}
-              autoFocus
-            />
-          )}
-          sx={{ flexGrow: 2, minWidth: 180 }}
-        />
+        {title_field}
 
         {/* 프로젝트 코드 */}
-        <Autocomplete
-          freeSolo
-          options={projectCodeOptions}
-          value={projectCode}
-          onInputChange={(_e, newValue) => handleProjectCodeChange(newValue || '')}
-          onChange={(_e, newValue) => {
-            if (newValue) {
-              handleProjectCodeChange(newValue);
-            }
-          }}
-          renderOption={(props, option) => {
-            const { key, ...otherProps } = props;
-            const project = projects.find(p => p.code === option);
-            return (
-              <Box
-                key={key}
-                component="li"
-                {...otherProps}
-                sx={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  '&.MuiAutocomplete-option': { py: 0.5, px: 1 }
-                }}
-              >
-                <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
-                  <Typography variant="body2" sx={{ fontSize: '0.8rem', fontWeight: 500 }}>
-                    {option}
-                  </Typography>
-                  {project && (
-                    <Typography 
-                      variant="caption" 
-                      color="text.secondary" 
-                      sx={{ fontSize: '0.7rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                    >
-                      {project.name}
-                    </Typography>
-                  )}
-                </Box>
-                <IconButton
-                  size="small"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    deleteProject(option);
-                  }}
-                  sx={{ p: 0.25, opacity: 0.5, '&:hover': { opacity: 1, color: 'error.main' } }}
-                >
-                  <CloseIcon sx={{ fontSize: 12 }} />
-                </IconButton>
-              </Box>
-            );
-          }}
-          renderInput={(params) => (
-            <TextField 
-              {...params} 
-              placeholder="프로젝트 코드" 
-              variant="standard"
-              InputProps={{ ...params.InputProps, disableUnderline: true }}
-              size="small"
-            />
-          )}
-          sx={{ 
-            width: 120,
-            '& .MuiAutocomplete-input': { fontSize: '0.8rem', p: '0 !important' }
-          }}
-        />
+        {project_code_field}
 
         {/* 프로젝트 명 */}
-        <Autocomplete
-          freeSolo
-          options={projectNameOptions}
-          value={projectName}
-          onInputChange={(_e, newValue) => handleProjectNameChange(newValue || '')}
-          onChange={(_e, newValue) => {
-            if (newValue) {
-              handleProjectNameChange(newValue);
-            }
-          }}
-          renderOption={(props, option) => {
-            const { key, ...otherProps } = props;
-            const project = projects.find(p => p.name === option);
-            return (
-              <Box
-                key={key}
-                component="li"
-                {...otherProps}
-                sx={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  '&.MuiAutocomplete-option': { py: 0.5, px: 1 }
-                }}
-              >
-                <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
-                  <Typography variant="body2" sx={{ fontSize: '0.8rem', fontWeight: 500 }}>
-                    {option}
-                  </Typography>
-                  {project && (
-                    <Typography 
-                      variant="caption" 
-                      color="text.secondary" 
-                      sx={{ fontSize: '0.7rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                    >
-                      {project.code}
-                    </Typography>
-                  )}
-                </Box>
-                <IconButton
-                  size="small"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    if (project) {
-                      deleteProject(project.code);
-                    }
-                  }}
-                  sx={{ p: 0.25, opacity: 0.5, '&:hover': { opacity: 1, color: 'error.main' } }}
-                >
-                  <CloseIcon sx={{ fontSize: 12 }} />
-                </IconButton>
-              </Box>
-            );
-          }}
-          renderInput={(params) => (
-            <TextField 
-              {...params} 
-              placeholder="프로젝트 명" 
-              variant="standard"
-              InputProps={{ ...params.InputProps, disableUnderline: true }}
-              size="small"
-            />
-          )}
-          sx={{ 
-            width: 140,
-            '& .MuiAutocomplete-input': { fontSize: '0.8rem', p: '0 !important' }
-          }}
-        />
+        {project_name_field}
 
         {/* 카테고리 */}
-        <CategoryAutocomplete
-          value={category}
-          onChange={(newValue) => setCategory(newValue)}
-          placeholder="카테고리"
-          variant="standard"
-          disableUnderline
-          sx={{ 
-            width: 120,
-            '& .MuiAutocomplete-input': { fontSize: '0.8rem', p: '0 !important' }
-          }}
-        />
+        {category_field}
 
         {/* 비고 */}
-        <TextField
-          placeholder="비고"
-          variant="standard"
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          onKeyDown={handleKeyDown}
-          InputProps={{ disableUnderline: true }}
-          size="small"
-          sx={{
-            width: 120,
-            '& .MuiInputBase-input': { fontSize: '0.8rem', p: '0 !important' }
-          }}
-        />
+        {note_field}
 
         {/* 예약 모드 토글 */}
         <Tooltip title={is_scheduling ? '예약 모드 해제' : '예약 모드 (Alt+Enter)'}>
@@ -434,11 +600,11 @@ const TimerInput: React.FC = () => {
         {/* 시작/예약 버튼 */}
         <Tooltip title={is_scheduling ? '예약 등록 (Enter)' : '타이머 시작 (Enter)'}>
             <span>
-                <IconButton 
+                <IconButton
                     color={is_scheduling ? 'warning' : 'primary'}
-                    sx={{ p: '10px' }} 
+                    sx={{ p: '10px' }}
                     onClick={handleStart}
-                    disabled={!title.trim() || (is_scheduling && (!schedule_start || !schedule_end))}
+                    disabled={is_start_disabled}
                 >
                     {is_scheduling ? <EventNoteIcon /> : <PlayArrowIcon />}
                 </IconButton>
@@ -452,26 +618,9 @@ const TimerInput: React.FC = () => {
           <Typography variant="caption" color="text.secondary" sx={{ minWidth: 'fit-content' }}>
             예약 시간:
           </Typography>
-          <TextField
-            type="time"
-            value={schedule_start}
-            onChange={(e) => setScheduleStart(e.target.value)}
-            size="small"
-            variant="standard"
-            InputProps={{ disableUnderline: true }}
-            sx={{ width: 130, '& .MuiInputBase-input': { fontSize: '0.85rem', p: '2px 0' } }}
-          />
+          {schedule_start_field}
           <Typography variant="caption" color="text.secondary">~</Typography>
-          <TextField
-            type="time"
-            value={schedule_end}
-            onChange={(e) => setScheduleEnd(e.target.value)}
-            size="small"
-            variant="standard"
-            InputProps={{ disableUnderline: true }}
-            onKeyDown={handleKeyDown}
-            sx={{ width: 130, '& .MuiInputBase-input': { fontSize: '0.85rem', p: '2px 0' } }}
-          />
+          {schedule_end_field}
         </Box>
       )}
     </Paper>

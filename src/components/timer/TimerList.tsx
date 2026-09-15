@@ -21,7 +21,13 @@ import {
   Button,
   TextField,
   Autocomplete,
-  Tooltip
+  Tooltip,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText,
+  useMediaQuery,
+  useTheme
 } from '@mui/material';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import DeleteForeverIcon from '@mui/icons-material/DeleteForever';
@@ -36,9 +42,10 @@ import RestoreIcon from '@mui/icons-material/Restore';
 import RestoreFromTrashIcon from '@mui/icons-material/RestoreFromTrash';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
 import { useTimerStore, TimerLog, DeletedLog } from '../../store/useTimerStore';
 import { useProjectStore } from '../../store/useProjectStore';
-import { formatDuration, getDurationSecondsExcludingLunch } from '../../utils/timeUtils';
+import { formatDuration, formatTimeDisplay, getDurationSecondsExcludingLunch } from '../../utils/timeUtils';
 import { getItem, setItem as setStorageItem } from '../../utils/storage';
 import CategoryAutocomplete from '../common/CategoryAutocomplete';
 
@@ -81,6 +88,12 @@ const formatTimeWithDate = (timestamp: number, date_range: { start: number; end:
   return timeStr;
 };
 
+// 짧은 날짜 포맷 (M/D) - 모바일 작업 이력용
+const formatShortDate = (timestamp: number) => {
+  const date = new Date(timestamp);
+  return `${date.getMonth() + 1}/${date.getDate()}`;
+};
+
 // 날짜 포맷 (YYYY-MM-DD)
 const formatDate = (timestamp: number) => {
   const date = new Date(timestamp);
@@ -108,6 +121,11 @@ interface TaskGroup {
 const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
   const { logs, deleteLog, startTimer, updateLog, updateActiveTimer, deleted_logs, restoreLog, permanentlyDeleteLog, emptyTrash, reopenTimer, activeTimer, pauseAndMoveToLogs, themeConfig } = useTimerStore();
   const { getProjectName, projects } = useProjectStore();
+  const theme = useTheme();
+  const is_compact = useMediaQuery(theme.breakpoints.down('md')); // md 미만: 카드 목록 레이아웃
+  // 모바일 ⋮ 메뉴 상태
+  const [task_menu, setTaskMenu] = useState<{ anchor: HTMLElement; group_key: string } | null>(null);
+  const [session_menu, setSessionMenu] = useState<{ anchor: HTMLElement; session_id: string } | null>(null);
   const [showCompleted, setShowCompleted] = useState(() => {
     const saved = getItem('timerlist-show-completed');
     return saved !== null ? saved === 'true' : true;
@@ -358,6 +376,68 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
   const handleRestart = (title: string, projectCode?: string, category?: string, note?: string, dailyGroupKey?: string) => {
     startTimer(title, projectCode, category, note, dailyGroupKey);
   };
+
+  // ---- 업무 그룹 액션 (데스크톱 아이콘 / 모바일 ⋮ 메뉴 공용) ----
+  const handleToggleTaskComplete = (task: TaskGroup, all_completed: boolean) => {
+    if (all_completed && task.sessions.length > 0) {
+      // 완료된 작업 → 마지막 세션을 완료 취소
+      const lastSession = task.sessions[task.sessions.length - 1];
+      reopenTimer(lastSession.id);
+    } else if (!all_completed && task.sessions.length > 0) {
+      // 미완료 작업 → 모든 세션을 완료 상태로 변경
+      task.sessions.forEach(session => {
+        if (session.status !== 'COMPLETED') {
+          updateLog(session.id, { 
+            status: 'COMPLETED', 
+            endTime: session.endTime || session.lastPausedAt || Date.now() 
+          });
+        }
+      });
+    }
+  };
+
+  const handlePlayPauseTask = (task: TaskGroup, is_active_task: boolean) => {
+    if (is_active_task) {
+      // 진행중인 타이머 → 일시정지 후 logs로 이동
+      pauseAndMoveToLogs();
+    } else {
+      // 완료/미완료 항목 → 같은 업무로 새 타이머 시작
+      handleRestart(task.title, task.projectCode, task.category, task.note, task.sessions[0]?.dailyGroupKey);
+    }
+  };
+
+  const openCopyDialog = (task: TaskGroup) => {
+    setCopyingTask(task);
+    setCopyCategory(task.category || null);
+    setCopyNote('');
+  };
+
+  const handleEditTask = (task: TaskGroup, is_active_task: boolean) => {
+    if (is_active_task && activeTimer) {
+      handleEditClick(activeTimer);
+    } else if (task.sessions.length > 0) {
+      handleEditClick(task.sessions[0]);
+    }
+  };
+
+  const handleDeleteTask = (task: TaskGroup, is_active_task: boolean) => {
+    if (is_active_task) {
+      return;
+    }
+    task.sessions.forEach(session => {
+      deleteLog(session.id);
+    });
+  };
+
+  const handleRestartSession = (session: TimerLog) => {
+    // 기존 activeTimer는 startTimer 내부에서 자동으로 logs로 이동됨
+    // 새 세션을 현재 시간으로 시작
+    startTimer(session.title, session.projectCode, session.category, session.note, session.dailyGroupKey);
+  };
+
+  const getSortedSessions = (task: TaskGroup) => (
+    session_sort_order === 'desc' ? [...task.sessions].reverse() : task.sessions
+  );
 
   const handleCopyWithCategory = () => {
     if (!copyingTask) return;
@@ -682,15 +762,352 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
     );
   }
 
+  // ---- 행 표시 조각 (데스크톱 grid / 모바일 카드 공용) ----
+  const renderTaskProject = (task: TaskGroup, compact: boolean) => (
+    editingInlineProject === task.group_key ? (
+      <Autocomplete
+        freeSolo
+        size="small"
+        options={projectOptions}
+        value={getProjectDisplayValue(inlineProjectCode)}
+        onInputChange={(_e, newValue) => setInlineProjectCode(newValue)}
+        onChange={(_e, newValue) => {
+          saveInlineProject(task, newValue || '');
+        }}
+        onBlur={() => saveInlineProject(task, inlineProjectCode)}
+        renderInput={(params) => (
+          <TextField
+            {...params}
+            variant="standard"
+            autoFocus
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                saveInlineProject(task, inlineProjectCode);
+              } else if (e.key === 'Escape') {
+                cancelInlineProjectEdit();
+              }
+            }}
+            InputProps={{ ...params.InputProps, disableUnderline: true }}
+            sx={{ '& .MuiInputBase-input': { fontSize: compact ? 16 : '0.7rem', p: 0 } }}
+          />
+        )}
+        sx={{ width: '100%' }}
+      />
+    ) : (
+      <Chip
+        label={task.projectCode ? getProjectName(task.projectCode) : '-'}
+        size="small"
+        color={task.projectCode ? "primary" : "default"}
+        variant="outlined"
+        onClick={(e) => {
+          e.stopPropagation();
+          startInlineProjectEdit(task);
+        }}
+        sx={{
+          height: 22,
+          fontSize: '0.7rem',
+          maxWidth: '100%',
+          cursor: 'pointer',
+          '& .MuiChip-label': {
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }
+        }}
+        title={task.projectCode ? `[${task.projectCode}] ${getProjectName(task.projectCode)} - 클릭하여 변경` : '클릭하여 프로젝트 설정'}
+      />
+    )
+  );
+
+  const renderTaskTitle = (task: TaskGroup, is_active_task: boolean, all_completed: boolean, compact: boolean) => (
+    editingInlineTitle === task.group_key ? (
+      <TextField
+        size="small"
+        variant="standard"
+        value={inlineTitle}
+        onChange={(e) => setInlineTitle(e.target.value)}
+        onBlur={() => saveInlineTitle(task)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            saveInlineTitle(task);
+          } else if (e.key === 'Escape') {
+            cancelInlineTitleEdit();
+          }
+        }}
+        autoFocus
+        fullWidth
+        InputProps={{ disableUnderline: true }}
+        sx={{
+          '& .MuiInputBase-input': {
+            fontSize: compact ? 16 : '0.875rem',
+            fontWeight: is_active_task ? 600 : 500,
+            p: 0
+          }
+        }}
+      />
+    ) : (
+      <Typography
+        variant="body2"
+        onClick={() => startInlineTitleEdit(task)}
+        sx={{
+          fontWeight: is_active_task ? 600 : 500,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+          color: all_completed ? 'text.secondary' : 'text.primary',
+          textDecoration: all_completed ? 'line-through' : 'none',
+          cursor: 'text',
+          '&:hover': { bgcolor: 'action.hover', borderRadius: 0.5 },
+          // 모바일: 15px/600, 2줄까지 줄바꿈
+          ...(compact && {
+            fontSize: 15,
+            fontWeight: 600,
+            lineHeight: 1.35,
+            whiteSpace: 'normal',
+            overflowWrap: 'anywhere',
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+          }),
+        }}
+        title={`${task.title} - 클릭하여 편집`}
+      >
+        {task.title}
+      </Typography>
+    )
+  );
+
+  const renderTaskCategory = (task: TaskGroup, compact: boolean) => (
+    editingInlineCategory === task.group_key ? (
+      <CategoryAutocomplete
+        value={inlineCategory}
+        onChange={(newValue) => {
+          saveInlineCategory(task, newValue);
+        }}
+        size="small"
+        variant="standard"
+        autoFocus
+        onBlur={() => cancelInlineCategoryEdit()}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') {
+            cancelInlineCategoryEdit();
+          }
+        }}
+        sx={{
+          width: compact ? 160 : '100%',
+          '& .MuiInputBase-input': { fontSize: compact ? 16 : '0.65rem', p: 0 }
+        }}
+      />
+    ) : (
+      <Chip
+        label={task.category || '-'}
+        size="small"
+        color={task.category ? "default" : "default"}
+        onClick={(e) => {
+          e.stopPropagation();
+          startInlineCategoryEdit(task);
+        }}
+        sx={{
+          height: 20,
+          fontSize: '0.65rem',
+          cursor: 'pointer',
+          ...(compact && { maxWidth: '100%' }),
+        }}
+        title={task.category ? `${task.category} - 클릭하여 변경` : '클릭하여 카테고리 설정'}
+      />
+    )
+  );
+
+  // ---- 세션 인라인 편집 조각 (데스크톱 표 / 모바일 목록 공용) ----
+  const session_text_size = (compact: boolean) => (compact ? 13 : '0.8rem');
+  const session_input_size = (compact: boolean) => (compact ? 16 : '0.8rem');
+
+  const renderSessionTimeEditor = (session: TimerLog, field: 'start' | 'end', compact: boolean) => (
+    <TextField
+      type="time"
+      size="small"
+      variant="standard"
+      value={inlineTimeValue}
+      onChange={(e) => setInlineTimeValue(e.target.value)}
+      onBlur={() => saveInlineTime(session, field, inlineTimeValue)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          saveInlineTime(session, field, inlineTimeValue);
+        } else if (e.key === 'Escape') {
+          cancelInlineTimeEdit();
+        }
+      }}
+      autoFocus
+      onClick={(e) => e.stopPropagation()}
+      InputProps={{ disableUnderline: true }}
+      sx={{
+        width: 110,
+        '& input': {
+          fontSize: session_input_size(compact),
+          p: 0,
+          color: themeConfig.isDark ? '#fff' : 'inherit',
+          '&::-webkit-calendar-picker-indicator': {
+            filter: themeConfig.isDark ? 'invert(1)' : 'none'
+          }
+        }
+      }}
+    />
+  );
+
+  const renderSessionStart = (session: TimerLog, compact: boolean) => (
+    editingSessionTime?.sessionId === session.id && editingSessionTime.field === 'start' ? (
+      renderSessionTimeEditor(session, 'start', compact)
+    ) : (
+      <Typography
+        variant="body2"
+        sx={{
+          fontSize: session_text_size(compact),
+          '&:hover': { bgcolor: 'action.hover', borderRadius: 0.5, px: 0.5 }
+        }}
+      >
+        {formatTime(session.startTime)}
+      </Typography>
+    )
+  );
+
+  const renderSessionEnd = (session: TimerLog, compact: boolean) => (
+    editingSessionTime?.sessionId === session.id && editingSessionTime.field === 'end' ? (
+      renderSessionTimeEditor(session, 'end', compact)
+    ) : session.endTime ? (
+      <Typography
+        variant="body2"
+        sx={{
+          fontSize: session_text_size(compact),
+          '&:hover': { bgcolor: 'action.hover', borderRadius: 0.5, px: 0.5 }
+        }}
+      >
+        {formatTime(session.endTime)}
+      </Typography>
+    ) : session.status === 'RUNNING' ? (
+      <Chip
+        label="진행 중"
+        size="small"
+        color="primary"
+        sx={{
+          height: 18,
+          fontSize: '0.65rem',
+          color: 'white'
+        }}
+      />
+    ) : (
+      // PAUSED 상태: lastPausedAt 또는 endTime을 종료 시간으로 표시 (기존 데이터 호환)
+      <Typography
+        variant="body2"
+        sx={{
+          fontSize: session_text_size(compact),
+          color: 'warning.main',
+          fontWeight: 500
+        }}
+      >
+        {formatTime(session.lastPausedAt || session.endTime || session.startTime)}
+      </Typography>
+    )
+  );
+
+  const renderSessionNote = (session: TimerLog, compact: boolean) => (
+    editingSessionNote === session.id ? (
+      <TextField
+        size="small"
+        variant="standard"
+        value={inlineNoteValue}
+        onChange={(e) => setInlineNoteValue(e.target.value)}
+        onBlur={() => saveInlineNote(session)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            saveInlineNote(session);
+          } else if (e.key === 'Escape') {
+            cancelInlineNoteEdit();
+          }
+        }}
+        autoFocus
+        onClick={(e) => e.stopPropagation()}
+        InputProps={{ disableUnderline: true }}
+        sx={{
+          width: '100%',
+          '& input': {
+            fontSize: session_input_size(compact),
+            p: 0,
+            color: themeConfig.isDark ? '#fff' : 'inherit'
+          }
+        }}
+      />
+    ) : (
+      <Typography
+        variant="body2"
+        sx={{
+          fontSize: session_text_size(compact),
+          color: session.note ? 'text.primary' : 'text.disabled',
+          minHeight: 20,
+          '&:hover': { bgcolor: 'action.hover', borderRadius: 0.5, px: 0.5 }
+        }}
+      >
+        {session.note || '비고 추가'}
+      </Typography>
+    )
+  );
+
+  const show_completed_switch = (
+    <FormControlLabel
+      control={
+        <Switch
+          checked={showCompleted}
+          onChange={(e) => {
+            const new_value = e.target.checked;
+            setShowCompleted(new_value);
+            setStorageItem('timerlist-show-completed', String(new_value));
+          }}
+          size="small"
+        />
+      }
+      label={<Typography variant="body2" color="text.secondary">완료된 항목 보기</Typography>}
+    />
+  );
+
+  const trash_button = (
+    <Tooltip title={`휴지통 (${deleted_logs.length})`}>
+      <IconButton
+        size="small"
+        onClick={() => setTrashModalOpen(true)}
+        sx={{
+          color: deleted_logs.length > 0 ? 'warning.main' : 'text.secondary',
+          ...(is_compact && { width: 40, height: 40 }),
+        }}
+      >
+        <RestoreFromTrashIcon />
+      </IconButton>
+    </Tooltip>
+  );
+
   return (
     <Box>
+      {is_compact ? (
+        // 모바일: 1줄 = 제목 + 합계, 2줄 = 완료 항목 스위치 + 휴지통
+        <Box sx={{ mb: 1 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 1 }}>
+            <Typography variant="h6" sx={{ fontSize: 17, fontWeight: 600, whiteSpace: 'nowrap' }}>최근 업무 기록</Typography>
+            {totalDurationSeconds > 0 && (
+              <Typography sx={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                총 {formatDuration(totalDurationSeconds)}
+              </Typography>
+            )}
+          </Box>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            {show_completed_switch}
+            {trash_button}
+          </Box>
+        </Box>
+      ) : (
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 2 }}>
           <Typography variant="h6">최근 업무 기록</Typography>
           {totalDurationSeconds > 0 && (
-            <Typography 
-              variant="body2" 
-              sx={{ 
+            <Typography
+              variant="body2"
+              sx={{
                 color: 'var(--text-secondary)',
                 fontWeight: 500,
               }}
@@ -700,38 +1117,23 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
           )}
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <FormControlLabel
-            control={
-              <Switch 
-                checked={showCompleted} 
-                onChange={(e) => {
-                  const new_value = e.target.checked;
-                  setShowCompleted(new_value);
-                  setStorageItem('timerlist-show-completed', String(new_value));
-                }} 
-                size="small" 
-              />
-            }
-            label={<Typography variant="body2" color="text.secondary">완료된 항목 보기</Typography>}
-          />
-          <Tooltip title={`휴지통 (${deleted_logs.length})`}>
-            <IconButton 
-              size="small" 
-              onClick={() => setTrashModalOpen(true)}
-              sx={{ 
-                color: deleted_logs.length > 0 ? 'warning.main' : 'text.secondary',
-              }}
-            >
-              <RestoreFromTrashIcon />
-            </IconButton>
-          </Tooltip>
+          {show_completed_switch}
+          {trash_button}
         </Box>
       </Box>
+      )}
 
-      <Paper variant="outlined" sx={{ borderRadius: 2, overflow: 'visible' }}>
+      <Paper
+        variant="outlined"
+        sx={is_compact
+          // 모바일: 바깥 테두리 없이 카드 목록
+          ? { border: 'none', bgcolor: 'transparent', display: 'flex', flexDirection: 'column', gap: 1 }
+          : { borderRadius: 2, overflow: 'visible' }}
+      >
         {/* 헤더 */}
-        <Box sx={{ 
-          display: 'grid', 
+        {!is_compact && (
+        <Box sx={{
+          display: 'grid',
           gridTemplateColumns: '56px 140px 1fr 90px 110px 110px 130px 50px 50px',
           gap: 1,
           px: 2,
@@ -753,6 +1155,7 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
           <Box>세션</Box>
           <Box></Box>
         </Box>
+        )}
 
         {/* 업무 목록 */}
         {groupedTasks.map((task) => {
@@ -761,14 +1164,235 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
           const is_active_task = active_group_key === task.group_key;
           const all_completed = !is_active_task && task.sessions.every(s => s.status === 'COMPLETED');
           const is_highlighted = false;
-          
+
+          if (is_compact) {
+            return (
+              <Box
+                key={task.group_key}
+                sx={{
+                  border: '1px solid var(--border-color)',
+                  borderColor: is_active_task ? 'primary.main' : 'var(--border-color)',
+                  borderRadius: 2,
+                  bgcolor: is_active_task ? 'var(--highlight-light)' : 'var(--card-bg)',
+                }}
+              >
+                {/* 카드 본문: 탭하면 작업 이력 펼침 */}
+                <Box
+                  onClick={() => toggleExpand(task.group_key)}
+                  sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, p: 1.5, pr: 0.5, cursor: 'pointer' }}
+                >
+                  <IconButton
+                    aria-label={is_active_task ? '일시정지' : '진행'}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handlePlayPauseTask(task, is_active_task);
+                    }}
+                    sx={{
+                      width: 40,
+                      height: 40,
+                      flexShrink: 0,
+                      border: '1px solid',
+                      borderColor: is_active_task ? 'warning.main' : 'var(--border-color)',
+                      color: is_active_task ? 'warning.main' : 'primary.main',
+                    }}
+                  >
+                    {is_active_task ? <PauseIcon /> : <PlayArrowIcon />}
+                  </IconButton>
+
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Box onClick={(e) => e.stopPropagation()} sx={{ width: 'fit-content', maxWidth: '100%' }}>
+                      {renderTaskTitle(task, is_active_task, all_completed, true)}
+                    </Box>
+                    <Box
+                      onClick={(e) => e.stopPropagation()}
+                      sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5, minWidth: 0, width: 'fit-content', maxWidth: '100%' }}
+                    >
+                      <Box sx={{ maxWidth: editingInlineProject === task.group_key ? 160 : '50%', minWidth: 0, display: 'flex' }}>
+                        {renderTaskProject(task, true)}
+                      </Box>
+                      <Box sx={{ minWidth: 0, display: 'flex' }}>
+                        {renderTaskCategory(task, true)}
+                      </Box>
+                    </Box>
+                  </Box>
+
+                  <Box sx={{ textAlign: 'right', flexShrink: 0, fontVariantNumeric: 'tabular-nums', pt: 0.25 }}>
+                    <Typography sx={{ fontSize: 16, fontWeight: 700, lineHeight: 1.3, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
+                      {formatTimeDisplay(task.today_duration)}
+                    </Typography>
+                    <Typography sx={{ fontSize: 11, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                      총 {formatTimeDisplay(task.total_duration)}
+                    </Typography>
+                    <Typography sx={{ fontSize: 11, color: 'text.secondary', whiteSpace: 'nowrap' }}>
+                      세션 {task.sessions.length}
+                    </Typography>
+                  </Box>
+
+                  <IconButton
+                    aria-label="더보기"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setTaskMenu({ anchor: e.currentTarget, group_key: task.group_key });
+                    }}
+                    sx={{ width: 40, height: 40, flexShrink: 0, mt: -0.5, color: 'text.secondary' }}
+                  >
+                    <MoreVertIcon />
+                  </IconButton>
+                </Box>
+
+                <Menu
+                  anchorEl={task_menu?.anchor}
+                  open={task_menu?.group_key === task.group_key}
+                  onClose={() => setTaskMenu(null)}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <MenuItem
+                    disabled={task.sessions.length === 0 || is_active_task}
+                    onClick={() => {
+                      setTaskMenu(null);
+                      handleToggleTaskComplete(task, all_completed);
+                    }}
+                  >
+                    <ListItemIcon>
+                      {all_completed ? <CheckCircleIcon fontSize="small" /> : <CheckCircleOutlineIcon fontSize="small" />}
+                    </ListItemIcon>
+                    <ListItemText>{all_completed ? '완료 취소' : '완료'}</ListItemText>
+                  </MenuItem>
+                  <MenuItem
+                    onClick={() => {
+                      setTaskMenu(null);
+                      openCopyDialog(task);
+                    }}
+                  >
+                    <ListItemIcon><ContentCopyIcon fontSize="small" /></ListItemIcon>
+                    <ListItemText>카테고리 변경 복사</ListItemText>
+                  </MenuItem>
+                  <MenuItem
+                    onClick={() => {
+                      setTaskMenu(null);
+                      handleEditTask(task, is_active_task);
+                    }}
+                  >
+                    <ListItemIcon><EditIcon fontSize="small" /></ListItemIcon>
+                    <ListItemText>상세 수정</ListItemText>
+                  </MenuItem>
+                  <MenuItem
+                    disabled={is_active_task}
+                    onClick={() => {
+                      setTaskMenu(null);
+                      handleDeleteTask(task, is_active_task);
+                    }}
+                    sx={{ color: 'error.main' }}
+                  >
+                    <ListItemIcon><DeleteOutlineIcon fontSize="small" color="error" /></ListItemIcon>
+                    <ListItemText>이 업무의 모든 세션 삭제</ListItemText>
+                  </MenuItem>
+                </Menu>
+
+                {/* 작업 이력 (펼침) */}
+                <Collapse in={is_expanded}>
+                  <Box sx={{ bgcolor: 'var(--bg-tertiary)', borderTop: '1px solid var(--border-color)', borderRadius: '0 0 12px 12px', px: 1.5, py: 1 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Typography variant="caption" color="text.secondary">
+                        작업 이력 (총 {task.sessions.length}회 작업)
+                      </Typography>
+                      <Button
+                        size="small"
+                        onClick={toggleSessionSortOrder}
+                        endIcon={session_sort_order === 'asc' ? <ExpandMoreIcon /> : <ExpandLessIcon />}
+                        sx={{ color: 'text.secondary', whiteSpace: 'nowrap', minHeight: 36 }}
+                      >
+                        {session_sort_order === 'asc' ? '오래된 순' : '최근 순'}
+                      </Button>
+                    </Box>
+                    {getSortedSessions(task).map((session, idx) => (
+                      <Box
+                        key={session.id}
+                        sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, py: 0.5, borderTop: idx > 0 ? '1px solid var(--border-color)' : 'none' }}
+                      >
+                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', columnGap: 0.5, minHeight: 36, fontSize: 13, color: 'text.secondary', fontVariantNumeric: 'tabular-nums' }}>
+                            <span>{formatShortDate(session.startTime)} ·</span>
+                            <Box
+                              onClick={() => startInlineTimeEdit(session, 'start')}
+                              sx={{ cursor: 'pointer', color: 'text.primary', display: 'flex', alignItems: 'center', minHeight: 32 }}
+                            >
+                              {renderSessionStart(session, true)}
+                            </Box>
+                            <span>–</span>
+                            <Box
+                              onClick={() => session.endTime && startInlineTimeEdit(session, 'end')}
+                              sx={{ cursor: session.endTime ? 'pointer' : 'default', color: 'text.primary', display: 'flex', alignItems: 'center', minHeight: 32 }}
+                            >
+                              {renderSessionEnd(session, true)}
+                            </Box>
+                            <span>· {Math.floor(getDuration(session) / 60)}분</span>
+                          </Box>
+                          <Box onClick={() => startInlineNoteEdit(session)} sx={{ cursor: 'pointer', minHeight: 28 }}>
+                            {renderSessionNote(session, true)}
+                          </Box>
+                        </Box>
+                        <IconButton
+                          aria-label="세션 메뉴"
+                          onClick={(e) => setSessionMenu({ anchor: e.currentTarget, session_id: session.id })}
+                          sx={{ width: 40, height: 40, flexShrink: 0, color: 'text.secondary' }}
+                        >
+                          <MoreVertIcon fontSize="small" />
+                        </IconButton>
+                        <Menu
+                          anchorEl={session_menu?.anchor}
+                          open={session_menu?.session_id === session.id}
+                          onClose={() => setSessionMenu(null)}
+                        >
+                          {session.status === 'COMPLETED' && (
+                            <MenuItem
+                              onClick={() => {
+                                setSessionMenu(null);
+                                handleRestartSession(session);
+                              }}
+                            >
+                              <ListItemIcon><PlayCircleOutlineIcon fontSize="small" color="success" /></ListItemIcon>
+                              <ListItemText>새 세션으로 다시 시작</ListItemText>
+                            </MenuItem>
+                          )}
+                          <MenuItem
+                            onClick={() => {
+                              setSessionMenu(null);
+                              handleEditClick(session);
+                            }}
+                          >
+                            <ListItemIcon><EditIcon fontSize="small" /></ListItemIcon>
+                            <ListItemText>수정</ListItemText>
+                          </MenuItem>
+                          <MenuItem
+                            onClick={() => {
+                              setSessionMenu(null);
+                              deleteLog(session.id);
+                            }}
+                            sx={{ color: 'error.main' }}
+                          >
+                            <ListItemIcon><DeleteOutlineIcon fontSize="small" color="error" /></ListItemIcon>
+                            <ListItemText>삭제</ListItemText>
+                          </MenuItem>
+                        </Menu>
+                      </Box>
+                    ))}
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                      첫 시작: {formatTimeWithDate(task.first_start, date_range)} | 마지막 종료: {task.last_end ? formatTime(task.last_end) : (is_active_task ? '진행 중' : '일시정지')} | 총 {formatDuration(task.total_duration)}
+                    </Typography>
+                  </Box>
+                </Collapse>
+              </Box>
+            );
+          }
+
           return (
             <Box key={task.group_key}>
               {/* 업무 행 */}
-              <Box 
+              <Box
                 onClick={() => toggleExpand(task.group_key)}
-                sx={{ 
-                  display: 'grid', 
+                sx={{
+                  display: 'grid',
                   gridTemplateColumns: '56px 140px 1fr 90px 110px 110px 130px 50px 50px',
                   gap: 1,
                   px: 2,
@@ -789,9 +1413,9 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                 {/* 좌측: 펼치기 토글 + 완료상태 토글 버튼 + 시작/재시작 버튼 */}
                 <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 0.25 }}>
                   {/* 펼치기/접기 토글 아이콘 */}
-                  <Box 
-                    sx={{ 
-                      display: 'flex', 
+                  <Box
+                    sx={{
+                      display: 'flex',
                       alignItems: 'center',
                       color: 'text.secondary',
                       cursor: 'pointer',
@@ -806,29 +1430,15 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                   {/* 완료 상태 토글 버튼 */}
                   <Tooltip title={all_completed ? "완료 취소" : "완료"}>
                     <span>
-                      <IconButton 
-                        size="small" 
+                      <IconButton
+                        size="small"
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (all_completed && task.sessions.length > 0) {
-                            // 완료된 작업 → 마지막 세션을 완료 취소
-                            const lastSession = task.sessions[task.sessions.length - 1];
-                            reopenTimer(lastSession.id);
-                          } else if (!all_completed && task.sessions.length > 0) {
-                            // 미완료 작업 → 모든 세션을 완료 상태로 변경
-                            task.sessions.forEach(session => {
-                              if (session.status !== 'COMPLETED') {
-                                updateLog(session.id, { 
-                                  status: 'COMPLETED', 
-                                  endTime: session.endTime || session.lastPausedAt || Date.now() 
-                                });
-                              }
-                            });
-                          }
+                          handleToggleTaskComplete(task, all_completed);
                         }}
                         disabled={task.sessions.length === 0 || is_active_task}
-                        sx={{ 
-                          p: 0.25, 
+                        sx={{
+                          p: 0.25,
                           color: all_completed ? 'success.main' : 'text.secondary',
                           '&:hover': { color: all_completed ? 'warning.main' : 'success.main' }
                         }}
@@ -841,33 +1451,24 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                       </IconButton>
                     </span>
                   </Tooltip>
-                  
+
                   {/* 시작/재시작/일시정지 버튼 */}
                   {(() => {
-                    const tooltip_text = is_active_task 
-                      ? "일시정지" 
+                    const tooltip_text = is_active_task
+                      ? "일시정지"
                       : "진행";
-                    
+
                     return (
                       <Tooltip title={tooltip_text}>
                         <span>
-                          <IconButton 
-                            size="small" 
+                          <IconButton
+                            size="small"
                             onClick={(e) => {
                               e.stopPropagation();
-                              if (is_active_task) {
-                                // 진행중인 타이머 → 일시정지 후 logs로 이동
-                                pauseAndMoveToLogs();
-                              } else if (all_completed && task.sessions.length > 0) {
-                                // 완료된 항목 → 완료 취소 후 새 타이머 시작
-                                handleRestart(task.title, task.projectCode, task.category, task.note, task.sessions[0]?.dailyGroupKey);
-                              } else {
-                                // 미완료 항목 → 새 타이머 시작
-                                handleRestart(task.title, task.projectCode, task.category, task.note, task.sessions[0]?.dailyGroupKey);
-                              }
+                              handlePlayPauseTask(task, is_active_task);
                             }}
-                            sx={{ 
-                              p: 0.25, 
+                            sx={{
+                              p: 0.25,
                               color: is_active_task ? 'warning.main' : 'text.secondary',
                               '&:hover': { color: is_active_task ? 'warning.dark' : 'primary.main' }
                             }}
@@ -886,147 +1487,17 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
 
                 {/* 프로젝트 코드 */}
                 <Box sx={{ overflow: 'hidden' }} onClick={(e) => e.stopPropagation()}>
-                  {editingInlineProject === task.group_key ? (
-                    <Autocomplete
-                      freeSolo
-                      size="small"
-                      options={projectOptions}
-                      value={getProjectDisplayValue(inlineProjectCode)}
-                      onInputChange={(_e, newValue) => setInlineProjectCode(newValue)}
-                      onChange={(_e, newValue) => {
-                        saveInlineProject(task, newValue || '');
-                      }}
-                      onBlur={() => saveInlineProject(task, inlineProjectCode)}
-                      renderInput={(params) => (
-                        <TextField 
-                          {...params} 
-                          variant="standard"
-                          autoFocus
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              saveInlineProject(task, inlineProjectCode);
-                            } else if (e.key === 'Escape') {
-                              cancelInlineProjectEdit();
-                            }
-                          }}
-                          InputProps={{ ...params.InputProps, disableUnderline: true }}
-                          sx={{ '& .MuiInputBase-input': { fontSize: '0.7rem', p: 0 } }}
-                        />
-                      )}
-                      sx={{ width: '100%' }}
-                    />
-                  ) : (
-                    <Chip 
-                      label={task.projectCode ? getProjectName(task.projectCode) : '-'} 
-                      size="small" 
-                      color={task.projectCode ? "primary" : "default"}
-                      variant="outlined"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        startInlineProjectEdit(task);
-                      }}
-                      sx={{ 
-                        height: 22, 
-                        fontSize: '0.7rem',
-                        maxWidth: '100%',
-                        cursor: 'pointer',
-                        '& .MuiChip-label': {
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                        }
-                      }} 
-                      title={task.projectCode ? `[${task.projectCode}] ${getProjectName(task.projectCode)} - 클릭하여 변경` : '클릭하여 프로젝트 설정'}
-                    />
-                  )}
+                  {renderTaskProject(task, false)}
                 </Box>
 
                 {/* 기록명 */}
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, overflow: 'hidden' }} onClick={(e) => e.stopPropagation()}>
-                  {editingInlineTitle === task.group_key ? (
-                    <TextField
-                      size="small"
-                      variant="standard"
-                      value={inlineTitle}
-                      onChange={(e) => setInlineTitle(e.target.value)}
-                      onBlur={() => saveInlineTitle(task)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          saveInlineTitle(task);
-                        } else if (e.key === 'Escape') {
-                          cancelInlineTitleEdit();
-                        }
-                      }}
-                      autoFocus
-                      fullWidth
-                      InputProps={{ disableUnderline: true }}
-                      sx={{ 
-                        '& .MuiInputBase-input': { 
-                          fontSize: '0.875rem',
-                          fontWeight: is_active_task ? 600 : 500,
-                          p: 0
-                        }
-                      }}
-                    />
-                  ) : (
-                    <Typography 
-                      variant="body2" 
-                      onClick={() => startInlineTitleEdit(task)}
-                      sx={{ 
-                        fontWeight: is_active_task ? 600 : 500,
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis', 
-                        whiteSpace: 'nowrap',
-                        color: all_completed ? 'text.secondary' : 'text.primary',
-                        textDecoration: all_completed ? 'line-through' : 'none',
-                        cursor: 'text',
-                        '&:hover': { bgcolor: 'action.hover', borderRadius: 0.5 }
-                      }}
-                      title={`${task.title} - 클릭하여 편집`}
-                    >
-                      {task.title}
-                    </Typography>
-                  )}
+                  {renderTaskTitle(task, is_active_task, all_completed, false)}
                 </Box>
 
                 {/* 카테고리 */}
                 <Box sx={{ overflow: 'visible', position: 'relative' }} onClick={(e) => e.stopPropagation()}>
-                  {editingInlineCategory === task.group_key ? (
-                    <CategoryAutocomplete
-                      value={inlineCategory}
-                      onChange={(newValue) => {
-                        saveInlineCategory(task, newValue);
-                      }}
-                      size="small"
-                      variant="standard"
-                      autoFocus
-                      onBlur={() => cancelInlineCategoryEdit()}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Escape') {
-                          cancelInlineCategoryEdit();
-                        }
-                      }}
-                      sx={{ 
-                        width: '100%',
-                        '& .MuiInputBase-input': { fontSize: '0.65rem', p: 0 }
-                      }}
-                    />
-                  ) : (
-                    <Chip 
-                      label={task.category || '-'} 
-                      size="small"
-                      color={task.category ? "default" : "default"}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        startInlineCategoryEdit(task);
-                      }}
-                      sx={{ 
-                        height: 20, 
-                        fontSize: '0.65rem',
-                        cursor: 'pointer',
-                      }}
-                      title={task.category ? `${task.category} - 클릭하여 변경` : '클릭하여 카테고리 설정'}
-                    />
-                  )}
+                  {renderTaskCategory(task, false)}
                 </Box>
 
                 {/* 오늘시간 - 돋보이게 (다크모드: 흰색, 라이트모드: 검정) */}
@@ -1056,12 +1527,10 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                       size="small"
                       onClick={(e) => {
                         e.stopPropagation();
-                        setCopyingTask(task);
-                        setCopyCategory(task.category || null);
-                        setCopyNote('');
+                        openCopyDialog(task);
                       }}
-                      sx={{ 
-                        p: 0.25, 
+                      sx={{
+                        p: 0.25,
                         color: 'text.secondary',
                         '&:hover': { color: 'info.main' }
                       }}
@@ -1074,14 +1543,10 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                       size="small"
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (is_active_task && activeTimer) {
-                          handleEditClick(activeTimer);
-                        } else if (task.sessions.length > 0) {
-                          handleEditClick(task.sessions[0]);
-                        }
+                        handleEditTask(task, is_active_task);
                       }}
-                      sx={{ 
-                        p: 0.25, 
+                      sx={{
+                        p: 0.25,
                         color: 'text.secondary',
                         '&:hover': { color: 'primary.main' }
                       }}
@@ -1094,16 +1559,11 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                       size="small"
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (is_active_task) {
-                          return;
-                        }
-                        task.sessions.forEach(session => {
-                          deleteLog(session.id);
-                        });
+                        handleDeleteTask(task, is_active_task);
                       }}
                       disabled={is_active_task}
-                      sx={{ 
-                        p: 0.25, 
+                      sx={{
+                        p: 0.25,
                         color: 'text.secondary',
                         '&:hover': { color: 'error.main' },
                         '&.Mui-disabled': { color: 'text.disabled' }
@@ -1144,194 +1604,44 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                         </TableRow>
                       </TableHead>
                       <TableBody>
-                        {(() => {
-                          const sorted_sessions = session_sort_order === 'desc' 
-                            ? [...task.sessions].reverse() 
-                            : task.sessions;
-                          
-                          return sorted_sessions.map((session, idx) => {
+                        {getSortedSessions(task).map((session, idx) => {
                             const display_index = session_sort_order === 'desc'
                               ? task.sessions.length - idx
                               : idx + 1;
-                            
+
                             return (
                           <TableRow key={session.id} hover>
                             <TableCell sx={{ py: 0.5 }}>{display_index}</TableCell>
                             <TableCell sx={{ py: 0.5 }}>{formatDate(session.startTime)}</TableCell>
-                            <TableCell 
+                            <TableCell
                               sx={{ py: 0.5, cursor: 'pointer' }}
                               onClick={() => startInlineTimeEdit(session, 'start')}
                             >
-                              {editingSessionTime?.sessionId === session.id && editingSessionTime.field === 'start' ? (
-                                <TextField
-                                  type="time"
-                                  size="small"
-                                  variant="standard"
-                                  value={inlineTimeValue}
-                                  onChange={(e) => setInlineTimeValue(e.target.value)}
-                                  onBlur={() => saveInlineTime(session, 'start', inlineTimeValue)}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') {
-                                      saveInlineTime(session, 'start', inlineTimeValue);
-                                    } else if (e.key === 'Escape') {
-                                      cancelInlineTimeEdit();
-                                    }
-                                  }}
-                                  autoFocus
-                                  onClick={(e) => e.stopPropagation()}
-                                  InputProps={{ disableUnderline: true }}
-                                  sx={{ 
-                                    width: 110,
-                                    '& input': { 
-                                      fontSize: '0.8rem', 
-                                      p: 0,
-                                      color: themeConfig.isDark ? '#fff' : 'inherit',
-                                      '&::-webkit-calendar-picker-indicator': {
-                                        filter: themeConfig.isDark ? 'invert(1)' : 'none'
-                                      }
-                                    }
-                                  }}
-                                />
-                              ) : (
-                                <Typography 
-                                  variant="body2" 
-                                  sx={{ 
-                                    fontSize: '0.8rem',
-                                    '&:hover': { bgcolor: 'action.hover', borderRadius: 0.5, px: 0.5 }
-                                  }}
-                                >
-                                  {formatTime(session.startTime)}
-                                </Typography>
-                              )}
+                              {renderSessionStart(session, false)}
                             </TableCell>
-                            <TableCell 
+                            <TableCell
                               sx={{ py: 0.5, cursor: session.endTime ? 'pointer' : 'default' }}
                               onClick={() => session.endTime && startInlineTimeEdit(session, 'end')}
                             >
-                              {editingSessionTime?.sessionId === session.id && editingSessionTime.field === 'end' ? (
-                                <TextField
-                                  type="time"
-                                  size="small"
-                                  variant="standard"
-                                  value={inlineTimeValue}
-                                  onChange={(e) => setInlineTimeValue(e.target.value)}
-                                  onBlur={() => saveInlineTime(session, 'end', inlineTimeValue)}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') {
-                                      saveInlineTime(session, 'end', inlineTimeValue);
-                                    } else if (e.key === 'Escape') {
-                                      cancelInlineTimeEdit();
-                                    }
-                                  }}
-                                  autoFocus
-                                  onClick={(e) => e.stopPropagation()}
-                                  InputProps={{ disableUnderline: true }}
-                                  sx={{ 
-                                    width: 110,
-                                    '& input': { 
-                                      fontSize: '0.8rem', 
-                                      p: 0,
-                                      color: themeConfig.isDark ? '#fff' : 'inherit',
-                                      '&::-webkit-calendar-picker-indicator': {
-                                        filter: themeConfig.isDark ? 'invert(1)' : 'none'
-                                      }
-                                    }
-                                  }}
-                                />
-                              ) : session.endTime ? (
-                                <Typography 
-                                  variant="body2" 
-                                  sx={{ 
-                                    fontSize: '0.8rem',
-                                    '&:hover': { bgcolor: 'action.hover', borderRadius: 0.5, px: 0.5 }
-                                  }}
-                                >
-                                  {formatTime(session.endTime)}
-                                </Typography>
-                              ) : session.status === 'RUNNING' ? (
-                                <Chip 
-                                  label="진행 중" 
-                                  size="small" 
-                                  color="primary"
-                                  sx={{ 
-                                    height: 18, 
-                                    fontSize: '0.65rem',
-                                    color: 'white'
-                                  }}
-                                />
-                              ) : (
-                                // PAUSED 상태: lastPausedAt 또는 endTime을 종료 시간으로 표시 (기존 데이터 호환)
-                                <Typography 
-                                  variant="body2" 
-                                  sx={{ 
-                                    fontSize: '0.8rem',
-                                    color: 'warning.main',
-                                    fontWeight: 500
-                                  }}
-                                >
-                                  {formatTime(session.lastPausedAt || session.endTime || session.startTime)}
-                                </Typography>
-                              )}
+                              {renderSessionEnd(session, false)}
                             </TableCell>
                             <TableCell sx={{ py: 0.5 }}>
                               {Math.floor(getDuration(session) / 60)}분
                             </TableCell>
-                            <TableCell 
+                            <TableCell
                               sx={{ py: 0.5, cursor: 'pointer' }}
                               onClick={() => startInlineNoteEdit(session)}
                             >
-                              {editingSessionNote === session.id ? (
-                                <TextField
-                                  size="small"
-                                  variant="standard"
-                                  value={inlineNoteValue}
-                                  onChange={(e) => setInlineNoteValue(e.target.value)}
-                                  onBlur={() => saveInlineNote(session)}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') {
-                                      saveInlineNote(session);
-                                    } else if (e.key === 'Escape') {
-                                      cancelInlineNoteEdit();
-                                    }
-                                  }}
-                                  autoFocus
-                                  onClick={(e) => e.stopPropagation()}
-                                  InputProps={{ disableUnderline: true }}
-                                  sx={{ 
-                                    width: '100%',
-                                    '& input': { 
-                                      fontSize: '0.8rem', 
-                                      p: 0,
-                                      color: themeConfig.isDark ? '#fff' : 'inherit'
-                                    }
-                                  }}
-                                />
-                              ) : (
-                                <Typography 
-                                  variant="body2" 
-                                  sx={{ 
-                                    fontSize: '0.8rem',
-                                    color: session.note ? 'text.primary' : 'text.disabled',
-                                    minHeight: 20,
-                                    '&:hover': { bgcolor: 'action.hover', borderRadius: 0.5, px: 0.5 }
-                                  }}
-                                >
-                                  {session.note || '비고 추가'}
-                                </Typography>
-                              )}
+                              {renderSessionNote(session, false)}
                             </TableCell>
                             <TableCell sx={{ py: 0.5 }}>
                               <Box sx={{ display: 'flex', gap: 0.5 }}>
                                 {/* 완료된 세션에만 재진행 버튼 표시 */}
                                 {session.status === 'COMPLETED' && (
                                   <Tooltip title="새 세션으로 다시 시작 (현재 시간 기준)">
-                                    <IconButton 
-                                      size="small" 
-                                      onClick={() => {
-                                        // 기존 activeTimer는 startTimer 내부에서 자동으로 logs로 이동됨
-                                        // 새 세션을 현재 시간으로 시작
-                                        startTimer(session.title, session.projectCode, session.category, session.note, session.dailyGroupKey);
-                                      }}
+                                    <IconButton
+                                      size="small"
+                                      onClick={() => handleRestartSession(session)}
                                       sx={{ p: 0.25, color: 'success.main' }}
                                       aria-label="재진행"
                                     >
@@ -1340,8 +1650,8 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                                   </Tooltip>
                                 )}
                                 <Tooltip title="수정">
-                                  <IconButton 
-                                    size="small" 
+                                  <IconButton
+                                    size="small"
                                     onClick={() => handleEditClick(session)}
                                     sx={{ p: 0.25 }}
                                     aria-label="수정"
@@ -1350,8 +1660,8 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                                   </IconButton>
                                 </Tooltip>
                                 <Tooltip title="삭제">
-                                  <IconButton 
-                                    size="small" 
+                                  <IconButton
+                                    size="small"
                                     onClick={() => deleteLog(session.id)}
                                     sx={{ p: 0.25 }}
                                     aria-label="삭제"
@@ -1363,8 +1673,7 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                             </TableCell>
                           </TableRow>
                             );
-                          });
-                        })()}
+                          })}
                       </TableBody>
                     </Table>
                   </TableContainer>

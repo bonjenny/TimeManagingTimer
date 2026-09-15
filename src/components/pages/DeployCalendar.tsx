@@ -9,7 +9,11 @@ import {
   Paper,
   Menu,
   MenuItem,
+  ListItemIcon,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import TodayIcon from '@mui/icons-material/Today';
@@ -42,6 +46,8 @@ import JobColorManager from '../calendar/JobColorManager';
 // 드래그 시 활성화 거리(px) - 클릭과 구분
 const DRAG_ACTIVATION_DISTANCE = 8;
 const DROPPABLE_PREFIX = 'cell-';
+const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토'];
+const HOLIDAY_COLOR = '#ca3626';
 
 // ----------------------------------------------------------------------
 // Draggable event chip (날짜 이동용)
@@ -177,7 +183,12 @@ const DeployCalendar: React.FC = () => {
   const [selected_event, setSelectedEvent] = useState<DeployEvent | null>(null);
   const [event_modal_key, setEventModalKey] = useState(0);
   const [color_manager_open, setColorManagerOpen] = useState(false);
-  
+
+  // 모바일(< md): 아젠다 뷰 + 더보기 메뉴
+  const theme = useTheme();
+  const is_mobile = useMediaQuery(theme.breakpoints.down('md'));
+  const [more_anchor, setMoreAnchor] = useState<HTMLElement | null>(null);
+
   // 우클릭 컨텍스트 메뉴 (삭제)
   const [context_menu, setContextMenu] = useState<{
     x: number;
@@ -254,7 +265,20 @@ const DeployCalendar: React.FC = () => {
       return `${first_week.year}년 ${first_week.month}월 ${first_week.week}주차 ~ ${last_week.year}년 ${last_week.month}월 ${last_week.week}주차`;
     }
   }, [date_range]);
-  
+
+  // 모바일 헤더용 짧은 제목 (예: "9월 1~2주차", "9월 5주차 ~ 10월 1주차")
+  const display_month_short = useMemo(() => {
+    if (date_range.length === 0) return '';
+    const first_week = getWeekInfo(date_range[0][0]);
+    const last_week = getWeekInfo(date_range[date_range.length - 1][0]);
+    if (first_week.year === last_week.year && first_week.month === last_week.month) {
+      return first_week.week === last_week.week
+        ? `${first_week.month}월 ${first_week.week}주차`
+        : `${first_week.month}월 ${first_week.week}~${last_week.week}주차`;
+    }
+    return `${first_week.month}월 ${first_week.week}주차 ~ ${last_week.month}월 ${last_week.week}주차`;
+  }, [date_range]);
+
   // 네비게이션
   const handlePrevWeek = () => {
     setStartDate(prev => addDays(prev, -7));
@@ -334,7 +358,245 @@ const DeployCalendar: React.FC = () => {
     setToastMessage('날짜로 이동했습니다');
     setToastOpen(true);
   };
-  
+
+  const shared_overlays = (
+    <>
+      {/* 우클릭 삭제 메뉴 */}
+      <Menu
+        open={context_menu !== null}
+        onClose={() => setContextMenu(null)}
+        anchorReference="anchorPosition"
+        anchorPosition={
+          context_menu ? { top: context_menu.y, left: context_menu.x } : undefined
+        }
+        MenuListProps={{ dense: true }}
+      >
+        <MenuItem
+          onClick={handleDeleteEvent}
+          sx={{ color: 'error.main' }}
+          startIcon={<DeleteIcon />}
+        >
+          삭제
+        </MenuItem>
+      </Menu>
+
+      {/* 이벤트 추가/수정 모달 */}
+      <DeployEventModal
+        key={event_modal_key} // 열 때마다 새로 마운트: 진행상태·프로젝트 입력칸의 이전 값이 남지 않게
+        open={event_modal_open}
+        onClose={() => setEventModalOpen(false)}
+        date={selected_date}
+        event={selected_event}
+      />
+
+      {/* 잡 색상 설정 모달 */}
+      <JobColorManager
+        open={color_manager_open}
+        onClose={() => setColorManagerOpen(false)}
+      />
+
+      {/* 토스트 - 다크모드에서도 글자 가독성 확보 */}
+      <Snackbar
+        open={toast_open}
+        autoHideDuration={2000}
+        onClose={() => setToastOpen(false)}
+        message={toast_message}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        ContentProps={{
+          sx: {
+            color: 'var(--text-primary)',
+            bgcolor: 'var(--card-bg)',
+            border: '1px solid var(--border-color)',
+          },
+        }}
+      />
+    </>
+  );
+
+  // ------------------------------------------------------------------
+  // 모바일 레이아웃 (< md): 5열 그리드 대신 요일별 아젠다 카드 리스트
+  // (터치에서 드래그 대신 이벤트 모달의 날짜 입력으로 이동)
+  // ------------------------------------------------------------------
+  if (is_mobile) {
+    const today_str = formatDateToString(new Date());
+
+    return (
+      <Box sx={{ p: { xs: 1, sm: 2 } }}>
+        {/* 헤더: 제목 + 주 이동 + 더보기 */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 1.5 }}>
+          <Typography
+            variant="h6"
+            sx={{
+              fontSize: 17,
+              fontWeight: 700,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              flex: 1,
+              minWidth: 0,
+            }}
+          >
+            {display_month_short}
+          </Typography>
+          <IconButton aria-label="이전 주" onClick={handlePrevWeek} sx={{ width: 40, height: 40 }}>
+            <ChevronLeftIcon />
+          </IconButton>
+          <IconButton aria-label="다음 주" onClick={handleNextWeek} sx={{ width: 40, height: 40 }}>
+            <ChevronRightIcon />
+          </IconButton>
+          <IconButton aria-label="이번 주로 이동" onClick={handleToday} sx={{ width: 40, height: 40 }}>
+            <TodayIcon />
+          </IconButton>
+          <IconButton aria-label="더보기" onClick={(e) => setMoreAnchor(e.currentTarget)} sx={{ width: 40, height: 40 }}>
+            <MoreVertIcon />
+          </IconButton>
+          <Menu
+            anchorEl={more_anchor}
+            open={Boolean(more_anchor)}
+            onClose={() => setMoreAnchor(null)}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+            transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+          >
+            <MenuItem
+              onClick={() => {
+                setMoreAnchor(null);
+                setColorManagerOpen(true);
+              }}
+              sx={{ minHeight: 44 }}
+            >
+              <ListItemIcon><PaletteIcon fontSize="small" /></ListItemIcon>
+              잡 색상 설정
+            </MenuItem>
+            <MenuItem
+              onClick={() => {
+                setMoreAnchor(null);
+                handleCopyHtml();
+              }}
+              sx={{ minHeight: 44 }}
+            >
+              <ListItemIcon><ContentCopyIcon fontSize="small" /></ListItemIcon>
+              HTML 복사
+            </MenuItem>
+          </Menu>
+        </Box>
+
+        {/* 주차별 아젠다 */}
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          {date_range.map((week, week_idx) => {
+            const week_info = getWeekInfo(week[0]);
+            return (
+              <Box key={week_idx}>
+                {date_range.length > 1 && (
+                  <Typography sx={{ fontSize: 13, fontWeight: 700, color: 'text.secondary', mb: 1 }}>
+                    {week_info.month}월 {week_info.week}주차
+                  </Typography>
+                )}
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  {week.map((date) => {
+                    const date_str = formatDateToString(date);
+                    const day_events = getEventsForDate(date);
+                    const is_today = date_str === today_str;
+                    const has_holiday = day_events.some((e) => e.is_holiday);
+                    const date_color = has_holiday ? HOLIDAY_COLOR : is_today ? 'primary.main' : 'text.primary';
+                    return (
+                      <Paper
+                        key={date_str}
+                        variant="outlined"
+                        onClick={() => handleCellClick(date)}
+                        sx={{
+                          display: 'flex',
+                          alignItems: 'stretch',
+                          minHeight: 56,
+                          borderRadius: 2,
+                          overflow: 'hidden',
+                          cursor: 'pointer',
+                          borderColor: is_today ? 'primary.main' : 'divider',
+                        }}
+                      >
+                        {/* 날짜 열 */}
+                        <Box
+                          sx={{
+                            width: 56,
+                            flexShrink: 0,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: date_color,
+                            bgcolor: 'var(--bg-tertiary)',
+                            borderRight: '1px solid',
+                            borderRightColor: 'divider',
+                          }}
+                        >
+                          <Typography sx={{ fontSize: 20, fontWeight: 700, lineHeight: 1.1, color: 'inherit', fontVariantNumeric: 'tabular-nums' }}>
+                            {date.getDate()}
+                          </Typography>
+                          <Typography sx={{ fontSize: 12, color: 'inherit' }}>
+                            {DAY_NAMES[date.getDay()]}
+                          </Typography>
+                        </Box>
+
+                        {/* 이벤트 칩 + 추가 */}
+                        <Box sx={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 0.5, py: 0.75, pl: 1, pr: 0.5 }}>
+                          <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
+                            {day_events.map((event) => {
+                              const display_text = event.status ? `${event.job_name} ${event.status}` : event.job_name;
+                              return (
+                                <Box
+                                  key={event.id}
+                                  role="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleCellClick(date, event);
+                                  }}
+                                  sx={{
+                                    maxWidth: '100%',
+                                    minHeight: 32,
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    px: 1.25,
+                                    borderRadius: '6px',
+                                    fontSize: 13,
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
+                                    ...(event.is_holiday
+                                      ? { color: HOLIDAY_COLOR, fontWeight: 600 }
+                                      : { bgcolor: getJobColor(event.job_code) || '#e0e0e0', color: '#000000' }),
+                                  }}
+                                >
+                                  <Box component="span" sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                    {event.is_holiday ? event.job_name : display_text}
+                                  </Box>
+                                </Box>
+                              );
+                            })}
+                          </Box>
+                          <IconButton
+                            aria-label={`${formatDateToDisplay(date)} 이벤트 추가`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCellClick(date);
+                            }}
+                            sx={{ width: 40, height: 40, flexShrink: 0, color: 'text.secondary' }}
+                          >
+                            <AddIcon />
+                          </IconButton>
+                        </Box>
+                      </Paper>
+                    );
+                  })}
+                </Box>
+              </Box>
+            );
+          })}
+        </Box>
+
+        {shared_overlays}
+      </Box>
+    );
+  }
+
   return (
     <Box sx={{ p: 2 }}>
       {/* 상단 컨트롤 */}
@@ -492,11 +754,7 @@ const DeployCalendar: React.FC = () => {
                               event={event}
                               date={date}
                               getJobColor={getJobColor}
-                              onEdit={(d, ev) => {
-                                setSelectedDate(formatDateToString(d));
-                                setSelectedEvent(ev);
-                                setEventModalOpen(true);
-                              }}
+                              onEdit={(d, ev) => handleCellClick(d, ev)} // key 갱신으로 모달 폼(날짜 포함)을 이 이벤트 값으로 초기화
                               onContextMenu={handleContextMenu}
                             />
                           );
@@ -510,56 +768,8 @@ const DeployCalendar: React.FC = () => {
           ))}
         </Paper>
       </DndContext>
-      
-      {/* 우클릭 삭제 메뉴 */}
-      <Menu
-        open={context_menu !== null}
-        onClose={() => setContextMenu(null)}
-        anchorReference="anchorPosition"
-        anchorPosition={
-          context_menu ? { top: context_menu.y, left: context_menu.x } : undefined
-        }
-        MenuListProps={{ dense: true }}
-      >
-        <MenuItem
-          onClick={handleDeleteEvent}
-          sx={{ color: 'error.main' }}
-          startIcon={<DeleteIcon />}
-        >
-          삭제
-        </MenuItem>
-      </Menu>
-      
-      {/* 이벤트 추가/수정 모달 */}
-      <DeployEventModal
-        key={event_modal_key} // 열 때마다 새로 마운트: 진행상태·프로젝트 입력칸의 이전 값이 남지 않게
-        open={event_modal_open}
-        onClose={() => setEventModalOpen(false)}
-        date={selected_date}
-        event={selected_event}
-      />
-      
-      {/* 잡 색상 설정 모달 */}
-      <JobColorManager
-        open={color_manager_open}
-        onClose={() => setColorManagerOpen(false)}
-      />
-      
-      {/* 토스트 - 다크모드에서도 글자 가독성 확보 */}
-      <Snackbar
-        open={toast_open}
-        autoHideDuration={2000}
-        onClose={() => setToastOpen(false)}
-        message={toast_message}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-        ContentProps={{
-          sx: {
-            color: 'var(--text-primary)',
-            bgcolor: 'var(--card-bg)',
-            border: '1px solid var(--border-color)',
-          },
-        }}
-      />
+
+      {shared_overlays}
     </Box>
   );
 };

@@ -16,6 +16,8 @@ import {
   TableRow,
   TextField,
   Typography,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
@@ -37,6 +39,12 @@ import {
 
 // ponytail: 세션키는 IndexedDB(백업 파일에 통째로 들어감)에 두지 않고 탭 단위 sessionStorage 에만 보관
 const SESSION_KEY = 'erp-session-input';
+
+const clamp_sx = (lines: number) => ({ display: '-webkit-box', WebkitLineClamp: lines, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden' });
+const formatShortDate = (ymd: string) => {
+  const [, m, d] = ymd.split('-');
+  return m && d ? `${Number(m)}/${Number(d)}` : ymd;
+};
 
 interface Props {
   open: boolean;
@@ -63,6 +71,9 @@ const ErpRegisterDialog: React.FC<Props> = ({ open, onClose, rows, date }) => {
   );
   const can_submit = rows.length > 0 && result.errors.length === 0;
   const { getProjectName } = useProjectStore();
+  const theme = useTheme();
+  const is_mobile = useMediaQuery(theme.breakpoints.down('md'));
+  const is_phone = useMediaQuery(theme.breakpoints.down('sm'));
 
   // 매핑이 없어 변환에 실패한 프로젝트 → 개발 게시글 필요 여부 (프로젝트 없는 행은 자동 매핑 대상 아님)
   const missing = useMemo(() => {
@@ -129,14 +140,28 @@ const ErpRegisterDialog: React.FC<Props> = ({ open, onClose, rows, date }) => {
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
-      <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        ERP 시간관리 등록 — {date}
-        <IconButton size="small" onClick={onClose}>
-          <CloseIcon />
-        </IconButton>
-      </DialogTitle>
-      <DialogContent>
+    <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth fullScreen={is_phone}>
+      {is_mobile ? (
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 1, py: 1 }}>
+          <IconButton aria-label="닫기" onClick={onClose} sx={{ width: 44, height: 44 }}>
+            <CloseIcon />
+          </IconButton>
+          <Typography component="span" sx={{ flex: 1, minWidth: 0, fontSize: 17, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            ERP 시간관리 등록 — {date}
+          </Typography>
+        </DialogTitle>
+      ) : (
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          ERP 시간관리 등록 — {date}
+          <IconButton size="small" onClick={onClose}>
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+      )}
+      <DialogContent
+        dividers={is_mobile}
+        sx={is_mobile ? { px: { xs: 2, sm: 3 }, '& .MuiInputBase-input': { fontSize: is_phone ? 16 : undefined } } : undefined}
+      >
         <TextField
           size="small"
           fullWidth
@@ -205,46 +230,81 @@ const ErpRegisterDialog: React.FC<Props> = ({ open, onClose, rows, date }) => {
           </Alert>
         )}
 
-        <Table size="small" sx={{ mb: 2 }}>
-          <TableHead>
-            <TableRow>
-              <TableCell>작업</TableCell>
-              <TableCell>업무</TableCell>
-              <TableCell>거래</TableCell>
-              <TableCell>카테고리</TableCell>
-              <TableCell align="right">시간(분)</TableCell>
-              <TableCell>종료예정일</TableCell>
-              <TableCell>비고</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
+        {is_mobile ? (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mb: 2 }}>
             {result.resolved.map((r, i) => (
-              <TableRow key={i}>
-                <TableCell>{r.work.title}</TableCell>
-                <TableCell>{r.bizz_nm}</TableCell>
-                <TableCell>{r.trx.title}</TableCell>
-                <TableCell>{r.category_code} {r.category_name}</TableCell>
-                <TableCell align="right">{r.minutes}</TableCell>
-                <TableCell sx={{ whiteSpace: 'nowrap' }}>{r.end_date}</TableCell>
-                <TableCell sx={{ whiteSpace: 'pre-wrap' }}>{r.note}</TableCell>
-              </TableRow>
+              <Box key={i} sx={{ p: 1.5, border: '1px solid', borderColor: 'divider', borderRadius: 2, bgcolor: 'background.paper' }}>
+                <Typography sx={{ fontSize: 15, fontWeight: 600, lineHeight: 1.4, wordBreak: 'break-word', ...clamp_sx(2) }}>
+                  {r.work.title}
+                </Typography>
+                {r.trx.sid !== r.work.sid && (
+                  <Typography sx={{ fontSize: 13, color: 'text.secondary', mt: 0.25, wordBreak: 'break-word', ...clamp_sx(2) }}>
+                    {r.trx.title}
+                  </Typography>
+                )}
+                <Typography sx={{ fontSize: 13, color: 'text.secondary', mt: 0.5, fontVariantNumeric: 'tabular-nums' }}>
+                  {r.bizz_nm} · {r.category_code} {r.category_name} ·{' '}
+                  <Box component="span" sx={{ color: 'text.primary', fontWeight: 700 }}>{r.minutes}분</Box>
+                  {' '}· 종료 {formatShortDate(r.end_date)}
+                </Typography>
+                {r.note && (
+                  <Typography sx={{ fontSize: 13, mt: 0.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word', ...clamp_sx(2) }}>
+                    {r.note}
+                  </Typography>
+                )}
+              </Box>
             ))}
-            <TableRow>
-              <TableCell colSpan={4} align="right" sx={{ fontWeight: 600 }}>합계</TableCell>
-              <TableCell align="right" sx={{ fontWeight: 600 }}>{result.total}</TableCell>
-              <TableCell />
-              <TableCell>{result.resolved.length}건 · 담당 {erp_user.dept} {erp_user.name}</TableCell>
-            </TableRow>
-          </TableBody>
-        </Table>
+            <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 1, px: 1.5, py: 1, borderRadius: 2, bgcolor: 'action.hover' }}>
+              <Typography sx={{ fontSize: 13, color: 'text.secondary', minWidth: 0 }}>
+                합계 · {result.resolved.length}건 · 담당 {erp_user.dept} {erp_user.name}
+              </Typography>
+              <Typography sx={{ fontSize: 16, fontWeight: 700, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+                {result.total}분
+              </Typography>
+            </Box>
+          </Box>
+        ) : (
+          <Table size="small" sx={{ mb: 2 }}>
+            <TableHead>
+              <TableRow>
+                <TableCell>작업</TableCell>
+                <TableCell>업무</TableCell>
+                <TableCell>거래</TableCell>
+                <TableCell>카테고리</TableCell>
+                <TableCell align="right">시간(분)</TableCell>
+                <TableCell>종료예정일</TableCell>
+                <TableCell>비고</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {result.resolved.map((r, i) => (
+                <TableRow key={i}>
+                  <TableCell>{r.work.title}</TableCell>
+                  <TableCell>{r.bizz_nm}</TableCell>
+                  <TableCell>{r.trx.title}</TableCell>
+                  <TableCell>{r.category_code} {r.category_name}</TableCell>
+                  <TableCell align="right">{r.minutes}</TableCell>
+                  <TableCell sx={{ whiteSpace: 'nowrap' }}>{r.end_date}</TableCell>
+                  <TableCell sx={{ whiteSpace: 'pre-wrap' }}>{r.note}</TableCell>
+                </TableRow>
+              ))}
+              <TableRow>
+                <TableCell colSpan={4} align="right" sx={{ fontWeight: 600 }}>합계</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 600 }}>{result.total}</TableCell>
+                <TableCell />
+                <TableCell>{result.resolved.length}건 · 담당 {erp_user.dept} {erp_user.name}</TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        )}
 
 
-        <Box sx={{ display: 'flex', gap: 1, mb: 1, alignItems: 'center', flexWrap: 'wrap' }}>
-          <TextField size="small" label="담당자 sid" value={erp_user.pic_sid} sx={{ width: 120 }}
+        <Box sx={{ display: 'flex', gap: 1, mb: 1, alignItems: is_mobile ? 'stretch' : 'center', flexWrap: 'wrap', flexDirection: is_mobile ? 'column' : 'row' }}>
+          <TextField size="small" label="담당자 sid" value={erp_user.pic_sid} sx={{ width: is_mobile ? '100%' : 120 }}
             onChange={(e) => setErpUser({ ...erp_user, pic_sid: e.target.value })} />
-          <TextField size="small" label="담당자명" value={erp_user.name} sx={{ width: 120 }}
+          <TextField size="small" label="담당자명" value={erp_user.name} sx={{ width: is_mobile ? '100%' : 120 }}
             onChange={(e) => setErpUser({ ...erp_user, name: e.target.value })} />
-          <TextField size="small" label="부서" value={erp_user.dept} sx={{ width: 120 }}
+          <TextField size="small" label="부서" value={erp_user.dept} sx={{ width: is_mobile ? '100%' : 120 }}
             onChange={(e) => setErpUser({ ...erp_user, dept: e.target.value })} />
           <Button size="small" onClick={openMappingEditor}>
             게시글 매핑 편집 {mapping_open ? '▲' : '▼'}
@@ -266,27 +326,47 @@ const ErpRegisterDialog: React.FC<Props> = ({ open, onClose, rows, date }) => {
             error={!!mapping_error}
             helperText={mapping_error}
             sx={{ fontFamily: 'monospace', mt: 1 }}
-            inputProps={{ style: { fontFamily: 'monospace', fontSize: 12 } }}
+            inputProps={{ style: { fontFamily: 'monospace', fontSize: is_phone ? 16 : 12 } }}
           />
           <Button size="small" variant="contained" onClick={saveMapping} sx={{ mt: 1 }}>
             매핑 저장
           </Button>
         </Collapse>
       </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>닫기</Button>
-        <Button startIcon={<ContentCopyIcon />} disabled={!can_submit} onClick={handleCopyAndOpen}>
-          콘솔 스크립트 복사
-        </Button>
-        <Button
-          variant="contained"
-          startIcon={<CloudUploadIcon />}
-          disabled={!can_submit || !session || posting || !!post_result?.ok}
-          onClick={handlePost}
+      {is_mobile ? (
+        <DialogActions
+          disableSpacing
+          sx={{ flexDirection: 'column', alignItems: 'stretch', gap: 1, px: { xs: 2, sm: 3 }, pt: 1.5, pb: 'calc(12px + env(safe-area-inset-bottom))' }}
         >
-          {posting ? '저장 중…' : 'ERP에 저장'}
-        </Button>
-      </DialogActions>
+          <Button variant="outlined" startIcon={<ContentCopyIcon />} disabled={!can_submit} onClick={handleCopyAndOpen} sx={{ minHeight: 44, whiteSpace: 'nowrap' }}>
+            콘솔 스크립트 복사
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<CloudUploadIcon />}
+            disabled={!can_submit || !session || posting || !!post_result?.ok}
+            onClick={handlePost}
+            sx={{ minHeight: 44, whiteSpace: 'nowrap' }}
+          >
+            {posting ? '저장 중…' : 'ERP에 저장'}
+          </Button>
+        </DialogActions>
+      ) : (
+        <DialogActions>
+          <Button onClick={onClose}>닫기</Button>
+          <Button startIcon={<ContentCopyIcon />} disabled={!can_submit} onClick={handleCopyAndOpen}>
+            콘솔 스크립트 복사
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<CloudUploadIcon />}
+            disabled={!can_submit || !session || posting || !!post_result?.ok}
+            onClick={handlePost}
+          >
+            {posting ? '저장 중…' : 'ERP에 저장'}
+          </Button>
+        </DialogActions>
+      )}
     </Dialog>
   );
 };

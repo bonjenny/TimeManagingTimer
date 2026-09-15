@@ -298,10 +298,10 @@ function App() {
     <Box
       sx={{
         display: 'grid',
-        gridTemplateColumns: is_mobile ? '1fr' : '280px 1fr',
+        gridTemplateColumns: is_mobile ? 'minmax(0, 1fr)' : '280px 1fr',
         gridTemplateRows: is_mobile ? 'auto auto auto auto auto' : 'auto auto auto auto',
-        gap: 2,
-        minHeight: 'calc(100vh - 180px)',
+        gap: is_mobile ? 1.5 : 2,
+        minHeight: is_mobile ? undefined : 'calc(100vh - 180px)',
       }}
     >
       {/* 왼쪽: 작업 프리셋 패널 */}
@@ -401,8 +401,9 @@ function App() {
       <Box
         sx={{
           gridColumn: is_mobile ? '1' : '2',
-          gridRow: is_mobile ? '2' : '2',
+          gridRow: is_mobile ? '4' : '2',
           order: is_mobile ? 1 : 0,
+          minWidth: 0,
         }}
       >
         <GanttChart selectedDate={selectedDate} />
@@ -412,8 +413,9 @@ function App() {
       <Box
         sx={{
           gridColumn: is_mobile ? '1' : '2',
-          gridRow: is_mobile ? '3' : '3',
+          gridRow: is_mobile ? '2' : '3',
           order: is_mobile ? 2 : 0,
+          minWidth: 0,
           display: 'flex',
           flexDirection: 'column',
           gap: activeTimer ? 2 : 0,
@@ -427,8 +429,9 @@ function App() {
       <Box
         sx={{
           gridColumn: is_mobile ? '1' : '2',
-          gridRow: is_mobile ? '4' : '4',
+          gridRow: is_mobile ? '3' : '4',
           order: is_mobile ? 3 : 0,
+          minWidth: 0,
         }}
       >
         <TimerList selectedDate={selectedDate} />

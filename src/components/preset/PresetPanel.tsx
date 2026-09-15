@@ -21,6 +21,9 @@ import {
   Menu,
   MenuItem,
   ListItemIcon,
+  ButtonBase,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import AddIcon from '@mui/icons-material/Add';
@@ -290,6 +293,10 @@ const SETTINGS_STORAGE_KEY = 'timekeeper-settings';
 const PresetPanel: React.FC = () => {
   const { startTimer, logs, themeConfig } = useTimerStore();
   const { projects, addProject, getProjectName } = useProjectStore();
+  const theme = useTheme();
+  // md 미만: "빠른 시작" 가로 카드 줄. 「편집」을 누르면 기존 세로 목록(수정/드래그/삭제)
+  const is_compact = useMediaQuery(theme.breakpoints.down('md'));
+  const [is_editing_presets, setIsEditingPresets] = useState(false);
 
   const preset_daily_group = useMemo(() => {
     try {
@@ -556,37 +563,65 @@ const PresetPanel: React.FC = () => {
   return (
     <Paper
       variant="outlined"
-      sx={{
-        height: '100%',
-        display: 'flex',
-        flexDirection: 'column',
-        bgcolor: 'transparent',
-        borderColor: 'var(--border-color)',
-        resize: 'horizontal',
-        overflow: 'auto',
-        minWidth: 200,
-        maxWidth: 450,
-      }}
+      sx={is_compact
+        // 모바일: 전체 너비, 리사이즈 핸들 없음
+        ? {
+          display: 'flex',
+          flexDirection: 'column',
+          bgcolor: 'transparent',
+          borderColor: 'var(--border-color)',
+          borderRadius: 2,
+          minWidth: 0,
+        }
+        : {
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          bgcolor: 'transparent',
+          borderColor: 'var(--border-color)',
+          resize: 'horizontal',
+          overflow: 'auto',
+          minWidth: 200,
+          maxWidth: 450,
+        }}
     >
       {/* 헤더 */}
       <Box
         sx={{
-          p: 2,
+          p: is_compact ? 1 : 2,
+          pl: is_compact ? 1.5 : 2,
           borderBottom: '1px solid var(--border-color)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           bgcolor: 'var(--bg-tertiary)',
+          ...(is_compact && { borderRadius: '12px 12px 0 0' }),
         }}
       >
         <Typography variant="subtitle1" sx={{ fontWeight: 600, color: 'var(--text-primary)' }}>
-          작업 프리셋
+          {is_compact ? '빠른 시작' : '작업 프리셋'}
         </Typography>
-        <Tooltip title="프리셋 추가">
-          <IconButton size="small" onClick={handleOpenAddMenu}>
-            <AddIcon fontSize="small" sx={{ color: 'var(--text-secondary)' }} />
-          </IconButton>
-        </Tooltip>
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          {is_compact && presets.length > 0 && (
+            <Button
+              size="small"
+              onClick={() => setIsEditingPresets(!is_editing_presets)}
+              sx={{ minHeight: 40, whiteSpace: 'nowrap', color: 'text.secondary' }}
+            >
+              {is_editing_presets ? '완료' : '편집'}
+            </Button>
+          )}
+          <Tooltip title="프리셋 추가">
+            <IconButton
+              size="small"
+              onClick={handleOpenAddMenu}
+              aria-label="프리셋 추가"
+              sx={is_compact ? { width: 40, height: 40 } : undefined}
+            >
+              <AddIcon fontSize="small" sx={{ color: 'var(--text-secondary)' }} />
+            </IconButton>
+          </Tooltip>
+        </Box>
       </Box>
 
       {/* 추가 메뉴 */}
@@ -624,7 +659,74 @@ const PresetPanel: React.FC = () => {
 
       {/* 프리셋 목록 */}
       <Box sx={{ flexGrow: 1, overflow: 'auto' }}>
-        {presets.length === 0 ? (
+        {is_compact && !is_editing_presets && presets.length > 0 ? (
+          // 모바일 빠른 시작: 가로 스크롤 카드, 탭하면 바로 타이머 시작 (▶ 과 같은 핸들러)
+          <Box
+            sx={{
+              display: 'flex',
+              gap: 1,
+              p: 1.5,
+              overflowX: 'auto',
+              scrollSnapType: 'x mandatory',
+              WebkitOverflowScrolling: 'touch',
+              contain: 'inline-size', // 카드 줄 폭이 페이지 폭을 밀어내지 않게
+              scrollbarWidth: 'none',
+              '&::-webkit-scrollbar': { display: 'none' },
+            }}
+          >
+            {presets.map((preset) => {
+              const meta = [preset.projectCode && getProjectName(preset.projectCode), preset.category]
+                .filter(Boolean)
+                .join(' · ');
+              return (
+                <ButtonBase
+                  key={preset.id}
+                  onClick={(e) => handleStartPreset(preset, e)}
+                  aria-label={`${preset.title} 타이머 시작`}
+                  sx={{
+                    flex: '0 0 150px',
+                    minHeight: 64,
+                    scrollSnapAlign: 'start',
+                    display: 'flex',
+                    alignItems: 'stretch',
+                    justifyContent: 'flex-start',
+                    textAlign: 'left',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: 2,
+                    bgcolor: 'var(--card-bg)',
+                    overflow: 'hidden',
+                  }}
+                >
+                  <Box sx={{ width: 4, flexShrink: 0, bgcolor: preset.color || 'var(--border-color)' }} />
+                  <Box sx={{ p: 1, minWidth: 0, flex: 1 }}>
+                    <Typography
+                      sx={{
+                        fontSize: 14,
+                        fontWeight: 600,
+                        lineHeight: 1.3,
+                        color: 'var(--text-primary)',
+                        overflow: 'hidden',
+                        overflowWrap: 'anywhere',
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                      }}
+                    >
+                      {preset.title}
+                    </Typography>
+                    {meta && (
+                      <Typography
+                        sx={{ fontSize: 11, color: 'text.secondary', mt: 0.25, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                      >
+                        {meta}
+                      </Typography>
+                    )}
+                  </Box>
+                </ButtonBase>
+              );
+            })}
+          </Box>
+        ) : presets.length === 0 ? (
           <Box sx={{ p: 3, textAlign: 'center', color: 'text.secondary' }}>
             <Typography variant="body2">프리셋이 없습니다.</Typography>
             <Typography variant="caption" sx={{ display: 'block', mt: 1 }}>
@@ -669,6 +771,7 @@ const PresetPanel: React.FC = () => {
       </Box>
 
       {/* 푸터 */}
+      {!is_compact && (
       <Box
         sx={{
           p: 2,
@@ -680,6 +783,7 @@ const PresetPanel: React.FC = () => {
           드래그하여 순서 변경 • 클릭하여 수정 • ▶ 타이머 시작
         </Typography>
       </Box>
+      )}
 
       {/* 프리셋 추가/수정 모달 */}
       <Dialog 

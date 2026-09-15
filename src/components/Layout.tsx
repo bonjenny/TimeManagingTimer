@@ -1,5 +1,7 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { AppBar, Toolbar, Typography, Tabs, Tab, Box, Container, IconButton, Tooltip, Dialog, DialogContent, DialogTitle, Button, TextField, Table, TableHead, TableBody, TableRow, TableCell, CircularProgress } from '@mui/material';
+import { AppBar, Toolbar, Typography, Tabs, Tab, Box, Container, IconButton, Tooltip, Dialog, DialogContent, DialogTitle, Button, TextField, Table, TableHead, TableBody, TableRow, TableCell, CircularProgress, Drawer, List, ListItemButton, ListItemIcon, ListItemText, Divider, useMediaQuery, useTheme, BottomNavigation, BottomNavigationAction, Paper } from '@mui/material';
+import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
+import ForumIcon from '@mui/icons-material/Forum';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import EventNoteIcon from '@mui/icons-material/EventNote';
@@ -51,12 +53,23 @@ const PAGE_MAP: { page: PageType; label: string; icon: React.ReactNode }[] = [
   { page: 'guide', label: '가이드', icon: <MenuBookIcon sx={{ fontSize: 20, mr: 1, mb: '0px !important' }} /> },
 ];
 
+// 모바일 하단 탭: 엄지로 자주 누르는 화면만. 나머지는 「더보기」 시트로.
+const BOTTOM_NAV_PAGES: PageType[] = ['daily', 'weekly', 'timeManagement', 'monthly'];
+const BOTTOM_NAV_LABEL: Partial<Record<PageType, string>> = { daily: '타이머', weekly: '주간', timeManagement: '시간관리', monthly: '캘린더' };
+const MOBILE_BAR_HEIGHT = 56;
+
 const ADMIN_PASSWORD_HASH = simpleHash(getAdminPassword());
 
 const Layout: React.FC<LayoutProps> = ({ children, currentPage, onPageChange }) => {
   const { themeConfig, toggleDarkMode, logs, deleted_logs } = useTimerStore();
   const current_tab_index = PAGE_MAP.findIndex(p => p.page === currentPage);
   const [openQnA, setOpenQnA] = useState(false);
+  // 태블릿·모바일(900px 미만): 상단 탭 대신 하단 탭 바(자주 쓰는 4개 + 더보기)
+  const theme = useTheme();
+  const is_compact = useMediaQuery(theme.breakpoints.down('md'));
+  const is_phone = useMediaQuery(theme.breakpoints.down('sm'));
+  const [nav_open, setNavOpen] = useState(false);
+  const bottom_value = BOTTOM_NAV_PAGES.includes(currentPage) ? currentPage : 'more';
 
   // 방문자 통계 관련 상태
   const [admin_pw_open, setAdminPwOpen] = useState(false);
@@ -125,14 +138,15 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, onPageChange }) 
         }}
       >
         <Container maxWidth="xl">
-          <Toolbar disableGutters sx={{ minHeight: 64 }}>
-            {/* 로고 영역 */}
+          <Toolbar disableGutters sx={{ minHeight: { xs: MOBILE_BAR_HEIGHT, md: 64 } }}>
+            {/* 로고 영역 (모바일에서는 현재 화면 제목이 그 자리를 쓴다) */}
+            {!is_compact && (
             <Typography
               variant="h6"
               component="div"
               sx={{
                 flexGrow: 0,
-                mr: 4,
+                mr: { xs: 1.5, md: 4 },
                 fontWeight: 700,
                 letterSpacing: '-0.5px',
                 cursor: 'pointer',
@@ -144,8 +158,19 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, onPageChange }) 
             >
               TimeKeeper
             </Typography>
+            )}
 
-            {/* 네비게이션 탭 영역 */}
+            {/* 네비게이션: 모바일은 화면 제목, 데스크톱은 탭 */}
+            {is_compact ? (
+              <Typography
+                component="h1"
+                noWrap
+                onDoubleClick={handleLogoDoubleClick}
+                sx={{ flexGrow: 1, minWidth: 0, fontSize: 18, fontWeight: 700, letterSpacing: '-0.3px', userSelect: 'none' }}
+              >
+                {PAGE_MAP[current_tab_index]?.label}
+              </Typography>
+            ) : (
             <Tabs
               value={current_tab_index}
               onChange={handleChange}
@@ -173,6 +198,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, onPageChange }) 
                 />
               ))}
             </Tabs>
+            )}
 
             {/* 다크모드 토글 버튼 */}
             <Tooltip title={themeConfig.isDark ? "라이트 모드로 전환" : "다크 모드로 전환"}>
@@ -184,13 +210,104 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, onPageChange }) 
         </Container>
       </AppBar>
 
+      {/* 모바일 「더보기」 시트: 하단 탭에 없는 화면 + Q&A */}
+      <Drawer
+        anchor="bottom"
+        open={nav_open}
+        onClose={() => setNavOpen(false)}
+        PaperProps={{ sx: { borderTopLeftRadius: 16, borderTopRightRadius: 16, pb: 'env(safe-area-inset-bottom)' } }}
+      >
+        <Box sx={{ width: 36, height: 4, borderRadius: 2, bgcolor: 'divider', mx: 'auto', mt: 1, mb: 0.5 }} />
+        <List sx={{ py: 1 }}>
+          {PAGE_MAP.filter((item) => !BOTTOM_NAV_PAGES.includes(item.page)).map((item) => (
+            <ListItemButton
+              key={item.page}
+              selected={item.page === currentPage}
+              onClick={() => {
+                onPageChange(item.page);
+                setNavOpen(false);
+              }}
+              sx={{ minHeight: 52, px: 3 }}
+            >
+              <ListItemIcon sx={{ minWidth: 40, '& svg': { mr: 0 } }}>{item.icon}</ListItemIcon>
+              <ListItemText primary={item.label} primaryTypographyProps={{ fontSize: 16, fontWeight: 500 }} />
+            </ListItemButton>
+          ))}
+          <ListItemButton
+            onClick={() => {
+              setNavOpen(false);
+              setOpenQnA(true);
+            }}
+            sx={{ minHeight: 52, px: 3 }}
+          >
+            <ListItemIcon sx={{ minWidth: 40 }}>
+              <ForumIcon sx={{ fontSize: 20 }} />
+            </ListItemIcon>
+            <ListItemText primary="Q&A 게시판" primaryTypographyProps={{ fontSize: 16, fontWeight: 500 }} />
+          </ListItemButton>
+        </List>
+        <Divider />
+        <Typography variant="caption" sx={{ display: 'block', px: 3, py: 1.5, color: 'text.disabled', fontSize: 11 }}>
+          모든 기록은 이 브라우저에만 저장됩니다 · 저장 용량 {storageUsage.usageKB} KB
+        </Typography>
+      </Drawer>
+
+      {/* 모바일 하단 탭 바 */}
+      {is_compact && (
+        <Paper
+          elevation={0}
+          sx={{
+            position: 'fixed',
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: (t) => t.zIndex.appBar,
+            borderTop: '1px solid',
+            borderColor: 'divider',
+            pb: 'env(safe-area-inset-bottom)',
+          }}
+        >
+          <BottomNavigation
+            showLabels
+            value={bottom_value}
+            onChange={(_e, value: PageType | 'more') => {
+              if (value === 'more') setNavOpen(true);
+              else onPageChange(value);
+            }}
+            sx={{
+              height: MOBILE_BAR_HEIGHT,
+              bgcolor: 'transparent',
+              '& .MuiBottomNavigationAction-root': { minWidth: 0, px: 0.5 },
+              '& .MuiBottomNavigationAction-label': { fontSize: 11, mt: 0.25, '&.Mui-selected': { fontSize: 11, fontWeight: 700 } },
+            }}
+          >
+            {BOTTOM_NAV_PAGES.map((page) => {
+              const item = PAGE_MAP.find((p) => p.page === page)!;
+              return (
+                <BottomNavigationAction
+                  key={page}
+                  value={page}
+                  label={BOTTOM_NAV_LABEL[page]}
+                  icon={item.icon}
+                  sx={{ '& svg': { mr: '0 !important', fontSize: 22 } }}
+                />
+              );
+            })}
+            <BottomNavigationAction value="more" label="더보기" icon={<MoreHorizIcon sx={{ fontSize: 22 }} />} />
+          </BottomNavigation>
+        </Paper>
+      )}
+
       {/* 메인 컨텐츠 영역 */}
       <Box 
         component="main" 
         sx={{ 
           flexGrow: 1, 
-          py: 3,
-          px: { xs: 2, md: 3 }
+          pt: { xs: 2, md: 3 },
+          // 모바일: 하단 탭 바에 가리지 않게
+          pb: is_compact ? 'calc(80px + env(safe-area-inset-bottom))' : 3,
+          px: { xs: 2, md: 3 },
+          minWidth: 0,
         }}
       >
         <Container maxWidth="xl" disableGutters>
@@ -198,15 +315,15 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, onPageChange }) 
         </Container>
       </Box>
       
-      {/* 심플한 푸터 */}
+      {/* 심플한 푸터 (모바일은 「더보기」 시트에 저장 안내가 있으므로 숨김) */}
       <Box 
         component="footer" 
-        sx={{ 
-          py: 1.5, 
-          textAlign: 'center', 
-          color: 'text.secondary', 
+        sx={{
+          py: 1.5,
+          textAlign: 'center',
+          color: 'text.secondary',
           position: 'relative',
-          display: 'flex',
+          display: is_compact ? 'none' : 'flex',
           flexDirection: 'column',
           justifyContent: 'center',
           alignItems: 'center',
@@ -256,9 +373,10 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, onPageChange }) 
         onClose={() => setOpenQnA(false)}
         maxWidth="md"
         fullWidth
+        fullScreen={is_phone}
         PaperProps={{
           sx: {
-            height: '80vh',
+            height: is_phone ? '100%' : '80vh',
             bgcolor: 'background.default'
           }
         }}

@@ -184,6 +184,24 @@ export const createAppTheme = (primaryColor?: string, accentColor?: string, isDa
         styleOverrides: {
           paper: {
             backgroundColor: 'var(--card-bg)',
+            // 휴대폰 폭: 기본 좌우 32px 여백을 줄여 입력칸이 좁아지지 않게 (전체화면 대화상자는 제외)
+            '@media (max-width: 599.95px)': {
+              '&:not(.MuiDialog-paperFullScreen)': {
+                margin: 12,
+                width: 'calc(100% - 24px)',
+                maxWidth: 'calc(100% - 24px)',
+                maxHeight: 'calc(100% - 24px)',
+              },
+            },
+          }
+        }
+      },
+      MuiDialogActions: {
+        styleOverrides: {
+          root: {
+            flexWrap: 'wrap',
+            gap: 8,
+            '& > :not(style) ~ :not(style)': { marginLeft: 0 },
           }
         }
       },

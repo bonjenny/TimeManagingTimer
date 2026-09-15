@@ -19,11 +19,17 @@ import {
   Snackbar,
   Alert,
   Slide,
+  Collapse,
+  IconButton,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import type { SlideProps } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import { useTimerStore, TimerLog } from '../../store/useTimerStore';
 import { useProjectStore } from '../../store/useProjectStore';
 import { formatTimeRange, formatDuration } from '../../utils/timeUtils';
@@ -61,6 +67,34 @@ const HEADER_HEIGHT = 24;
 const DEFAULT_LABEL_WIDTH = 180;
 const MIN_LABEL_WIDTH = 100;
 const MAX_LABEL_WIDTH = 400;
+const COMPACT_LABEL_WIDTH = 96; // md 미만: 라벨 칸 고정 폭 (타임라인 폭 확보)
+const COMPACT_TIMELINE_MIN_WIDTH = 720; // md 미만: 시간 라벨이 겹치지 않는 최소 폭 (카드 안에서 가로 스크롤)
+
+// md 미만에서만 타임라인을 접이식 + 가로 스크롤 박스로 감싼다. 데스크톱은 그대로 통과.
+const CompactTimelineFrame: React.FC<{
+  compact: boolean;
+  open: boolean;
+  scrollRef: React.RefObject<HTMLDivElement>;
+  children: React.ReactNode;
+}> = ({ compact, open, scrollRef, children }) => {
+  if (!compact) return <>{children}</>;
+  return (
+    <Collapse in={open}>
+      <Box
+        ref={scrollRef}
+        sx={{
+          overflowX: 'auto',
+          WebkitOverflowScrolling: 'touch',
+          contain: 'inline-size', // 넓은 타임라인이 페이지 폭을 밀어내지 않게
+          px: 1,
+          pb: 1,
+        }}
+      >
+        {children}
+      </Box>
+    </Collapse>
+  );
+};
 // 라벨 너비 저장 키
 const LABEL_WIDTH_STORAGE_KEY = 'timekeeper-gantt-label-width';
 
@@ -261,6 +295,13 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
   
   // 라벨 리사이저 드래그 상태
   const [isResizingLabel, setIsResizingLabel] = useState(false);
+  const theme = useTheme();
+  const is_compact = useMediaQuery(theme.breakpoints.down('md'));
+  const is_phone = useMediaQuery(theme.breakpoints.down('sm'));
+  // 모바일 타임라인 접기: 사용자가 누르기 전에는 폰=접힘, 태블릿=펼침
+  const [timeline_open_override, setTimelineOpenOverride] = useState<boolean | null>(null);
+  const is_timeline_open = timeline_open_override ?? !is_phone;
+  const timelineScrollRef = useRef<HTMLDivElement>(null);
   const labelResizeStartX = useRef<number>(0);
   const labelResizeStartWidth = useRef<number>(DEFAULT_LABEL_WIDTH);
   
@@ -683,8 +724,8 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
     return labels;
   }, [timelineStartHour, timelineEndHour, totalMinutes]);
 
-  // 기록이 있을 때만 좌측 라벨 영역 표시
-  const LABEL_WIDTH = uniqueRows.length > 0 ? labelWidth : 0;
+  // 기록이 있을 때만 좌측 라벨 영역 표시 (좁은 화면에서는 라벨 칸을 줄인다)
+  const LABEL_WIDTH = uniqueRows.length > 0 ? (is_compact ? Math.min(labelWidth, COMPACT_LABEL_WIDTH) : labelWidth) : 0;
 
   // 전체 차트 높이 계산 (고유 행 수 기준 + 드래그 여유 공간)
   const chart_height = Math.max(
@@ -933,6 +974,16 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
 
   // 현재 시간 위치 계산 (실시간 업데이트)
   const current_time_percent = (getOffsetMinutes(currentTime) / totalMinutes) * 100;
+
+  // 모바일: 타임라인을 펼치면 현재 시간 라인이 가운데 오도록 가로 스크롤
+  useEffect(() => {
+    const scroll_el = timelineScrollRef.current;
+    if (!is_compact || !is_timeline_open || !isToday || !scroll_el) return;
+    const track_width = scroll_el.scrollWidth - LABEL_WIDTH - 32;
+    const line_x = LABEL_WIDTH + 16 + (track_width * current_time_percent) / 100;
+    scroll_el.scrollLeft = Math.max(0, line_x - scroll_el.clientWidth / 2);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 펼칠 때만 맞춘다 (1초마다 따라가지 않음)
+  }, [is_compact, is_timeline_open, isToday]);
 
   // --- 리사이즈 핸들러 ---
   
@@ -1278,7 +1329,27 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
 
   return (
     <>
-    <Paper variant="outlined" sx={{ p: 2, overflowX: 'auto', userSelect: 'none', bgcolor: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
+    <Paper
+      variant="outlined"
+      sx={is_compact
+        ? { userSelect: 'none', bgcolor: 'var(--card-bg)', borderColor: 'var(--border-color)', borderRadius: 2, minWidth: 0 }
+        : { p: 2, overflowX: 'auto', userSelect: 'none', bgcolor: 'var(--card-bg)', borderColor: 'var(--border-color)' }}
+    >
+      {/* 모바일: 접이식 카드 헤더 */}
+      {is_compact && (
+        <Box
+          onClick={() => setTimelineOpenOverride(!is_timeline_open)}
+          sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pl: 1.5, pr: 0.5, minHeight: 48, cursor: 'pointer' }}
+        >
+          <Typography variant="subtitle1" sx={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+            타임라인
+          </Typography>
+          <IconButton aria-label={is_timeline_open ? '타임라인 접기' : '타임라인 펼치기'} sx={{ width: 40, height: 40 }}>
+            {is_timeline_open ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+          </IconButton>
+        </Box>
+      )}
+      <CompactTimelineFrame compact={is_compact} open={is_timeline_open} scrollRef={timelineScrollRef}>
       {/* 툴팁 제거: Box로 대체 */}
       <Box
         ref={containerRef}
@@ -1295,14 +1366,14 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
         sx={{
           position: 'relative',
           height: chart_height,
-          minWidth: 800,
+          minWidth: is_compact ? COMPACT_TIMELINE_MIN_WIDTH : 800,
           cursor: 'crosshair',
           bgcolor: 'var(--bg-secondary)', // 드래그 영역 배경
           px: 2 // 좌우 패딩 추가 (라벨 잘림 방지)
         }}
       >
         {/* 라벨 영역 리사이저 핸들 */}
-        {uniqueRows.length > 0 && (
+        {uniqueRows.length > 0 && !is_compact && (
           <Box
             onMouseDown={handleLabelResizeStart}
             sx={{
@@ -1507,7 +1578,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
                 overflow: 'hidden',
                 pointerEvents: 'none', // 드래그앤드롭 방지
               }}>
-                {row.projectCode && (
+                {row.projectCode && !is_compact && ( // 모바일은 좁은 라벨 칸을 제목에 양보 (색은 막대로 구분)
                   <Chip
                     label={getProjectName(row.projectCode)}
                     size="small"
@@ -1720,6 +1791,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
 
 
       </Box>
+      </CompactTimelineFrame>
 
       {/* 우클릭 메뉴 */}
       <Menu

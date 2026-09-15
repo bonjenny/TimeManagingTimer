@@ -39,12 +39,41 @@ const BackupDirectorySetting: React.FC = () => {
 
   return (
     <Box sx={{ mb: 3 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-        <Typography variant="body2">자동 백업 저장 폴더:</Typography>
-        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+      {/* 모바일(< md): 라벨 / 폴더명(말줄임) 각각 한 줄, 버튼은 2열 그리드 */}
+      <Box
+        sx={{
+          display: { xs: 'grid', md: 'flex' },
+          gridTemplateColumns: '1fr 1fr',
+          alignItems: 'center',
+          gap: 1,
+          flexWrap: 'wrap',
+          '& .MuiButton-root': { whiteSpace: 'nowrap', minHeight: { xs: 44, md: 'auto' } },
+        }}
+      >
+        <Typography variant="body2" sx={{ gridColumn: '1 / -1', fontSize: { xs: 15, md: '0.875rem' }, fontWeight: { xs: 500, md: 400 } }}>
+          자동 백업 저장 폴더:
+        </Typography>
+        <Typography
+          variant="body2"
+          sx={{
+            gridColumn: '1 / -1',
+            fontWeight: 600,
+            minWidth: 0,
+            mt: { xs: -0.5, md: 0 },
+            whiteSpace: { xs: 'nowrap', md: 'normal' },
+            overflow: { xs: 'hidden', md: 'visible' },
+            textOverflow: 'ellipsis',
+          }}
+        >
           {dir ? `📁 ${dir.name}` : '브라우저 기본 다운로드 폴더'}
         </Typography>
-        <Button size="small" variant="outlined" startIcon={<FolderOpenIcon />} onClick={run(pickBackupDirectory)}>
+        <Button
+          size="small"
+          variant="outlined"
+          startIcon={<FolderOpenIcon />}
+          onClick={run(pickBackupDirectory)}
+          sx={{ gridColumn: dir ? 'auto' : '1 / -1' }}
+        >
           {dir ? '폴더 변경' : '폴더 선택'}
         </Button>
         {dir && dir.permission !== 'granted' && (
@@ -53,7 +82,11 @@ const BackupDirectorySetting: React.FC = () => {
           </Button>
         )}
         {dir && (
-          <Button size="small" onClick={run(clearBackupDirectory)}>
+          <Button
+            size="small"
+            onClick={run(clearBackupDirectory)}
+            sx={{ gridColumn: dir.permission !== 'granted' ? '1 / -1' : 'auto' }}
+          >
             기본값으로
           </Button>
         )}
