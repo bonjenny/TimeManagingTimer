@@ -63,7 +63,9 @@ export const DemoFrame: React.FC<FrameProps> = ({ children, height = 260, still 
 );
 
 /** 절대 위치 상자 (퍼센트 좌표) */
-export const At: React.FC<BoxProps & { x: number | string; y: number | string; w?: number | string; h?: number | string }> = ({
+// x·y 를 비우면 애니메이션(keyframes)이 left·top 을 정한다
+const pct = (v?: number | string) => (typeof v === 'number' ? `${v}%` : v);
+export const At: React.FC<BoxProps & { x?: number | string; y?: number | string; w?: number | string; h?: number | string }> = ({
   x,
   y,
   w,
@@ -73,14 +75,7 @@ export const At: React.FC<BoxProps & { x: number | string; y: number | string; w
 }) => (
   <Box
     {...rest}
-    sx={{
-      position: 'absolute',
-      left: typeof x === 'number' ? `${x}%` : x,
-      top: typeof y === 'number' ? `${y}%` : y,
-      width: typeof w === 'number' ? `${w}%` : w,
-      height: typeof h === 'number' ? `${h}%` : h,
-      ...sx,
-    }}
+    sx={{ position: 'absolute', left: pct(x), top: pct(y), width: pct(w), height: pct(h), ...sx }}
   />
 );
 
@@ -161,16 +156,16 @@ export const MockField: React.FC<{ label?: string; children?: React.ReactNode; s
       borderRadius: 1,
       bgcolor: 'background.paper',
       whiteSpace: 'nowrap',
-      overflow: 'hidden',
       ...sx,
     }}
   >
+    {/* 라벨은 테두리 위로 걸쳐 있어야 하므로 바깥 상자는 자르지 않고, 값 영역만 자른다 */}
     {label && (
-      <Box component="span" sx={{ position: 'absolute', top: -7, left: 6, px: 0.5, fontSize: 9, color: 'text.secondary', bgcolor: 'background.paper', lineHeight: 1 }}>
+      <Box component="span" sx={{ position: 'absolute', top: -6, left: 6, px: 0.5, fontSize: 9, color: 'text.secondary', bgcolor: 'background.paper', lineHeight: 1, zIndex: 1 }}>
         {label}
       </Box>
     )}
-    {children}
+    <Box sx={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 0, overflow: 'hidden', whiteSpace: 'nowrap' }}>{children}</Box>
   </Box>
 );
 

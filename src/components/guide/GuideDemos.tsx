@@ -129,6 +129,172 @@ export const TimerStartDemo: React.FC = () => {
   );
 };
 
+/** 예약 모드 켜기 → 작업명·시간 입력 → 예약 등록 → 시각이 되면 자동 시작 */
+export const ScheduleDemo: React.FC = () => {
+  const D = 11;
+  const hx = (h: number) => 22 + ((h - 12) / 4) * 74; // 12~16시
+  const ON = 8; // 예약 모드 켜지는 시점(%)
+  const REG = 40; // 예약 등록 시점(%)
+  const START = 74; // 예약 시각 도달 시점(%)
+  const iconColor = (on: number, off: number) =>
+    timeline([[0, 'color: rgba(127,127,127,.8)'], [on - 0.1, 'color: rgba(127,127,127,.8)'], [on, 'color: #ed6c02'], [off, 'color: #ed6c02'], [off + 0.1, 'color: rgba(127,127,127,.8)'], [100, 'color: rgba(127,127,127,.8)']]);
+  return (
+    <DemoFrame still={9} height={300}>
+      {/* 타이머 입력줄 */}
+      <At
+        x={3}
+        y={4}
+        w={94}
+        sx={{
+          border: '1px solid',
+          borderRadius: 1.5,
+          bgcolor: 'background.paper',
+          px: 1.2,
+          animation: anim(timeline([[0, 'border-color: rgba(127,127,127,.3)'], [ON - 0.1, 'border-color: rgba(127,127,127,.3)'], [ON, 'border-color: #ed6c02'], [REG + 2, 'border-color: #ed6c02'], [REG + 2.1, 'border-color: rgba(127,127,127,.3)'], [100, 'border-color: rgba(127,127,127,.3)']]), D),
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', height: 36, gap: 1 }}>
+          <Box sx={{ position: 'relative', flex: 1, fontSize: 13, whiteSpace: 'nowrap' }}>
+            <Box component="span" sx={{ color: 'text.disabled', animation: anim(timeline([[0, 'opacity:1'], [ON - 0.1, 'opacity:1'], [ON, 'opacity:0'], [REG + 2, 'opacity:0'], [REG + 2.1, 'opacity:1'], [100, 'opacity:1']]), D) }}>
+              무엇을 하고 계신가요? (Enter로 바로 시작)
+            </Box>
+            <Box component="span" sx={{ position: 'absolute', left: 0, color: 'text.disabled', animation: anim(timeline([[0, 'opacity:0'], [ON - 0.1, 'opacity:0'], [ON, 'opacity:1'], [11.9, 'opacity:1'], [12, 'opacity:0'], [100, 'opacity:0']]), D) }}>
+              예약할 작업명을 입력하세요
+            </Box>
+            <Box component="span" sx={{ position: 'absolute', left: 0, fontWeight: 600, animation: `${anim(typeReveal(12, 28), D)}, ${anim(showBetween(12, REG + 1), D)}` }}>
+              배포 점검 회의
+            </Box>
+          </Box>
+          <Box sx={{ display: 'flex', gap: 2, color: 'text.disabled', fontSize: 11 }}>
+            <span>프로젝트 코드</span>
+            <span>카테고리</span>
+          </Box>
+          {/* 예약 모드 토글(시계) */}
+          <Box sx={{ display: 'flex', animation: anim(iconColor(ON, REG + 2), D) }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z" />
+            </svg>
+          </Box>
+          {/* 시작 ▶ / 예약 등록(달력) */}
+          <Box sx={{ position: 'relative', width: 24, height: 24 }}>
+            <Box sx={{ position: 'absolute', inset: 0, color: 'primary.main', animation: anim(timeline([[0, 'opacity:1'], [ON - 0.1, 'opacity:1'], [ON, 'opacity:0'], [REG + 2, 'opacity:0'], [REG + 2.1, 'opacity:1'], [100, 'opacity:1']]), D) }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+            </Box>
+            <Box sx={{ position: 'absolute', inset: 0, color: '#ed6c02', animation: anim(showBetween(ON, REG + 2), D) }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M17 10H7v2h10v-2zm2-7h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zm-5-5H7v2h7v-2z" />
+              </svg>
+            </Box>
+          </Box>
+        </Box>
+        {/* 예약 시간 줄 */}
+        <Box sx={{ overflow: 'hidden', animation: anim(timeline([[0, 'max-height:0'], [ON, 'max-height:0'], [ON + 3, 'max-height:34px'], [REG + 1, 'max-height:34px'], [REG + 4, 'max-height:0'], [100, 'max-height:0']]), D, 'ease-out') }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, pb: 1, fontSize: 12 }}>
+            <Box component="span" sx={{ color: 'text.secondary', fontSize: 11 }}>예약 시간:</Box>
+            <span>오후 01:00 🕒</span>
+            <Box component="span" sx={{ color: 'text.secondary' }}>~</Box>
+            <span>오후 02:00 🕒</span>
+            <Box component="span" sx={{ ml: 1, fontSize: 10, color: 'text.disabled' }}>다음 정시로 자동 입력</Box>
+          </Box>
+        </Box>
+      </At>
+
+      {/* 타임라인 */}
+      {[12, 13, 14, 15, 16].map((h) => (
+        <React.Fragment key={h}>
+          <At x={hx(h)} y={36} sx={{ transform: 'translateX(-50%)', fontSize: 10, color: 'text.secondary' }}>
+            {String(h).padStart(2, '0')}:00
+          </At>
+          <At x={hx(h)} y={43} h={36} sx={{ borderLeft: '1px dashed', borderColor: 'divider' }} />
+        </React.Fragment>
+      ))}
+      <At x={2} y={49} w={19} sx={{ fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap', animation: anim(showBetween(REG + 1, 97), D) }}>
+        배포 점검 회의
+      </At>
+      {/* 예약 막대: 점선 + 사선 무늬 */}
+      <At
+        x={hx(13)}
+        y={47}
+        w={hx(14) - hx(13)}
+        h={11}
+        sx={{
+          border: '2px dashed #ed6c02',
+          borderRadius: 1,
+          color: '#ed6c02',
+          fontSize: 10,
+          fontWeight: 700,
+          px: 0.8,
+          display: 'flex',
+          alignItems: 'center',
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          background: 'repeating-linear-gradient(45deg, rgba(237,108,2,.14) 0 6px, transparent 6px 12px)',
+          animation: anim(showBetween(REG + 1, START), D),
+        }}
+      >
+        [예약] 배포 점검 회의
+      </At>
+      {/* 시각 도달 후 진행 중 막대 */}
+      <At x={hx(13)} y={47} h={11} sx={{ animation: `${anim(showBetween(START + 0.5, 97), D)}, ${anim(timeline([[0, 'width:0.5%'], [START, 'width:0.5%'], [97, `width:${(hx(13.4) - hx(13)).toFixed(2)}%`], [100, 'width:0.5%']]), D)}` }}>
+        <Bar>진행 중</Bar>
+      </At>
+      {/* 현재 시각 선 */}
+      <At
+        y={41}
+        h={40}
+        sx={{
+          borderLeft: '2px solid',
+          borderColor: 'error.main',
+          zIndex: 4,
+          animation: anim(timeline([[0, `left:${hx(12.5)}%`], [REG + 2, `left:${hx(12.5)}%`], [START, `left:${hx(13)}%`], [97, `left:${hx(13.4)}%`], [100, `left:${hx(12.5)}%`]]), D, 'linear'),
+          '&::before': { content: '""', position: 'absolute', top: -3, left: -5, width: 8, height: 8, borderRadius: '50%', bgcolor: 'error.main' },
+        }}
+      />
+      <At x={hx(12.5)} y={82} sx={{ transform: 'translateX(-50%)', fontSize: 10, color: 'error.main', fontWeight: 700, animation: anim(showBetween(REG + 3, START - 2), D) }}>
+        시작 시각까지 대기 중
+      </At>
+
+      {/* 자동 시작된 진행 중 카드 */}
+      <At
+        x={3}
+        y={84}
+        w={94}
+        h={13}
+        sx={{
+          border: '1px solid',
+          borderColor: 'primary.main',
+          borderRadius: 1.5,
+          bgcolor: 'background.paper',
+          px: 1.5,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1,
+          animation: anim(timeline([[0, 'opacity:0; transform:translateY(10px)'], [START, 'opacity:0; transform:translateY(10px)'], [START + 4, 'opacity:1; transform:translateY(0)'], [96, 'opacity:1; transform:translateY(0)'], [100, 'opacity:0; transform:translateY(0)']]), D),
+        }}
+      >
+        <Chip sx={{ borderColor: 'primary.main', color: 'primary.main' }}>진행 중</Chip>
+        <Box sx={{ fontWeight: 700 }}>배포 점검 회의</Box>
+        <Box sx={{ ml: 'auto', fontSize: 10, color: 'text.secondary' }}>예약 시각 13:00에 자동 시작 · 14:00에 자동 완료</Box>
+      </At>
+
+      <Cursor
+        dur={D}
+        path={[
+          [0, 50, 97],
+          [5, 88.5, 8],
+          [ON + 1, 88.5, 8],
+          [30, 94, 8],
+          [REG - 1, 94, 8],
+          [REG + 8, 60, 97],
+          [100, 60, 97],
+        ]}
+      />
+      <ClickRing x={89} y={9.5} at={[ON - 1]} dur={D} />
+      <ClickRing x={94.5} y={9.5} at={[REG - 1]} dur={D} />
+    </DemoFrame>
+  );
+};
+
 /** 간트 빈칸 드래그 → 새 업무 기록 창 → 저장 → 막대 생성 */
 export const GanttDragDemo: React.FC = () => {
   const D = 9;
@@ -183,13 +349,14 @@ export const GanttDragDemo: React.FC = () => {
           animation: anim(showBetween(42, 70), D),
         }}
       >
-        <Box sx={{ fontWeight: 700, fontSize: 13, mb: 1.2 }}>새 업무 기록 (수동)</Box>
+        <Box sx={{ fontWeight: 700, fontSize: 13, mb: 0.6 }}>새 업무 기록 (수동)</Box>
+        <Box sx={{ fontSize: 11, color: 'text.secondary', mb: 1.2 }}>시간: 11:00 ~ 12:30</Box>
         <MockField label="업무 제목" sx={{ mb: 1 }}>
           <Box component="span" sx={{ animation: anim(typeReveal(46, 60), D) }}>회의록 정리</Box>
         </MockField>
         <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
-          <MockField label="시작" sx={{ flex: 1 }}>11:00</MockField>
-          <MockField label="종료" sx={{ flex: 1 }}>12:30</MockField>
+          <MockField label="프로젝트 코드" sx={{ flex: 1 }} />
+          <MockField label="카테고리" sx={{ flex: 1 }} />
         </Box>
         <Box sx={{ textAlign: 'right' }}>
           <MockButton primary>저장(Enter)</MockButton>
@@ -199,20 +366,235 @@ export const GanttDragDemo: React.FC = () => {
       <Cursor
         dur={D}
         path={[
-          [0, 55, 90],
+          [0, 55, 95],
           [10, x1, 50],
           [12, x1, 50],
           [38, x2, 50],
           [42, x2, 50],
-          [62, 72, 80],
-          [66, 72, 83],
-          [72, 72, 83],
-          [90, 55, 90],
-          [100, 55, 90],
+          [62, 72, 86],
+          [66, 72, 89],
+          [72, 72, 89],
+          [90, 55, 95],
+          [100, 55, 95],
         ]}
       />
       <ClickRing x={x1} y={50} at={[11]} dur={D} />
-      <ClickRing x={72.5} y={84} at={[67]} dur={D} />
+      <ClickRing x={72.5} y={90} at={[67]} dur={D} />
+    </DemoFrame>
+  );
+};
+
+const ORANGE = '#ed6c02';
+const HATCH = 'repeating-linear-gradient(45deg, rgba(237,108,2,.14) 0 6px, transparent 6px 12px)';
+
+/** 마우스 오른쪽 버튼 표시 (커서 옆 배지) */
+const RightButtonBadge: React.FC<{ path: [number, number, number][]; from: number; to: number; dur: number }> = ({ path, from, to, dur }) => (
+  <Box
+    sx={{
+      position: 'absolute',
+      zIndex: 21,
+      ml: '14px',
+      mt: '16px',
+      px: 0.6,
+      borderRadius: 0.5,
+      bgcolor: 'grey.900',
+      color: 'common.white',
+      fontSize: 9,
+      fontWeight: 700,
+      whiteSpace: 'nowrap',
+      pointerEvents: 'none',
+      animation: `${anim(timeline(path.map(([p, x, y]) => [p, `left:${x}%; top:${y}%;`])), dur, 'ease-in-out')}, ${anim(showBetween(from, to), dur)}`,
+    }}
+  >
+    🖱 우클릭
+  </Box>
+);
+
+/** 우클릭 메뉴 모양 */
+const ContextMenu: React.FC<{ x: number; y: number; from: number; to: number; dur: number; hover: 'edit' | 'delete'; hoverAt: number; scheduled?: boolean }> = ({ x, y, from, to, dur, hover, hoverAt, scheduled }) => {
+  const item = (key: 'start' | 'edit' | 'delete', icon: string, label: string) => (
+    <Box
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 1,
+        px: 1.2,
+        py: 0.5,
+        fontSize: 12,
+        animation: key === hover ? anim(timeline([[0, 'background-color: transparent'], [hoverAt - 0.1, 'background-color: transparent'], [hoverAt, 'background-color: rgba(127,127,127,.18)'], [to, 'background-color: rgba(127,127,127,.18)'], [to + 0.1, 'background-color: transparent'], [100, 'background-color: transparent']]), dur) : undefined,
+      }}
+    >
+      <Box component="span" sx={{ width: 14, textAlign: 'center' }}>{icon}</Box>
+      {label}
+    </Box>
+  );
+  return (
+    <At x={x} y={y} sx={{ zIndex: 12, bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider', borderRadius: 1, boxShadow: 6, py: 0.5, minWidth: 96, animation: anim(showBetween(from, to), dur) }}>
+      {scheduled && item('start', '▶', '지금 시작')}
+      {item('edit', '✎', '수정')}
+      {item('delete', '🗑', '삭제')}
+    </At>
+  );
+};
+
+/** 간트 빈칸을 우클릭 드래그 → 예약 일정 등록 → 예약 막대 */
+export const GanttRightDragDemo: React.FC = () => {
+  const D = 9;
+  const x1 = hourX(13);
+  const x2 = hourX(14.5);
+  const cursorPath: [number, number, number][] = [
+    [0, 55, 95],
+    [9, x1, 50],
+    [12, x1, 50],
+    [38, x2, 50],
+    [42, x2, 50],
+    [62, 72, 78],
+    [66, 72, 81],
+    [72, 72, 81],
+    [90, 55, 95],
+    [100, 55, 95],
+  ];
+  return (
+    <DemoFrame still={7.5}>
+      <GanttGrid rows={['PageSetup 분석', '']} />
+      <At x={hourX(9.5)} y={21} w={hourX(11) - hourX(9.5)} h={14}>
+        <Bar>PageSetup 분석</Bar>
+      </At>
+      {/* 현재 시각 */}
+      <At x={hourX(11.5)} y={13} h={78} sx={{ borderLeft: '2px solid', borderColor: 'error.main', zIndex: 3 }} />
+      <At x={hourX(11.5)} y={92} sx={{ transform: 'translateX(-50%)', fontSize: 9, color: 'error.main', fontWeight: 700 }}>지금</At>
+
+      {/* 우클릭 드래그 영역: 주황 점선 */}
+      <At
+        x={x1}
+        y={43}
+        h={14}
+        sx={{
+          border: `2px dashed ${ORANGE}`,
+          background: HATCH,
+          borderRadius: 1,
+          animation: anim(timeline([[0, 'width:0; opacity:0'], [12, 'width:0; opacity:1'], [38, `width:${x2 - x1}%; opacity:1`], [70, `width:${x2 - x1}%; opacity:1`], [71, `width:${x2 - x1}%; opacity:0`], [100, 'width:0; opacity:0']]), D),
+        }}
+      />
+      <At x={x2} y={36} sx={{ transform: 'translateX(-50%)', fontSize: 10, fontWeight: 700, color: ORANGE, animation: anim(showBetween(20, 40), D) }}>
+        13:00 ~ 14:30
+      </At>
+
+      {/* 저장 후 예약 막대 */}
+      <At
+        x={x1}
+        y={43}
+        w={x2 - x1}
+        h={14}
+        sx={{ border: `2px dashed ${ORANGE}`, background: HATCH, borderRadius: 1, color: ORANGE, fontSize: 10, fontWeight: 700, px: 0.8, display: 'flex', alignItems: 'center', whiteSpace: 'nowrap', overflow: 'hidden', animation: anim(showBetween(72, 96), D) }}
+      >
+        [예약] 배포 점검 회의
+      </At>
+      <At x={2} y={44} sx={{ fontSize: 11, fontWeight: 600, animation: anim(showBetween(72, 96), D) }}>배포 점검 회의</At>
+
+      {/* 예약 일정 등록 창 */}
+      <At x="50%" y={24} w={58} sx={{ transform: 'translateX(-50%)', bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider', borderRadius: 1.5, boxShadow: 6, p: 1.5, zIndex: 10, animation: anim(showBetween(42, 70), D) }}>
+        <Box sx={{ fontWeight: 700, fontSize: 13, mb: 0.6 }}>예약 일정 등록</Box>
+        <Box sx={{ fontSize: 11, color: 'text.secondary', mb: 1.2 }}>시간: 13:00 ~ 14:30</Box>
+        <MockField label="업무 제목" sx={{ mb: 1 }}>
+          <Box component="span" sx={{ animation: anim(typeReveal(46, 60), D) }}>배포 점검 회의</Box>
+        </MockField>
+        <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
+          <MockField label="프로젝트 코드" sx={{ flex: 1 }} />
+          <MockField label="카테고리" sx={{ flex: 1 }} />
+        </Box>
+        <Box sx={{ textAlign: 'right' }}>
+          <MockButton primary>저장(Enter)</MockButton>
+        </Box>
+      </At>
+
+      <Cursor dur={D} path={cursorPath} />
+      <RightButtonBadge path={cursorPath} from={8} to={40} dur={D} />
+      <ClickRing x={72.5} y={81.5} at={[67]} dur={D} />
+      <At x={2} y={92} sx={{ fontSize: 10, color: 'text.secondary', animation: anim(showBetween(72, 96), D) }}>
+        우클릭 드래그는 시간과 상관없이 항상 예약으로 등록됩니다.
+      </At>
+    </DemoFrame>
+  );
+};
+
+/** 막대 우클릭 → 수정 / 삭제 */
+export const GanttContextMenuDemo: React.FC = () => {
+  const D = 12;
+  const aX = hourX(9.5);
+  const aW = hourX(11) - hourX(9.5);
+  const bX = hourX(12.5);
+  const bW = hourX(13.5) - hourX(12.5);
+  const aClick: [number, number] = [aX + aW / 2, 29];
+  const bClick: [number, number] = [bX + bW / 2, 51];
+  const cursorPath: [number, number, number][] = [
+    [0, 55, 95],
+    [7, ...aClick],
+    [10, ...aClick],
+    [16, aClick[0] + 4, aClick[1] + 11],
+    [21, aClick[0] + 4, aClick[1] + 11],
+    [28, 55, 95],
+    [44, 72, 78],
+    [52, 72, 78],
+    [60, ...bClick],
+    [64, ...bClick],
+    [70, bClick[0] + 4, bClick[1] + 20],
+    [76, bClick[0] + 4, bClick[1] + 20],
+    [90, 55, 95],
+    [100, 55, 95],
+  ];
+  return (
+    <DemoFrame still={6} height={270}>
+      <GanttGrid rows={[]} />
+      {/* 행 라벨 2: 삭제되면 사라짐 */}
+      <At x={2} y={44} sx={{ fontSize: 11, fontWeight: 600, animation: anim(timeline([[0, 'opacity:1'], [76, 'opacity:1'], [80, 'opacity:0'], [97, 'opacity:0'], [100, 'opacity:1']]), D) }}>ES2022 브랜치 최신화</At>
+      {/* 행 라벨 1: 수정 전/후 */}
+      <At x={2} y={22} sx={{ fontSize: 11, fontWeight: 600, animation: anim(timeline([[0, 'opacity:1'], [53.9, 'opacity:1'], [54, 'opacity:0'], [97, 'opacity:0'], [100, 'opacity:1']]), D) }}>회의록 정리</At>
+      <At x={2} y={22} sx={{ fontSize: 11, fontWeight: 600, animation: anim(showBetween(54, 97), D) }}>주간 회의록 정리</At>
+
+      {/* 막대 A: 수정 대상 */}
+      <At x={aX} y={21} w={aW} h={14}>
+        <Bar sx={{ position: 'relative' }}>
+          <Box component="span" sx={{ animation: anim(timeline([[0, 'opacity:1'], [53.9, 'opacity:1'], [54, 'opacity:0'], [97, 'opacity:0'], [100, 'opacity:1']]), D) }}>회의록 정리</Box>
+          <Box component="span" sx={{ position: 'absolute', left: 6, animation: anim(showBetween(54, 97), D) }}>주간 회의록 정리</Box>
+        </Bar>
+      </At>
+      {/* 막대 B: 삭제 대상 */}
+      <At x={bX} y={43} w={bW} h={14} sx={{ animation: anim(timeline([[0, 'opacity:1; transform:scale(1)'], [76, 'opacity:1; transform:scale(1)'], [80, 'opacity:0; transform:scale(.6)'], [97, 'opacity:0; transform:scale(.6)'], [100, 'opacity:1; transform:scale(1)']]), D) }}>
+        <Bar color="secondary.main">ES2022 브랜치 최신화</Bar>
+      </At>
+
+      <ContextMenu x={aClick[0] + 1} y={aClick[1] + 3} from={10} to={21} dur={D} hover="edit" hoverAt={16} />
+      <ContextMenu x={bClick[0] + 1} y={bClick[1] + 3} from={64} to={76} dur={D} hover="delete" hoverAt={70} />
+
+      {/* 업무 기록 수정 창 */}
+      <At x="50%" y={18} w={60} sx={{ transform: 'translateX(-50%)', bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider', borderRadius: 1.5, boxShadow: 6, p: 1.5, zIndex: 10, animation: anim(showBetween(22, 53), D) }}>
+        <Box sx={{ fontWeight: 700, fontSize: 13, mb: 1.2 }}>업무 기록 수정</Box>
+        <MockField label="업무 제목" sx={{ mb: 1, position: 'relative' }}>
+          <Box component="span" sx={{ animation: anim(timeline([[0, 'opacity:1'], [31.9, 'opacity:1'], [32, 'opacity:0'], [100, 'opacity:0']]), D) }}>회의록 정리</Box>
+          <Box component="span" sx={{ position: 'absolute', left: 8, animation: anim(typeReveal(32, 42), D) }}>주간 회의록 정리</Box>
+        </MockField>
+        <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
+          <MockField label="프로젝트 코드" sx={{ flex: 1 }}>[A25_05591] 관리업무</MockField>
+          <MockField label="카테고리" sx={{ flex: 1 }}>문서작업</MockField>
+        </Box>
+        <MockField label="비고" sx={{ mb: 1, color: 'text.disabled' }}>추가 메모</MockField>
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+          <MockButton sx={{ border: 'none', color: 'primary.main', bgcolor: 'transparent' }}>취소</MockButton>
+          <MockButton primary>저장(Enter)</MockButton>
+        </Box>
+      </At>
+
+      <Cursor dur={D} path={cursorPath} />
+      <RightButtonBadge path={cursorPath} from={6} to={11} dur={D} />
+      <RightButtonBadge path={cursorPath} from={59} to={65} dur={D} />
+      <ClickRing x={aClick[0] + 4.5} y={aClick[1] + 12} at={[20]} dur={D} />
+      <ClickRing x={72.5} y={79} at={[50]} dur={D} />
+      <ClickRing x={bClick[0] + 4.5} y={bClick[1] + 21} at={[75]} dur={D} />
+      <Toast from={78} to={95} dur={D}>작업이 휴지통으로 이동되었습니다.</Toast>
+      <At x={2} y={93} sx={{ fontSize: 10, color: 'text.secondary', animation: anim(showBetween(1, 76), D) }}>
+        막대를 더블클릭해도 수정 창이 열립니다.
+      </At>
     </DemoFrame>
   );
 };
@@ -424,6 +806,156 @@ export const AnalysisDemo: React.FC = () => {
       </At>
       <Cursor dur={D} path={[[0, 60, 95], [30, 10, 36], [40, 10, 36], [70, 60, 95], [100, 60, 95]]} />
       <ClickRing x={10.5} y={37} at={[38]} dur={D} />
+    </DemoFrame>
+  );
+};
+
+/** 인터럽트 분석: 키워드 추가 → 요약·히트맵·시간대 분포·이력이 채워지고, 키워드를 더하면 갱신 */
+export const InterruptDemo: React.FC = () => {
+  const D = 12;
+  const P1 = 18; // 첫 키워드 반영 시점(%)
+  const P2 = 38; // 두 번째 키워드 반영 시점(%)
+  const END = 96;
+  /** 값 두 단계(P1, P2) 전환용 keyframes */
+  const step = (prop: string, before: string, v1: string, v2: string) =>
+    timeline([[0, `${prop}:${before}`], [P1 - 0.1, `${prop}:${before}`], [P1 + 3, `${prop}:${v1}`], [P2 - 0.1, `${prop}:${v1}`], [P2 + 3, `${prop}:${v2}`], [END, `${prop}:${v2}`], [100, `${prop}:${before}`]]);
+  /** P1~P2 에만 보이는 글자 / P2 이후에만 보이는 글자를 같은 자리에 겹쳐 둔다 */
+  const Swap: React.FC<{ a: React.ReactNode; b: React.ReactNode; sx?: object }> = ({ a, b, sx }) => (
+    <Box component="span" sx={{ position: 'relative', display: 'inline-block', ...sx }}>
+      <Box component="span" sx={{ visibility: 'hidden' }}>{b}</Box>
+      <Box component="span" sx={{ position: 'absolute', left: 0, right: 0, animation: anim(showBetween(P1, P2), D) }}>{a}</Box>
+      <Box component="span" sx={{ position: 'absolute', left: 0, right: 0, animation: anim(showBetween(P2 + 0.5, END), D) }}>{b}</Box>
+    </Box>
+  );
+
+  // 분 단위 예시 데이터: [9/1주, 9/8주, 9/15주] × [월~금]
+  const heat1 = [[0, 20, 0, 35, 0], [30, 0, 45, 0, 25], [0, 15, 0, 0, 20]];
+  const heat2 = [[0, 20, 15, 35, 0], [30, 25, 45, 0, 25], [10, 15, 0, 0, 20]];
+  const weeks = ['9/1주', '9/8주', '9/15주'];
+  const fmt = (m: number) => (m >= 60 ? `${Math.floor(m / 60)}시간${m % 60 ? ` ${m % 60}분` : ''}` : `${m}분`);
+  const heatBg = (m: number, max: number) => (m > 0 ? `rgba(239,83,80,${(0.15 + (m / max) * 0.75).toFixed(2)})` : 'rgba(127,127,127,.06)');
+  const max1 = 45;
+  const max2 = 45;
+  // 06~23시 분포 (분)
+  const hours = Array.from({ length: 18 }, (_, i) => i + 6);
+  const dist1: Record<number, number> = { 9: 20, 10: 45, 11: 40, 13: 15, 14: 30, 15: 25, 16: 15 };
+  const dist2: Record<number, number> = { 9: 20, 10: 45, 11: 40, 13: 20, 14: 55, 15: 45, 16: 15 };
+  const barColor = (pct: number) => (pct > 70 ? '#d32f2f' : pct > 40 ? '#ed6c02' : 'var(--primary-color, #1976d2)');
+
+  const colX = (i: number) => 13 + i * 7.2;
+
+  return (
+    <DemoFrame still={10} height={380}>
+      <At x={4} y={3} sx={{ fontWeight: 700, fontSize: 13 }}>인터럽트 분석</At>
+
+      {/* 키워드 입력 + 태그 */}
+      <At x={4} y={10} w={92} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <MockField sx={{ width: '34%', position: 'relative' }}>
+          <Box component="span" sx={{ color: 'text.disabled', animation: anim(timeline([[0, 'opacity:1'], [3.9, 'opacity:1'], [4, 'opacity:0'], [P1 - 1, 'opacity:0'], [P1 - 0.9, 'opacity:1'], [22.9, 'opacity:1'], [23, 'opacity:0'], [P2 - 1, 'opacity:0'], [P2 - 0.9, 'opacity:1'], [100, 'opacity:1']]), D) }}>
+            키워드 입력 (예: TP 대응)
+          </Box>
+          <Box component="span" sx={{ position: 'absolute', left: 8, fontWeight: 600, animation: `${anim(typeReveal(4, 12), D)}, ${anim(showBetween(4, P1 - 1.5), D)}` }}>TP 대응</Box>
+          <Box component="span" sx={{ position: 'absolute', left: 8, fontWeight: 600, animation: `${anim(typeReveal(23, 32), D)}, ${anim(showBetween(23, P2 - 1.5), D)}` }}>센터오류</Box>
+        </MockField>
+        <Box sx={{ position: 'relative', width: 44, height: 26 }}>
+          <Box sx={{ position: 'absolute', inset: 0, animation: anim(showBetween(13, P1), D) }}><KeyCap at={[P1 - 2]} dur={D}>Enter</KeyCap></Box>
+          <Box sx={{ position: 'absolute', inset: 0, animation: anim(showBetween(33, P2), D) }}><KeyCap at={[P2 - 2]} dur={D}>Enter</KeyCap></Box>
+        </Box>
+        <Chip sx={{ borderColor: 'warning.main', color: 'warning.main', animation: anim(showBetween(P1, END), D) }}>TP 대응 ✕</Chip>
+        <Chip sx={{ borderColor: 'warning.main', color: 'warning.main', animation: anim(showBetween(P2, END), D) }}>센터오류 ✕</Chip>
+      </At>
+
+      {/* 요약 4칸 */}
+      <At x={4} y={21} w={92} sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 1, animation: anim(showBetween(P1, END), D) }}>
+        {[
+          ['총 인터럽트', <Swap key="a" a="6건" b="9건" />],
+          ['총 소요시간', <Swap key="b" a="3시간 10분" b="4시간" />],
+          ['최다 발생 주', '9/8주'],
+          ['피크 시간대', <Swap key="d" a="10:00~12:00" b="14:00~16:00" />],
+        ].map(([label, value]) => (
+          <Box key={label as string} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, bgcolor: 'background.paper', textAlign: 'center', py: 0.6 }}>
+            <Box sx={{ fontSize: 10, color: 'text.secondary' }}>{label}</Box>
+            <Box sx={{ fontSize: 14, fontWeight: 700 }}>{value}</Box>
+          </Box>
+        ))}
+      </At>
+
+      {/* 주차별 히트맵 */}
+      <At x={4} y={38} sx={{ fontWeight: 600, fontSize: 11, animation: anim(showBetween(P1, END), D) }}>주차별 히트맵 (월~금)</At>
+      <Box sx={{ animation: anim(showBetween(P1, END), D) }}>
+        {['월', '화', '수', '목', '금'].map((d, i) => (
+          <At key={d} x={colX(i)} y={45} w={6.6} sx={{ textAlign: 'center', fontSize: 10, color: 'text.secondary', fontWeight: 600 }}>{d}</At>
+        ))}
+        <At x={49} y={45} w={8} sx={{ textAlign: 'right', fontSize: 10, color: 'text.secondary', fontWeight: 600 }}>합계</At>
+        {weeks.map((w, wi) => (
+          <React.Fragment key={w}>
+            <At x={4} y={51 + wi * 9} w={8.5} h={7.5} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', pr: 0.5, fontSize: 10 }}>{w}</At>
+            {heat1[wi].map((m1, di) => {
+              const m2 = heat2[wi][di];
+              return (
+                <At
+                  key={di}
+                  x={colX(di)}
+                  y={51 + wi * 9}
+                  w={6.6}
+                  h={7.5}
+                  sx={{ borderRadius: 0.5, border: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 600, animation: anim(step('background-color', 'transparent', heatBg(m1, max1), heatBg(m2, max2)), D) }}
+                >
+                  {(m1 > 0 || m2 > 0) && <Swap a={m1 ? `${m1}m` : ''} b={`${m2}m`} />}
+                </At>
+              );
+            })}
+            <At x={49} y={51 + wi * 9} w={8} h={7.5} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', fontSize: 10 }}>
+              <Swap a={fmt(heat1[wi].reduce((s, v) => s + v, 0))} b={fmt(heat2[wi].reduce((s, v) => s + v, 0))} sx={{ textAlign: 'right' }} />
+            </At>
+          </React.Fragment>
+        ))}
+        {/* 최다 발생 주 강조 */}
+        <At x={3.5} y={50} w={54} h={9.5} sx={{ border: '2px solid', borderColor: 'error.main', borderRadius: 1, animation: anim(timeline([[0, 'opacity:0'], [55, 'opacity:0'], [58, 'opacity:1'], [64, 'opacity:.3'], [70, 'opacity:1'], [END, 'opacity:1'], [100, 'opacity:0']]), D) }} />
+      </Box>
+
+      {/* 시간대별 분포 */}
+      <At x={61} y={38} sx={{ fontWeight: 600, fontSize: 11, animation: anim(showBetween(P1, END), D) }}>시간대별 분포 (06~24시)</At>
+      <At x={61} y={46} w={35} h={28} sx={{ display: 'flex', alignItems: 'flex-end', gap: '2px', animation: anim(showBetween(P1, END), D) }}>
+        {hours.map((h) => {
+          const p1 = ((dist1[h] ?? 0) / 45) * 100;
+          const p2 = ((dist2[h] ?? 0) / 55) * 100;
+          return (
+            <Box
+              key={h}
+              sx={{ flex: 1, borderRadius: '2px 2px 0 0', animation: `${anim(step('height', '0%', `${p1.toFixed(0)}%`, `${p2.toFixed(0)}%`), D, 'ease-out')}, ${anim(step('background-color', barColor(p1), barColor(p1), barColor(p2)), D)}` }}
+            />
+          );
+        })}
+      </At>
+      <At x={61} y={75} w={35} sx={{ display: 'flex', gap: '2px', fontSize: 8, color: 'text.secondary', animation: anim(showBetween(P1, END), D) }}>
+        {hours.map((h) => (
+          <Box key={h} sx={{ flex: 1, textAlign: 'center' }}>{h % 2 === 0 ? h : ''}</Box>
+        ))}
+      </At>
+      {/* 피크 시간대 강조 */}
+      <At x={61 + (8 / 18) * 35 - 0.3} y={44} w={(2 / 18) * 35 + 0.6} h={31} sx={{ border: '2px solid', borderColor: 'error.main', borderRadius: 1, animation: anim(timeline([[0, 'opacity:0'], [55, 'opacity:0'], [58, 'opacity:1'], [64, 'opacity:.3'], [70, 'opacity:1'], [END, 'opacity:1'], [100, 'opacity:0']]), D) }} />
+
+      {/* 발생 이력 */}
+      <At x={4} y={81} w={92} sx={{ fontSize: 10, animation: anim(showBetween(P1, END), D) }}>
+        <Box sx={{ fontWeight: 600, fontSize: 11, mb: 0.3 }}>
+          발생 이력 (<Swap a="6건" b="9건" />)
+        </Box>
+        <Box sx={{ display: 'grid', gridTemplateColumns: '.9fr 1.3fr 2.4fr 1fr .6fr', color: 'text.secondary', borderBottom: '1px solid', borderColor: 'divider', pb: 0.2 }}>
+          <span>날짜</span><span>시간</span><span>작업명</span><span>카테고리</span><span style={{ textAlign: 'right' }}>소요</span>
+        </Box>
+        <Box sx={{ overflow: 'hidden', animation: anim(step('max-height', '0px', '0px', '18px'), D), bgcolor: 'rgba(237,108,2,.12)' }}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: '.9fr 1.3fr 2.4fr 1fr .6fr', py: 0.2 }}>
+            <span>9/15 (월)</span><span>09:10 ~ 09:20</span><span>센터오류 확인 요청</span><span>센터오류지원</span><span style={{ textAlign: 'right' }}>10분</span>
+          </Box>
+        </Box>
+        <Box sx={{ display: 'grid', gridTemplateColumns: '.9fr 1.3fr 2.4fr 1fr .6fr', py: 0.2 }}>
+          <span>9/9 (화)</span><span>14:05 ~ 14:50</span><span>TP 대응 - 리소스 배포 확인</span><span>테스트오류수정</span><span style={{ textAlign: 'right' }}>45분</span>
+        </Box>
+      </At>
+
+      <Cursor dur={D} path={[[0, 50, 97], [3, 16, 13], [P2 + 4, 16, 13], [60, 48, 97], [100, 48, 97]]} />
+      <ClickRing x={16.5} y={14} at={[3.5, 22.5]} dur={D} />
     </DemoFrame>
   );
 };
@@ -724,7 +1256,7 @@ export const QnaDemo: React.FC = () => {
       </At>
       <At x="50%" y={16} w={60} sx={{ transform: 'translateX(-50%)', bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider', boxShadow: 8, borderRadius: 1.5, p: 1.5, zIndex: 12, animation: anim(showBetween(12, 72), D) }}>
         <Box sx={{ fontWeight: 700, mb: 1 }}>새 게시글 작성</Box>
-        <Box sx={{ display: 'flex', gap: 0.5, mb: 1 }}>
+        <Box sx={{ display: 'flex', gap: 0.5, mb: 1.6 }}>
           <Chip sx={{ borderColor: 'primary.main', color: 'primary.main' }}>아이디어</Chip><Chip>버그</Chip><Chip>기타</Chip>
         </Box>
         <MockField label="제목" sx={{ mb: 1 }}><Box component="span" sx={{ animation: anim(typeReveal(18, 38), D) }}>주간 일정에 월간 보기 추가 요청</Box></MockField>
@@ -741,11 +1273,15 @@ export const QnaDemo: React.FC = () => {
 export const GUIDE_DEMOS = {
   dayFlow: DayFlowDemo,
   timerStart: TimerStartDemo,
+  schedule: ScheduleDemo,
   ganttDrag: GanttDragDemo,
   ganttResize: GanttResizeDemo,
+  ganttRightDrag: GanttRightDragDemo,
+  ganttContextMenu: GanttContextMenuDemo,
   weeklyCopy: WeeklyCopyDemo,
   deployDrag: DeployDragDemo,
   analysis: AnalysisDemo,
+  interrupt: InterruptDemo,
   multiSort: MultiSortDemo,
   erpRegister: ErpRegisterDemo,
   prune: PruneDemo,
