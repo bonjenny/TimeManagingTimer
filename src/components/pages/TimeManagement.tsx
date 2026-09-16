@@ -116,6 +116,7 @@ const TimeManagement: React.FC = () => {
     default_work_type,
     category_work_type_map,
     project_work_type_map,
+    note_include_title,
     addRow,
     addRows,
     updateRow,
@@ -238,7 +239,8 @@ const TimeManagement: React.FC = () => {
       date_string,
       default_work_type,
       category_work_type_map,
-      project_work_type_map
+      project_work_type_map,
+      note_include_title
     );
 
     const merged = mergeTimeManagementRows(current_rows, converted);

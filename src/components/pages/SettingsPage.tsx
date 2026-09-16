@@ -83,6 +83,7 @@ import {
 } from '../../utils/storage';
 import { AUTO_BACKUP_ENABLED_KEY, AUTO_BACKUP_DATE_KEY } from '../../utils/autoBackup';
 import PruneOldDataSection from './PruneOldDataSection';
+import { useTimeManagementStore } from '../../store/useTimeManagementStore';
 import BackupDirectorySetting from './BackupDirectorySetting';
 
 // 설정 저장 키
@@ -276,6 +277,8 @@ const SettingsPage: React.FC = () => {
   const [temp_color, setTempColor] = useState('');
 
   // 초기화 확인 모달
+  const { note_include_title, setNoteIncludeTitle } = useTimeManagementStore();
+
   const [reset_dialog_open, setResetDialogOpen] = useState(false);
   const [reset_confirm_text, setResetConfirmText] = useState('');
 
@@ -1121,6 +1124,12 @@ const SettingsPage: React.FC = () => {
                 onChange={(e) => setAutoCompleteEnabled(e.target.checked)}
               />
               <MobileSwitchRow
+                label="시간관리 비고에 작업명 포함"
+                helper='시간관리 표를 일간 타이머에서 불러올 때 비고를 "작업명 // 타이머 비고"로 채웁니다. 꺼두면 타이머에 적은 비고만 들어갑니다.'
+                checked={note_include_title}
+                onChange={(e) => setNoteIncludeTitle(e.target.checked)}
+              />
+              <MobileSwitchRow
                 label="프리셋 작업 일별 고유 관리"
                 helper="활성화 시 프리셋으로 시작한 작업의 누적시간이 날짜별로 분리됩니다. 제목은 변경되지 않습니다."
                 checked={preset_daily_group}
@@ -1162,6 +1171,20 @@ const SettingsPage: React.FC = () => {
               }
               label="작업명 자동 완성 활성화"
             />
+          </Grid>
+          <Grid item xs={12}>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={note_include_title}
+                  onChange={(e) => setNoteIncludeTitle(e.target.checked)}
+                />
+              }
+              label="시간관리 비고에 작업명 포함"
+            />
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', ml: 4 }}>
+              시간관리 표를 일간 타이머에서 불러올 때 비고를 "작업명 // 타이머 비고"로 채웁니다. 꺼두면 타이머에 적은 비고만 들어갑니다.
+            </Typography>
           </Grid>
           <Grid item xs={12}>
             <FormControlLabel

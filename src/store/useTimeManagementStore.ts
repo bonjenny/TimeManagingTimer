@@ -25,6 +25,7 @@ interface TimeManagementState {
   project_work_type_map: Record<string, string>;
   erp_mapping: ErpMapping;
   erp_user: ErpUser;
+  note_include_title: boolean; // 일간 타이머에서 불러올 때 비고에 작업명을 넣을지 (기본 꺼짐)
 
   addRow: (row: TimeManagementRow) => void;
   addRows: (rows: TimeManagementRow[]) => void;
@@ -44,6 +45,7 @@ interface TimeManagementState {
   getWorkTypeForProject: (project_code: string) => string | undefined;
   setErpMapping: (mapping: ErpMapping) => void;
   setErpUser: (user: ErpUser) => void;
+  setNoteIncludeTitle: (on: boolean) => void;
 }
 
 export const useTimeManagementStore = create<TimeManagementState>()(
@@ -61,6 +63,7 @@ export const useTimeManagementStore = create<TimeManagementState>()(
       },
       erp_mapping: DEFAULT_ERP_MAPPING,
       erp_user: DEFAULT_ERP_USER,
+      note_include_title: false,
 
       addRow: (row) =>
         set((state) => ({
@@ -159,6 +162,8 @@ export const useTimeManagementStore = create<TimeManagementState>()(
       setErpMapping: (mapping) => set({ erp_mapping: mapping }),
 
       setErpUser: (user) => set({ erp_user: user }),
+
+      setNoteIncludeTitle: (on) => set({ note_include_title: on }),
     }),
     {
       name: 'timekeeper-time-management',

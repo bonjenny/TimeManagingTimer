@@ -1365,6 +1365,85 @@ export const QnaDemo: React.FC = () => {
   );
 };
 
+// ---------------------------------------------------------------------------
+// 시간관리 비고에 작업명 포함 (설정 > 업무 환경)
+// ---------------------------------------------------------------------------
+
+export const NoteTitleOptionDemo: React.FC = () => {
+  const D = 11;
+  const SWITCH = 18; // 스위치 켜는 시점
+  const RELOAD = 48; // 「다시 불러오기」 누르는 시점
+  const rows: [string, string][] = [
+    ['리소스 배포 확인', '태원책임님 회신'],
+    ['ES2022 알럿 코드리뷰', ''],
+  ];
+  return (
+    <DemoFrame still={8} height={300}>
+      {/* 설정 > 업무 환경 */}
+      <At x={4} y={5} sx={{ fontWeight: 700, fontSize: 13 }}>설정 › 업무 환경</At>
+      <At x={4} y={15} w={92} sx={{ display: 'flex', alignItems: 'center', gap: 1.2, p: 1, border: '1px solid', borderColor: 'divider', borderRadius: 1, bgcolor: 'background.paper' }}>
+        <Box
+          sx={{
+            width: 34,
+            height: 18,
+            borderRadius: 9,
+            p: '2px',
+            flexShrink: 0,
+            animation: anim(timeline([[0, 'background-color:#9e9e9e'], [SWITCH - 0.1, 'background-color:#9e9e9e'], [SWITCH, 'background-color:#1976d2'], [97, 'background-color:#1976d2'], [100, 'background-color:#9e9e9e']]), D),
+          }}
+        >
+          <Box
+            sx={{
+              width: 14,
+              height: 14,
+              borderRadius: '50%',
+              bgcolor: '#fff',
+              animation: anim(timeline([[0, 'transform:translateX(0)'], [SWITCH - 0.1, 'transform:translateX(0)'], [SWITCH, 'transform:translateX(16px)'], [97, 'transform:translateX(16px)'], [100, 'transform:translateX(0)']]), D),
+            }}
+          />
+        </Box>
+        <span>시간관리 비고에 작업명 포함</span>
+      </At>
+
+      {/* 시간관리 화면 */}
+      <At x={4} y={38} sx={{ fontWeight: 700, fontSize: 13 }}>시간관리</At>
+      <At x={4} y={46} w={92} sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <MockButton>⭳ 일간 타이머에서 다시 불러오기</MockButton>
+      </At>
+      <At x={4} y={60} w={92} h={11} sx={{ display: 'grid', gridTemplateColumns: '1.3fr 1.7fr', alignItems: 'center', px: 1.2, fontWeight: 700, bgcolor: 'action.hover', borderRadius: '4px 4px 0 0' }}>
+        <span>거래형(일정명)</span>
+        <span>비고</span>
+      </At>
+      {rows.map(([title, note], i) => (
+        <At
+          key={title}
+          x={4}
+          y={71 + i * 11}
+          w={92}
+          h={11}
+          sx={{ display: 'grid', gridTemplateColumns: '1.3fr 1.7fr', alignItems: 'center', px: 1.2, bgcolor: 'background.paper', borderBottom: '1px solid', borderColor: 'divider' }}
+        >
+          <span>{title}</span>
+          <Box sx={{ position: 'relative' }}>
+            <Box component="span" sx={{ animation: anim(showBetween(0, RELOAD + 2), D) }}>{note || '—'}</Box>
+            <Box component="span" sx={{ position: 'absolute', left: 0, top: 0, whiteSpace: 'nowrap', animation: anim(showBetween(RELOAD + 3, 97), D) }}>
+              <b>{title}</b>
+              {note ? ` // ${note}` : ''}
+            </Box>
+          </Box>
+        </At>
+      ))}
+
+      <Cursor dur={D} path={[[0, 50, 95], [12, 7, 19], [SWITCH + 2, 7, 19], [44, 88, 48], [RELOAD + 2, 88, 48], [80, 50, 95], [100, 50, 95]]} />
+      <ClickRing x={7} y={19} at={[SWITCH]} dur={D} />
+      <ClickRing x={88} y={48} at={[RELOAD]} dur={D} />
+      <At x={4} y={94} sx={{ fontSize: 11, color: 'text.secondary', animation: anim(showBetween(RELOAD + 4, 97), D) }}>
+        끄면 타이머에 적은 비고만, 켜면 「작업명 // 비고」로 채워집니다.
+      </At>
+    </DemoFrame>
+  );
+};
+
 export const GUIDE_DEMOS = {
   dayFlow: DayFlowDemo,
   timerStart: TimerStartDemo,
@@ -1378,6 +1457,7 @@ export const GUIDE_DEMOS = {
   analysis: AnalysisDemo,
   interrupt: InterruptDemo,
   multiSort: MultiSortDemo,
+  noteTitleOption: NoteTitleOptionDemo,
   erpRegister: ErpRegisterDemo,
   prune: PruneDemo,
   backupPermission: BackupPermissionDemo,

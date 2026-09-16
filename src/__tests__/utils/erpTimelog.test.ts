@@ -24,7 +24,8 @@ describe('buildErpPayload', () => {
       ['issue.3712 render http endpoint 사용처 제거 추가작업', '작업', 'issue.3712 render http endpoint 사용처 제거 추가작업'],
       ['ES2022 미지원 브라우저 사용자 알럿 띄우도록', '개발', 'ES2022 미지원 브라우저 사용자 알럿 띄우도록'],
     ]);
-    expect(r.resolved[3].note).toBe('Chrome 93 // 메모');
+    expect(r.resolved[3].note).toBe('메모'); // 시간관리 표의 비고 그대로
+    expect(r.resolved[0].note).toBe(''); // 비고가 비면 빈칸
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const dm = (r.payload as any).data.slip_data_model.data_model;
     expect(dm.boardXmaster[0]['board_s$num_001']).toBe('∬N:126∬');
@@ -44,6 +45,11 @@ describe('buildErpPayload', () => {
     expect(dm.boardXdetail[0]['board_m$dt_001']).toBe('20260930');
     expect(dm.boardXdetail[1]['board_m$dt_001']).toBe('20260911');
     expect(dm.boardXmaster[0]['board_s$dt_001']).toBe('20260911');
+  });
+
+  it('비고가 비면 빈칸으로 보낸다 (작업명 포함 여부는 불러오기 설정에서 결정)', () => {
+    const rows = [row({ note: '', schedule_name: '일정만 있음' })];
+    expect(buildErpPayload(rows, '2026-09-11', DEFAULT_ERP_MAPPING, DEFAULT_ERP_USER).resolved[0].note).toBe('');
   });
 
   it('매핑 없는 프로젝트는 errors 로 보고하고 나머지는 계속 푼다', () => {
@@ -68,6 +74,15 @@ describe('parseErpSession', () => {
     expect(parseErpSession(' E-ETqBSjHE9g4JF ')).toEqual({ sid: 'E-ETqBSjHE9g4JF', origin: 'https://logine.ecount.com' });
     expect(parseErpSession('https://logind.ecount.com/ec5/view/erp?ec_req_sid=D-abc')?.origin).toBe('https://logind.ecount.com');
     expect(parseErpSession('아무거나')).toBeNull();
+  });
+
+  it("세션키에 '!' 같은 기호가 있어도 끝까지 읽는다", () => {
+    const { parseErpSession } = jest.requireActual('../../utils/erpTimelog');
+    expect(parseErpSession('https://logine.ecount.com/ec56/view/erp?w_flag=1&ec_req_sid=E-ETq!GArilaadh')?.sid)
+      .toBe('E-ETq!GArilaadh');
+    expect(parseErpSession('E-ETq!GArilaadh')?.sid).toBe('E-ETq!GArilaadh');
+    // 주소창에서 인코딩된 채 복사된 경우
+    expect(parseErpSession('https://logine.ecount.com/ec56/view/erp?ec_req_sid=E-a%2Bb')?.sid).toBe('E-a+b');
   });
 });
 

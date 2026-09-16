@@ -124,8 +124,7 @@ export function resolveErpCategory(row: TimeManagementRow): { code: string; name
 export function resolveErpRow(row: TimeManagementRow, mapping: ErpMapping): ErpResolvedRow {
   const category = resolveErpCategory(row);
   const schedule = row.schedule_name.trim();
-  const extra = (row.note || '').trim();
-  const note = extra ? `${schedule} // ${extra}` : schedule;
+  const note = (row.note || '').trim(); // 시간관리 표의 비고 그대로 (작업명 포함 여부는 불러오기 설정에서 결정)
   const target = resolveWork(row.project_name, row.category_code, schedule, mapping);
   const is_dev = row.work_type.trim() === '개발';
   if (is_dev && !target.dev) throw new Error(`${row.project_name} 개발 게시글 매핑 없음`);
@@ -326,8 +325,15 @@ export function buildErpConsoleScript(payload: unknown, date_iso: string, row_co
 // "E-xxxx" 또는 ERP 주소창 URL 전체를 받아 { sid, origin } 으로. 못 읽으면 null.
 export function parseErpSession(input: string): { sid: string; origin: string } | null {
   const text = input.trim();
-  const from_url = text.match(/ec_req_sid=([A-Za-z0-9_-]+)/);
-  const sid = from_url ? from_url[1] : /^[A-Za-z]-[A-Za-z0-9_-]+$/.test(text) ? text : '';
+  // sid 에는 '!' 같은 기호도 들어간다(E-ETq!GAri...). URL 이면 & # 앞까지, 아니면 입력 전체.
+  const from_url = text.match(/ec_req_sid=([^&#\s]+)/);
+  const raw = from_url ? from_url[1] : /^[A-Za-z]-\S+$/.test(text) ? text : '';
+  let sid = raw;
+  try {
+    sid = decodeURIComponent(raw);
+  } catch {
+    // 이미 디코딩된 값이면 그대로 쓴다
+  }
   if (!sid) return null;
   const origin = text.match(/^https:\/\/[a-z0-9.-]+\.ecount\.com/i)?.[0] || ERP_DEFAULT_ORIGIN;
   return { sid, origin };
@@ -366,7 +372,7 @@ export async function postErpTimelog(payload: unknown, sid: string, origin: stri
   const text = await res.text();
   const board_num = text.match(/"board_num":(\d+)/)?.[1];
   if (/InvalidSession/i.test(text)) {
-    return { ok: false, status: res.status, message: '세션 만료 또는 잘못된 세션키입니다. ERP에 다시 로그인한 뒤 새 주소를 붙여넣으세요.' };
+    return { ok: false, status: res.status, message: '세션 만료 또는 잘못된 세션키입니다. ec_req_sid 는 로그인할 때마다 바뀌고, ERP 탭을 닫으면 만료됩니다. ERP 탭을 열어 둔 채 그 탭 주소를 다시 복사해 붙여넣으세요.' };
   }
   return {
     ok: res.ok && !!board_num,

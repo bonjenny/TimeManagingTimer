@@ -174,7 +174,7 @@ const ErpRegisterDialog: React.FC<Props> = ({ open, onClose, rows, date }) => {
             session_input && !session
               ? 'ec_req_sid 를 찾지 못했습니다.'
               : session
-                ? `세션 ${session.sid.slice(0, 4)}… · ${session.origin}`
+                ? `세션 ${session.sid} · ${session.origin}`
                 : 'ERP에 로그인한 탭의 주소를 복사해 붙여넣으세요. 이 탭을 닫으면 지워집니다.'
           }
           sx={{ mb: 2, mt: 1 }}
