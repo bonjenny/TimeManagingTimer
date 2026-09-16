@@ -23,7 +23,7 @@ export function convertLogsToTimeManagement(
   default_work_type: string = '작업',
   category_work_type_map: Record<string, string> = {},
   project_work_type_map: Record<string, string> = {},
-  note_include_title = false // 비고 앞에 작업명(일정명)을 붙일지
+  note_include_title = false // 비고가 없는 업무의 비고를 작업명으로 채울지
 ): TimeManagementRow[] {
   const filtered_logs = logs.filter((log) => {
     if (!log.endTime || log.status === 'SCHEDULED' || log.isTodo) return false;
@@ -95,9 +95,8 @@ export function convertLogsToTimeManagement(
       category_code: category_code,
       category_name: group.category || '기타',
       time_minutes: group.total_minutes,
-      note: [note_include_title ? group.title : '', Array.from(new Set(group.notes)).join('\n')]
-        .filter(Boolean)
-        .join(' // '),
+      // 비고가 있으면 비고만 (여러 개면 줄바꿈으로), 없을 때만 옵션에 따라 작업명으로 채운다
+      note: Array.from(new Set(group.notes)).join('\n') || (note_include_title ? group.title || '' : ''),
       date: date,
       end_date: formatDateToYYYYMMDD(new Date()),
       original_log_id: group.original_log_ids[0],

@@ -1366,7 +1366,7 @@ export const QnaDemo: React.FC = () => {
 };
 
 // ---------------------------------------------------------------------------
-// 시간관리 비고에 작업명 포함 (설정 > 업무 환경)
+// 비고가 없으면 작업명으로 채우기 (설정 > 업무 환경)
 // ---------------------------------------------------------------------------
 
 export const NoteTitleOptionDemo: React.FC = () => {
@@ -1402,7 +1402,7 @@ export const NoteTitleOptionDemo: React.FC = () => {
             }}
           />
         </Box>
-        <span>시간관리 비고에 작업명 포함</span>
+        <span>비고가 없으면 작업명으로 채우기</span>
       </At>
 
       {/* 시간관리 화면 */}
@@ -1425,11 +1425,15 @@ export const NoteTitleOptionDemo: React.FC = () => {
         >
           <span>{title}</span>
           <Box sx={{ position: 'relative' }}>
-            <Box component="span" sx={{ animation: anim(showBetween(0, RELOAD + 2), D) }}>{note || '—'}</Box>
-            <Box component="span" sx={{ position: 'absolute', left: 0, top: 0, whiteSpace: 'nowrap', animation: anim(showBetween(RELOAD + 3, 97), D) }}>
-              <b>{title}</b>
-              {note ? ` // ${note}` : ''}
+            {/* 비고를 적은 업무는 그대로, 비고가 없는 업무만 작업명으로 채워진다 */}
+            <Box component="span" sx={note ? undefined : { color: 'text.disabled', animation: anim(showBetween(0, RELOAD + 2), D) }}>
+              {note || '(빈칸)'}
             </Box>
+            {!note && (
+              <Box component="span" sx={{ position: 'absolute', left: 0, top: 0, whiteSpace: 'nowrap', animation: anim(showBetween(RELOAD + 3, 97), D) }}>
+                <b>{title}</b>
+              </Box>
+            )}
           </Box>
         </At>
       ))}
@@ -1438,7 +1442,7 @@ export const NoteTitleOptionDemo: React.FC = () => {
       <ClickRing x={7} y={19} at={[SWITCH]} dur={D} />
       <ClickRing x={88} y={48} at={[RELOAD]} dur={D} />
       <At x={4} y={94} sx={{ fontSize: 11, color: 'text.secondary', animation: anim(showBetween(RELOAD + 4, 97), D) }}>
-        끄면 타이머에 적은 비고만, 켜면 「작업명 // 비고」로 채워집니다.
+        비고를 적은 업무는 그대로, 비고가 없던 업무만 작업명으로 채워집니다.
       </At>
     </DemoFrame>
   );

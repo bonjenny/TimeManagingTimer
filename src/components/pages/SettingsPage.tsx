@@ -1124,8 +1124,8 @@ const SettingsPage: React.FC = () => {
                 onChange={(e) => setAutoCompleteEnabled(e.target.checked)}
               />
               <MobileSwitchRow
-                label="시간관리 비고에 작업명 포함"
-                helper='시간관리 표를 일간 타이머에서 불러올 때 비고를 "작업명 // 타이머 비고"로 채웁니다. 꺼두면 타이머에 적은 비고만 들어갑니다.'
+                label="비고가 없으면 작업명으로 채우기"
+                helper='시간관리 표를 일간 타이머에서 불러올 때, 비고를 적지 않은 업무는 비고에 작업명을 넣습니다. 꺼두면 비어 있는 채로 둡니다.'
                 checked={note_include_title}
                 onChange={(e) => setNoteIncludeTitle(e.target.checked)}
               />
@@ -1180,10 +1180,10 @@ const SettingsPage: React.FC = () => {
                   onChange={(e) => setNoteIncludeTitle(e.target.checked)}
                 />
               }
-              label="시간관리 비고에 작업명 포함"
+              label="비고가 없으면 작업명으로 채우기"
             />
             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', ml: 4 }}>
-              시간관리 표를 일간 타이머에서 불러올 때 비고를 "작업명 // 타이머 비고"로 채웁니다. 꺼두면 타이머에 적은 비고만 들어갑니다.
+              시간관리 표를 일간 타이머에서 불러올 때, 비고를 적지 않은 업무는 비고에 작업명을 넣습니다. 꺼두면 비어 있는 채로 둡니다.
             </Typography>
           </Grid>
           <Grid item xs={12}>
