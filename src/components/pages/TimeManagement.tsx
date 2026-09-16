@@ -53,7 +53,6 @@ import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import { v4 as uuidv4 } from 'uuid';
-import * as XLSX from 'xlsx';
 import { useTimerStore } from '../../store/useTimerStore';
 import { useTimeManagementStore, TimeManagementRow } from '../../store/useTimeManagementStore';
 import { useProjectStore } from '../../store/useProjectStore';
@@ -274,7 +273,9 @@ const TimeManagement: React.FC = () => {
     }
   };
 
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
+    // 엑셀 라이브러리(약 400KB)는 내보낼 때만 받는다
+    const XLSX = await import('xlsx');
     if (current_rows.length === 0) {
       alert('내보낼 데이터가 없습니다.');
       return;

@@ -288,7 +288,7 @@ describe('TimeManagement 컴포넌트', () => {
     expect(export_button).toBeDisabled();
   });
 
-  it('데이터가 있을 때 엑셀 Export가 가능하다', () => {
+  it('데이터가 있을 때 엑셀 Export가 가능하다', async () => {
     const today = new Date();
     const date_string = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
@@ -319,7 +319,8 @@ describe('TimeManagement 컴포넌트', () => {
 
     fireEvent.click(export_button);
 
-    expect(XLSX.utils.json_to_sheet).toHaveBeenCalled();
+    // xlsx 는 클릭 시점에 동적 import 된다
+    await waitFor(() => expect(XLSX.utils.json_to_sheet).toHaveBeenCalled());
     expect(XLSX.writeFile).toHaveBeenCalled();
   });
 

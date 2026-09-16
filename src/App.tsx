@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo, lazy, Suspense } from 'react';
 import { ThemeProvider } from '@mui/material/styles';
 import { createAppTheme } from './theme';
 import Layout, { PageType } from './components/Layout';
@@ -7,14 +7,15 @@ import TimerInput from './components/timer/TimerInput';
 import TimerList from './components/timer/TimerList';
 import GanttChart from './components/gantt/GanttChart';
 import PresetPanel from './components/preset/PresetPanel';
-import WeeklySchedule from './components/pages/WeeklySchedule';
-import DeployCalendar from './components/pages/DeployCalendar';
-import ProjectAnalysis from './components/pages/ProjectAnalysis';
-import TimeManagement from './components/pages/TimeManagement';
-import SettingsPage from './components/pages/SettingsPage';
-import GuidePage from './components/pages/GuidePage';
+// 일간 타이머 외의 탭은 처음 열 때 받는다 (첫 로딩 용량 축소)
+const WeeklySchedule = lazy(() => import('./components/pages/WeeklySchedule'));
+const DeployCalendar = lazy(() => import('./components/pages/DeployCalendar'));
+const ProjectAnalysis = lazy(() => import('./components/pages/ProjectAnalysis'));
+const TimeManagement = lazy(() => import('./components/pages/TimeManagement'));
+const SettingsPage = lazy(() => import('./components/pages/SettingsPage'));
+const GuidePage = lazy(() => import('./components/pages/GuidePage'));
 import NewTaskModal from './components/modal/NewTaskModal';
-import { Box, Typography, IconButton, Tooltip, useMediaQuery, Snackbar } from '@mui/material';
+import { Box, Typography, IconButton, Tooltip, useMediaQuery, Snackbar, CircularProgress } from '@mui/material';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import TodayIcon from '@mui/icons-material/Today';
@@ -43,6 +44,13 @@ const DAY_START_HOUR = 0;
 const applyTheme = (primary_color: string, accent_color: string, is_dark?: boolean) => {
   applyThemeColors({ primary: primary_color, accent: accent_color, isDark: is_dark });
 };
+
+// 탭 코드를 받는 동안 보여줄 자리 (레이아웃이 튀지 않게 높이만 잡아 둔다)
+const PageFallback = () => (
+  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 240 }}>
+    <CircularProgress size={28} />
+  </Box>
+);
 
 function App() {
   useScheduledTaskWatcher();
@@ -470,7 +478,7 @@ function App() {
         }}
       >
         <Layout currentPage={current_page} onPageChange={handlePageChange}>
-          {renderPage()}
+          <Suspense fallback={<PageFallback />}>{renderPage()}</Suspense>
         </Layout>
       </Box>
       
