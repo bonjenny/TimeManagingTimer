@@ -120,6 +120,19 @@ describe('CategoryAutocomplete 관련 기능', () => {
       });
     });
 
+    it('ERP 카테고리 목록에서 눌러 추가할 수 있다', async () => {
+      render(<CategoryAutocomplete value={null} onChange={jest.fn()} placeholder="카테고리 선택" />);
+      await userEvent.click(screen.getByPlaceholderText('카테고리 선택'));
+
+      await waitFor(() => expect(screen.getByText('ERP 카테고리')).toBeInTheDocument());
+      // 목록에 아직 없는 ERP 카테고리
+      expect(useCategoryStore.getState().categories).not.toContain('튜닝');
+
+      await userEvent.click(screen.getByText('튜닝'));
+
+      expect(useCategoryStore.getState().categories).toContain('튜닝');
+    });
+
     it('새 카테고리 입력 영역을 클릭해도 드롭다운이 닫히지 않는다', async () => {
       const mockOnChange = jest.fn();
       render(
@@ -136,11 +149,11 @@ describe('CategoryAutocomplete 관련 기능', () => {
 
       // 드롭다운이 열렸는지 확인
       await waitFor(() => {
-        expect(screen.getByPlaceholderText('새 카테고리')).toBeInTheDocument();
+        expect(screen.getByPlaceholderText(/새 카테고리/)).toBeInTheDocument();
       });
 
       // 새 카테고리 입력 영역 클릭
-      const newCategoryInput = screen.getByPlaceholderText('새 카테고리');
+      const newCategoryInput = screen.getByPlaceholderText(/새 카테고리/);
       await userEvent.click(newCategoryInput);
 
       // 드롭다운이 여전히 열려있는지 확인 (기존 옵션이 보이는지)
@@ -167,7 +180,7 @@ describe('CategoryAutocomplete 관련 기능', () => {
       await userEvent.click(input);
 
       // 새 카테고리 입력
-      const newCategoryInput = screen.getByPlaceholderText('새 카테고리');
+      const newCategoryInput = screen.getByPlaceholderText(/새 카테고리/);
       await userEvent.type(newCategoryInput, '테스트카테고리');
 
       // 추가 버튼 클릭 (AddIcon의 data-testid로 찾기)
@@ -201,7 +214,7 @@ describe('CategoryAutocomplete 관련 기능', () => {
       await userEvent.click(input);
 
       // 새 카테고리 입력
-      const newCategoryInput = screen.getByPlaceholderText('새 카테고리');
+      const newCategoryInput = screen.getByPlaceholderText(/새 카테고리/);
       await userEvent.type(newCategoryInput, '엔터테스트{enter}');
 
       // 카테고리가 추가되었는지 확인
@@ -226,7 +239,7 @@ describe('CategoryAutocomplete 관련 기능', () => {
       await userEvent.click(input);
 
       // 새 카테고리 입력 필드 찾기
-      const newCategoryInput = screen.getByPlaceholderText('새 카테고리');
+      const newCategoryInput = screen.getByPlaceholderText(/새 카테고리/);
       
       // 여러 글자 입력
       fireEvent.change(newCategoryInput, { target: { value: '테스트입력' } });
@@ -256,7 +269,7 @@ describe('CategoryAutocomplete 관련 기능', () => {
 
       // 드롭다운이 열렸는지 확인
       await waitFor(() => {
-        expect(screen.getByPlaceholderText('새 카테고리')).toBeInTheDocument();
+        expect(screen.getByPlaceholderText(/새 카테고리/)).toBeInTheDocument();
       });
 
       // Paper 요소가 존재하는지 확인 (minWidth 200px 적용됨)
@@ -280,11 +293,11 @@ describe('CategoryAutocomplete 관련 기능', () => {
 
       // 드롭다운이 열렸는지 확인
       await waitFor(() => {
-        expect(screen.getByPlaceholderText('새 카테고리')).toBeInTheDocument();
+        expect(screen.getByPlaceholderText(/새 카테고리/)).toBeInTheDocument();
       });
 
       // 새 카테고리 입력 필드 클릭 (내부 요소)
-      const newCategoryInput = screen.getByPlaceholderText('새 카테고리');
+      const newCategoryInput = screen.getByPlaceholderText(/새 카테고리/);
       fireEvent.focus(newCategoryInput);
 
       // blur 이벤트 발생 (외부 클릭 시뮬레이션)
@@ -292,7 +305,7 @@ describe('CategoryAutocomplete 관련 기능', () => {
 
       // 약간의 대기 후 드롭다운이 닫히는지 확인
       await waitFor(() => {
-        expect(screen.queryByPlaceholderText('새 카테고리')).not.toBeInTheDocument();
+        expect(screen.queryByPlaceholderText(/새 카테고리/)).not.toBeInTheDocument();
       }, { timeout: 300 });
     });
   });

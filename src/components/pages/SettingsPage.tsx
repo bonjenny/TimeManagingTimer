@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
+  Autocomplete,
   Box,
   Paper,
   Typography,
@@ -24,6 +25,7 @@ import {
   useTheme,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
+import ClearIcon from '@mui/icons-material/Clear';
 import { LocalizationProvider, TimePicker } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import DeleteForeverIcon from '@mui/icons-material/DeleteForever';
@@ -69,6 +71,7 @@ import {
   getPaletteThemeColors,
 } from '../../utils/colorPalette';
 import { applyPaletteHighlight } from '../../styles/tokens';
+import { getAllCategoryNames } from '../../constants/categoryCodeMap';
 import {
   useDeployCalendarStore,
   DEPLOY_CALENDAR_WEEKS_MIN,
@@ -254,6 +257,8 @@ const SettingsPage: React.FC = () => {
   
   // 카테고리 관리 상태
   const [newCategory, setNewCategory] = useState('');
+  // ERP(시간관리)에 등록된 카테고리 중 아직 안 쓰는 것만 후보로
+  const erp_category_options = getAllCategoryNames().filter((name) => !categories.includes(name));
   
   // 진행상태 관리 상태
   const [newStatusLabel, setNewStatusLabel] = useState('');
@@ -1287,20 +1292,26 @@ const SettingsPage: React.FC = () => {
           </SortableContext>
         </DndContext>
         
-        {/* 새 카테고리 추가 */}
+        {/* 새 카테고리 추가: ERP 카테고리 목록에서 고르거나 직접 입력 */}
         <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mb: 2 }}>
-          <TextField
+          <Autocomplete
+            freeSolo
             size="small"
-            placeholder="새 카테고리"
-            value={newCategory}
-            onChange={(e) => setNewCategory(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && newCategory.trim()) {
-                addCategory(newCategory.trim());
+            value={null}
+            options={erp_category_options}
+            inputValue={newCategory}
+            onInputChange={(_, value) => setNewCategory(value)}
+            onChange={(_, value) => {
+              const name = (typeof value === 'string' ? value : '').trim();
+              if (name) {
+                addCategory(name);
                 setNewCategory('');
               }
             }}
-            sx={{ width: { md: 200 }, flex: { xs: 1, md: '0 1 auto' }, minWidth: 0, ...TOUCH_INPUT_SX }}
+            sx={{ width: { md: 260 }, flex: { xs: 1, md: '0 1 auto' }, minWidth: 0 }}
+            renderInput={(params) => (
+              <TextField {...params} placeholder="ERP 카테고리 선택 또는 직접 입력" sx={TOUCH_INPUT_SX} />
+            )}
           />
           <Button
             variant="outlined"
@@ -1379,6 +1390,13 @@ const SettingsPage: React.FC = () => {
                 setNewStatusValue('');
               }
             }}
+            InputProps={{
+              endAdornment: newStatusLabel ? (
+                <IconButton size="small" aria-label="표시명 지우기" onClick={() => setNewStatusLabel('')} edge="end">
+                  <ClearIcon fontSize="small" />
+                </IconButton>
+              ) : undefined,
+            }}
             sx={{ width: { md: 150 }, flex: { xs: '1 1 120px', md: '0 1 auto' }, minWidth: 0, ...TOUCH_INPUT_SX }}
           />
           <TextField
@@ -1386,6 +1404,13 @@ const SettingsPage: React.FC = () => {
             placeholder="값 (자동생성)"
             value={newStatusValue}
             onChange={(e) => setNewStatusValue(e.target.value)}
+            InputProps={{
+              endAdornment: newStatusValue ? (
+                <IconButton size="small" aria-label="값 지우기" onClick={() => setNewStatusValue('')} edge="end">
+                  <ClearIcon fontSize="small" />
+                </IconButton>
+              ) : undefined,
+            }}
             sx={{ width: { md: 150 }, flex: { xs: '1 1 120px', md: '0 1 auto' }, minWidth: 0, ...TOUCH_INPUT_SX }}
           />
           {/* 휴대폰: 입력 2칸 아래 한 줄 전체 */}

@@ -32,6 +32,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import { useTimerStore, TimerLog } from '../../store/useTimerStore';
 import { useProjectStore } from '../../store/useProjectStore';
+import { renderProjectOption } from '../common/projectOptions';
 import { formatTimeRange, formatDuration } from '../../utils/timeUtils';
 import CategoryAutocomplete from '../common/CategoryAutocomplete';
 import { getPalette, getAdjustedPalette, getColorByIndex, loadPaletteSettings } from '../../utils/colorPalette';
@@ -100,9 +101,12 @@ const LABEL_WIDTH_STORAGE_KEY = 'timekeeper-gantt-label-width';
 
 const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
   const { logs, activeTimer, addLog, updateLog, deleteLog, stopTimer, themeConfig, getOrAssignColorIndex, activateScheduledTask } = useTimerStore();
-  const { getProjectName, projects } = useProjectStore();
+  const { getProjectName, projects, addProject, deleteProject } = useProjectStore();
   
   // 프로젝트 옵션 (코드 + 이름 형태로 표시)
+  const projectCodeOptions = useMemo(() => projects.map((p) => p.code), [projects]);
+  const projectNameOptions = useMemo(() => projects.map((p) => p.name), [projects]);
+
   const projectOptions = useMemo(() => {
     return projects.map(p => `[${p.code}] ${p.name}`);
   }, [projects]);
@@ -268,6 +272,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
   const [editingLog, setEditingLog] = useState<TimerLog | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editProjectCode, setEditProjectCode] = useState('');
+  const [editProjectName, setEditProjectName] = useState('');
   const [editCategory, setEditCategory] = useState<string | null>(null);
   const [editNote, setEditNote] = useState('');
   
@@ -351,6 +356,22 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
     }
   };
   
+  // 수정 창: 코드를 고르면 이름도 채운다 (코드를 지워도 이름은 남긴다)
+  // 이름을 고르면 코드도 채운다 (이름을 지워도 코드는 남긴다)
+  const handleEditProjectNameChange = (value: string) => {
+    setEditProjectName(value);
+    if (!value) return;
+    const matched = projects.find((p) => p.name === value);
+    if (matched) setEditProjectCode(matched.code);
+  };
+
+  const handleEditProjectCodeChange = (value: string) => {
+    handleProjectCodeChange(value, setEditProjectCode);
+    const code = value.match(/^\[([^\]]+)\]/)?.[1] ?? value;
+    const matched = projects.find((p) => p.code === code);
+    if (matched) setEditProjectName(matched.name);
+  };
+
   // 프로젝트 코드에서 표시용 문자열 생성
   const getProjectDisplayValue = (code: string) => {
     if (!code) return '';
@@ -1303,12 +1324,18 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
     setEditingLog(log);
     setEditTitle(log.title);
     setEditProjectCode(log.projectCode || '');
+    // 등록 안 된 코드면 getProjectName 이 코드를 그대로 돌려주므로 이름 칸은 비운다
+    setEditProjectName(log.projectCode ? (projects.find((p) => p.code === log.projectCode)?.name ?? '') : '');
     setEditCategory(log.category || null);
     setEditNote(log.note || '');
   };
 
   const handleEditSave = () => {
     if (editingLog && editTitle.trim()) {
+      // 코드와 이름을 모두 넣었으면 프로젝트 목록에 등록/갱신
+      if (editProjectCode.trim() && editProjectName.trim()) {
+        addProject({ code: editProjectCode.trim(), name: editProjectName.trim() });
+      }
       updateLog(editingLog.id, {
         title: editTitle,
         projectCode: editProjectCode || undefined,
@@ -1323,6 +1350,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
     setEditingLog(null);
     setEditTitle('');
     setEditProjectCode('');
+    setEditProjectName('');
     setEditCategory(null);
     setEditNote('');
   };
@@ -1955,23 +1983,45 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
               onChange={(e) => setEditTitle(e.target.value)}
               autoFocus
             />
-            <Box sx={{ display: 'flex', gap: 2 }}>
+            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
               <Autocomplete
                 freeSolo
-                options={projectOptions}
-                value={getProjectDisplayValue(editProjectCode)}
-                onInputChange={(_e, newValue) => handleProjectCodeChange(newValue, setEditProjectCode)}
+                options={projectCodeOptions}
+                // value 대신 inputValue 만 제어한다 — value 가 입력값과 같으면 MUI 가 목록을 거르지 않는다
+                value={null}
+                inputValue={editProjectCode}
+                onInputChange={(_e, newValue) => handleEditProjectCodeChange(newValue)}
+                renderOption={(props, option) =>
+                  renderProjectOption(props, option, projects.find((p) => p.code === option)?.name, () => deleteProject(option))
+                }
                 renderInput={(params) => <TextField {...params} label="프로젝트 코드" />}
-                sx={{ flex: 1 }}
+                sx={{ flex: 1, minWidth: 180 }}
               />
-              <CategoryAutocomplete
-                value={editCategory}
-                onChange={(newValue) => setEditCategory(newValue)}
-                label="카테고리"
-                variant="outlined"
-                sx={{ flex: 1 }}
+              {/* 코드 + 이름을 모두 넣고 저장하면 새 프로젝트로 등록된다 */}
+              <Autocomplete
+                freeSolo
+                options={projectNameOptions}
+                value={null}
+                inputValue={editProjectName}
+                onInputChange={(_e, newValue) => handleEditProjectNameChange(newValue || '')}
+                renderOption={(props, option) =>
+                  renderProjectOption(props, option, projects.find((p) => p.name === option)?.code, () => {
+                    const target = projects.find((p) => p.name === option);
+                    if (target) deleteProject(target.code);
+                  })
+                }
+                renderInput={(params) => (
+                  <TextField {...params} label="프로젝트 명" placeholder="새 프로젝트면 이름 입력" />
+                )}
+                sx={{ flex: 1, minWidth: 180 }}
               />
             </Box>
+            <CategoryAutocomplete
+              value={editCategory}
+              onChange={(newValue) => setEditCategory(newValue)}
+              label="카테고리"
+              variant="outlined"
+            />
             <TextField
               label="비고"
               placeholder="추가 메모"

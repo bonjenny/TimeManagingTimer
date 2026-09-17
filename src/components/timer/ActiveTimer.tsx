@@ -8,11 +8,13 @@ import { useProjectStore } from '../../store/useProjectStore';
 import { useTimerLogic } from '../../hooks/useTimerLogic';
 import { formatTimeDisplay, formatDuration, formatDurationShort } from '../../utils/timeUtils';
 import CategoryAutocomplete from '../common/CategoryAutocomplete';
+import NewProjectDialog from '../common/NewProjectDialog';
+import { NEW_PROJECT_OPTION, filterProjectCodeOptions, renderNewProjectOption, renderProjectOption } from '../common/projectOptions';
 
 const ActiveTimer: React.FC = () => {
   const { activeTimer, elapsedSeconds, showSeconds } = useTimerLogic();
   const { logs, resumeTimer, completeTimer, updateActiveTimer, pauseAndMoveToLogs } = useTimerStore();
-  const { projects, getProjectName, addProject } = useProjectStore();
+  const { projects, getProjectName, deleteProject } = useProjectStore();
   const theme = useTheme();
   const is_compact = useMediaQuery(theme.breakpoints.down('md'));
 
@@ -24,16 +26,18 @@ const ActiveTimer: React.FC = () => {
   // 카테고리 편집 상태
   const [isEditingCategory, setIsEditingCategory] = useState(false);
 
-  // 프로젝트 편집 상태
+  // 프로젝트 편집 상태 (코드 / 이름 따로)
   const [isEditingProject, setIsEditingProject] = useState(false);
+  const [editProjectCode, setEditProjectCode] = useState('');
+  // 목록에 없는 코드를 넣었을 때 이름을 받는 창
+  const [new_project_code, setNewProjectCode] = useState('');
 
   // 비고 편집 상태
   const [isEditingNote, setIsEditingNote] = useState(false);
   const [editNote, setEditNote] = useState('');
   const noteInputRef = useRef<HTMLInputElement>(null);
 
-  // 프로젝트 옵션 (코드 + 이름 형태로 표시)
-  const projectOptions = projects.map(p => ({ code: p.code, label: `[${p.code}] ${p.name}` }));
+  const projectCodeOptions = projects.map((p) => p.code);
 
   // 같은 제목의 모든 로그 누적 시간 계산 (현재 세션 포함)
   const totalAccumulatedSeconds = useMemo(() => {
@@ -164,65 +168,101 @@ const ActiveTimer: React.FC = () => {
     />
   );
 
+  // 프로젝트 편집: 코드 한 칸. 나갈 때 저장하고, 목록에 없는 코드면 이름 받는 창을 띄운다.
+  const commitProject = () => {
+    const code = editProjectCode.trim();
+    updateActiveTimer({ projectCode: code || undefined });
+    setIsEditingProject(false);
+    if (code && !projects.some((p) => p.code === code)) setNewProjectCode(code);
+  };
+
+  const startProjectEdit = () => {
+    setEditProjectCode(activeTimer.projectCode || '');
+    setIsEditingProject(true);
+  };
+
+  const new_project_dialog = <NewProjectDialog code={new_project_code} onClose={() => setNewProjectCode('')} />;
+
+  const project_field_sx = { '& .MuiInput-root': { fontSize: is_compact ? 16 : '0.75rem' } };
+
   const project_chip = isEditingProject ? (
-    <ClickAwayListener onClickAway={() => setIsEditingProject(false)}>
-      <Box sx={{ minWidth: 150 }}>
+    <ClickAwayListener onClickAway={commitProject}>
+      <Box sx={{ display: 'flex', minWidth: 0, flex: is_compact ? 1 : 'none' }}>
         <Autocomplete
+          freeSolo
           size="small"
-          options={projectOptions}
-          getOptionLabel={(option) => typeof option === 'string' ? option : option.label}
-          value={projectOptions.find(p => p.code === activeTimer.projectCode) || null}
+          openOnFocus
+          selectOnFocus
+          options={projectCodeOptions}
+          value={null}
+          inputValue={editProjectCode}
+          filterOptions={(options, state) => filterProjectCodeOptions(options, state.inputValue, projects)}
+          onInputChange={(_e, newValue) => setEditProjectCode(newValue)}
           onChange={(_e, newValue) => {
-            if (newValue && typeof newValue !== 'string') {
-              updateActiveTimer({ projectCode: newValue.code });
-            } else if (typeof newValue === 'string' && newValue.trim()) {
-              // 직접 타이핑: "[코드] 이름" / 코드 / 이름 → 기존 프로젝트, 없으면 코드로 새 프로젝트 등록
-              const text = newValue.trim();
-              const code = text.match(/^\[([^\]]+)\]/)?.[1] || text;
-              const found = projects.find(
-                (p) => p.code.toLowerCase() === code.toLowerCase() || p.name === text
-              );
-              if (!found) addProject({ code, name: code });
-              updateActiveTimer({ projectCode: found ? found.code : code });
-            } else {
-              updateActiveTimer({ projectCode: undefined });
+            const value = newValue || '';
+            // "새 프로젝트로 등록" 줄: 코드만 적용하고 이름은 창에서 받는다 (commitProject 가 띄운다)
+            const code = value.startsWith(NEW_PROJECT_OPTION) ? value.slice(NEW_PROJECT_OPTION.length) : value;
+            setEditProjectCode(code);
+            if (value.startsWith(NEW_PROJECT_OPTION)) {
+              updateActiveTimer({ projectCode: code });
+              setIsEditingProject(false);
+              setNewProjectCode(code);
             }
-            setIsEditingProject(false);
           }}
+          renderOption={(props, option) =>
+            option.startsWith(NEW_PROJECT_OPTION)
+              ? renderNewProjectOption(props, option.slice(NEW_PROJECT_OPTION.length))
+              : renderProjectOption(props, option, projects.find((p) => p.code === option)?.name, () => deleteProject(option))
+          }
+          componentsProps={{ popper: { style: { width: 280 }, placement: 'bottom-start' } }}
           renderInput={(params) => (
             <TextField
               {...params}
               variant="standard"
-              placeholder="프로젝트"
+              placeholder="프로젝트 코드"
               autoFocus
-              onFocus={(e) => e.target.select()} // 칩 클릭으로 열리면 selectOnFocus 가 안 먹어 직접 전체 선택
-              sx={{ '& .MuiInput-root': { fontSize: is_compact ? 16 : '0.75rem' } }}
+              onKeyDown={(e) => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) commitProject(); }}
+              sx={project_field_sx}
             />
           )}
-          freeSolo
-          autoHighlight
-          autoSelect
-          selectOnFocus
-          openOnFocus
+          // 드롭다운 폭만큼만. 카드 끝까지 늘어나면 너무 길다.
+          sx={{ width: is_compact ? '100%' : 280 }}
         />
       </Box>
     </ClickAwayListener>
-  ) : (
+  ) : activeTimer.projectCode ? (
     <Chip
-      label={activeTimer.projectCode ? getProjectName(activeTimer.projectCode) : '프로젝트 추가'}
+      label={activeTimer.projectCode}
       size="small"
       variant="outlined"
-      onClick={() => setIsEditingProject(true)}
+      onClick={startProjectEdit}
+      sx={{
+        height: 20,
+        fontSize: '0.65rem',
+        fontWeight: 600,
+        cursor: 'pointer',
+        minWidth: 0,
+        '& .MuiChip-label': { overflow: 'hidden', textOverflow: 'ellipsis' },
+        '&:hover': { bgcolor: 'var(--bg-hover)' },
+      }}
+      title={`[${activeTimer.projectCode}] ${getProjectName(activeTimer.projectCode)} - 클릭하여 변경`}
+    />
+  ) : (
+    <Chip
+      label="프로젝트 추가"
+      size="small"
+      variant="outlined"
+      onClick={startProjectEdit}
       sx={{
         height: 20,
         fontSize: '0.65rem',
         cursor: 'pointer',
-        borderStyle: activeTimer.projectCode ? 'solid' : 'dashed',
-        color: activeTimer.projectCode ? 'inherit' : 'var(--text-disabled)',
+        borderStyle: 'dashed',
+        color: 'var(--text-disabled)',
         '&:hover': { bgcolor: 'var(--bg-hover)' },
         ...(is_compact && { maxWidth: '100%' }),
       }}
-      title={activeTimer.projectCode ? `[${activeTimer.projectCode}]` : '클릭하여 프로젝트 추가'}
+      title="클릭하여 프로젝트 추가"
     />
   );
 
@@ -534,6 +574,7 @@ const ActiveTimer: React.FC = () => {
             완료
           </Button>
         </Box>
+        {new_project_dialog}
       </Paper>
     );
   }
@@ -603,7 +644,7 @@ const ActiveTimer: React.FC = () => {
           </Button>
         </Box>
       </Box>
-
+      {new_project_dialog}
     </Paper>
   );
 };

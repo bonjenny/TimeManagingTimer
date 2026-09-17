@@ -26,6 +26,15 @@ const getNextHourPlusOne = (): string => {
 // 모바일(md 미만) 입력칸: 전체 너비 + 16px 글자 (iOS 자동 확대 방지)
 const COMPACT_FIELD_SX = { width: '100%', '& .MuiInputBase-input': { fontSize: 16 } };
 
+// 입력줄 오른쪽 아이콘 버튼 공통: 같은 크기·같은 호버
+const ROW_ICON_BTN_SX = {
+  p: '6px',
+  color: 'text.secondary',
+  '&:hover': { color: 'text.primary', bgcolor: 'var(--bg-hover)' },
+  // 기본 비활성색(0.26)은 옆 아이콘보다 너무 흐려서 한 세트로 안 보인다
+  '&.Mui-disabled': { color: 'text.disabled' },
+} as const;
+
 const TimerInput: React.FC = () => {
   const { startTimer, addLog, getRecentTitles, removeRecentTitle } = useTimerStore();
   const { projects, addProject, getProjectByCode, deleteProject } = useProjectStore();
@@ -137,10 +146,8 @@ const TimerInput: React.FC = () => {
   const handleProjectCodeChange = useCallback((value: string) => {
     setProjectCode(value);
 
-    if (!value) {
-      setProjectName('');
-      return;
-    }
+    // 코드를 지워도 이름은 유지한다 (이름 칸에서 지우기). 이름 칸 동작과 대칭.
+    if (!value) return;
 
     const matchedProject = getProjectByCode(value);
     if (matchedProject) {
@@ -574,13 +581,13 @@ const TimerInput: React.FC = () => {
         {/* 비고 */}
         {note_field}
 
+        {/* 오른쪽 아이콘 3종: 크기·색·호버를 한 세트로 맞춘다 */}
         {/* 예약 모드 토글 */}
         <Tooltip title={is_scheduling ? '예약 모드 해제' : '예약 모드 (Alt+Enter)'}>
           <IconButton
             size="small"
             onClick={handleToggleScheduling}
-            color={is_scheduling ? 'warning' : 'default'}
-            sx={{ p: '6px' }}
+            sx={{ ...ROW_ICON_BTN_SX, color: is_scheduling ? 'warning.main' : 'text.secondary' }}
           >
             <ScheduleIcon sx={{ fontSize: 20 }} />
           </IconButton>
@@ -590,7 +597,7 @@ const TimerInput: React.FC = () => {
         {!is_scheduling && (
           <Tooltip title="할 일로 추가 - 업무 기록에 미완료로 등록 (Ctrl+Enter)">
             <span>
-              <IconButton size="small" onClick={handleAddTodo} disabled={!title.trim()} sx={{ p: '6px' }}>
+              <IconButton size="small" onClick={handleAddTodo} disabled={!title.trim()} sx={ROW_ICON_BTN_SX}>
                 <PlaylistAddIcon sx={{ fontSize: 20 }} />
               </IconButton>
             </span>
@@ -599,16 +606,20 @@ const TimerInput: React.FC = () => {
 
         {/* 시작/예약 버튼 */}
         <Tooltip title={is_scheduling ? '예약 등록 (Enter)' : '타이머 시작 (Enter)'}>
-            <span>
-                <IconButton
-                    color={is_scheduling ? 'warning' : 'primary'}
-                    sx={{ p: '10px' }}
-                    onClick={handleStart}
-                    disabled={is_start_disabled}
-                >
-                    {is_scheduling ? <EventNoteIcon /> : <PlayArrowIcon />}
-                </IconButton>
-            </span>
+          <span>
+            <IconButton
+              size="small"
+              onClick={handleStart}
+              disabled={is_start_disabled}
+              sx={{
+                ...ROW_ICON_BTN_SX,
+                // 주 동작이라 입력이 채워지면 강조색
+                color: is_scheduling ? 'warning.main' : 'primary.main',
+              }}
+            >
+              {is_scheduling ? <EventNoteIcon sx={{ fontSize: 20 }} /> : <PlayArrowIcon sx={{ fontSize: 20 }} />}
+            </IconButton>
+          </span>
         </Tooltip>
       </Box>
 

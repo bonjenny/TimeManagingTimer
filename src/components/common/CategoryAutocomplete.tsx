@@ -29,6 +29,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useCategoryStore } from '../../store/useCategoryStore';
+import { getAllCategoryNames } from '../../constants/categoryCodeMap';
 
 interface CategoryAutocompleteProps {
   value: string | null;
@@ -129,11 +130,38 @@ const CustomPaper = React.memo<{
   onInputFocus: () => void;
   onInputBlur: () => void;
 }>(({ children, inputRef, onAddCategory, onInputFocus, onInputBlur }) => {
-  const [addButtonDisabled, setAddButtonDisabled] = useState(true);
+  const [addInput, setAddInput] = useState('');
+  const addButtonDisabled = !addInput.trim();
+  // ERP(시간관리)에 등록된 카테고리 중 아직 안 쓰는 것을 드롭다운 안에서 바로 고른다.
+  const categories = useCategoryStore((state) => state.categories);
+  const addCategory = useCategoryStore((state) => state.addCategory);
+  const erp_options = useMemo(() => {
+    const keyword = addInput.trim().toLowerCase();
+    return getAllCategoryNames()
+      .filter((name) => !categories.includes(name))
+      .filter((name) => !keyword || name.toLowerCase().includes(keyword));
+  }, [categories, addInput]);
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setAddButtonDisabled(!e.target.value.trim());
+    setAddInput(e.target.value);
   }, []);
+
+  const submitAdd = useCallback(() => {
+    onAddCategory();
+    setAddInput('');
+  }, [onAddCategory]);
+
+  // ERP 목록에서 고르면 바로 카테고리로 추가하고 입력칸을 비운다 (드롭다운은 열린 채)
+  const handlePickErp = useCallback((e: React.MouseEvent, name: string) => {
+    e.stopPropagation();
+    e.preventDefault();
+    addCategory(name);
+    setAddInput('');
+    if (inputRef.current) {
+      inputRef.current.value = '';
+      inputRef.current.focus();
+    }
+  }, [addCategory, inputRef]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
     e.stopPropagation();
@@ -141,10 +169,10 @@ const CustomPaper = React.memo<{
       const input = e.target as HTMLInputElement;
       if (input.value.trim()) {
         e.preventDefault();
-        onAddCategory();
+        submitAdd();
       }
     }
-  }, [onAddCategory]);
+  }, [submitAdd]);
 
   return (
     <Paper elevation={8} sx={{ overflow: 'hidden', minWidth: 200 }}>
@@ -187,7 +215,7 @@ const CustomPaper = React.memo<{
           onClick={(e) => {
             e.stopPropagation();
             e.preventDefault();
-            onAddCategory();
+            submitAdd();
           }}
           onMouseDown={(e) => {
             e.stopPropagation();
@@ -212,6 +240,43 @@ const CustomPaper = React.memo<{
           추가
         </Typography>
       </Box>
+
+      {/* ERP(시간관리)에 등록된 카테고리 — 눌러서 바로 추가 */}
+      {erp_options.length > 0 && (
+        <Box
+          sx={{ borderTop: 1, borderColor: 'divider', bgcolor: 'action.hover' }}
+          onMouseDown={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            onInputFocus();
+          }}
+        >
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', px: 1.5, pt: 0.75 }}>
+            ERP 카테고리
+          </Typography>
+          <Box sx={{ maxHeight: 132, overflowY: 'auto', py: 0.5 }}>
+            {erp_options.map((name) => (
+              <Box
+                key={name}
+                onClick={(e) => handlePickErp(e, name)}
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.75,
+                  px: 1.5,
+                  py: 0.5,
+                  fontSize: '0.8rem',
+                  cursor: 'pointer',
+                  '&:hover': { bgcolor: 'action.selected' },
+                }}
+              >
+                <AddIcon sx={{ fontSize: 14, color: 'text.disabled', flexShrink: 0 }} />
+                {name}
+              </Box>
+            ))}
+          </Box>
+        </Box>
+      )}
     </Paper>
   );
 });

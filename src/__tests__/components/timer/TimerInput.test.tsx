@@ -79,6 +79,21 @@ describe('TimerInput', () => {
     const { activeTimer } = useTimerStore.getState();
     expect(activeTimer?.projectCode).toBe('PRJ001');
   });
+
+  it('프로젝트 코드를 지워도 프로젝트 명은 남는다', async () => {
+    const user = userEvent.setup();
+    render(<TimerInput />);
+
+    const code_input = screen.getByPlaceholderText(/프로젝트 코드/) as HTMLInputElement;
+    const name_input = screen.getByPlaceholderText(/프로젝트 명/) as HTMLInputElement;
+
+    await user.type(code_input, 'PRJ001');
+    await user.type(name_input, '테스트 프로젝트');
+    await user.clear(code_input);
+
+    expect(code_input.value).toBe('');
+    expect(name_input.value).toBe('테스트 프로젝트');
+  });
 });
 
 describe('할 일로 추가 (Ctrl+Enter)', () => {

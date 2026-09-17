@@ -4,6 +4,7 @@
  */
 import { render, screen, waitFor } from '../../../test-utils';
 import userEvent from '@testing-library/user-event';
+import { useCategoryStore } from '../../../store/useCategoryStore';
 import SettingsPage from '../../../components/pages/SettingsPage';
 
 describe('SettingsPage', () => {
@@ -248,7 +249,18 @@ describe('SettingsPage', () => {
 
     it('새 카테고리 입력 필드가 렌더링된다', () => {
       render(<SettingsPage />);
-      expect(screen.getByPlaceholderText(/새 카테고리/)).toBeInTheDocument();
+      expect(screen.getByPlaceholderText(/ERP 카테고리 선택 또는 직접 입력/)).toBeInTheDocument();
+    });
+
+    it('ERP 카테고리 목록에서 골라 추가할 수 있다', async () => {
+      const user = userEvent.setup();
+      render(<SettingsPage />);
+
+      const input = screen.getByPlaceholderText(/ERP 카테고리 선택 또는 직접 입력/);
+      await user.type(input, '튜닝');
+      await user.click(await screen.findByRole('option', { name: '튜닝' }));
+
+      expect(useCategoryStore.getState().categories).toContain('튜닝');
     });
 
     it('카테고리 추가 버튼이 렌더링된다', () => {

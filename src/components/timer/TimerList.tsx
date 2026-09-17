@@ -45,6 +45,8 @@ import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import { useTimerStore, TimerLog, DeletedLog } from '../../store/useTimerStore';
 import { useProjectStore } from '../../store/useProjectStore';
+import NewProjectDialog from '../common/NewProjectDialog';
+import { NEW_PROJECT_OPTION, filterProjectCodeOptions, renderNewProjectOption, renderProjectOption } from '../common/projectOptions';
 import { formatDuration, formatDurationShort, getDurationSecondsExcludingLunch } from '../../utils/timeUtils';
 import { getItem, setItem as setStorageItem } from '../../utils/storage';
 import CategoryAutocomplete from '../common/CategoryAutocomplete';
@@ -120,7 +122,7 @@ interface TaskGroup {
 
 const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
   const { logs, deleteLog, startTimer, updateLog, updateActiveTimer, deleted_logs, restoreLog, permanentlyDeleteLog, emptyTrash, reopenTimer, activeTimer, pauseAndMoveToLogs, themeConfig } = useTimerStore();
-  const { getProjectName, projects } = useProjectStore();
+  const { getProjectName, projects, addProject, deleteProject } = useProjectStore();
   const theme = useTheme();
   const is_compact = useMediaQuery(theme.breakpoints.down('md')); // md 미만: 카드 목록 레이아웃
   // 모바일 ⋮ 메뉴 상태
@@ -136,6 +138,7 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
   const [editingLog, setEditingLog] = useState<TimerLog | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editProjectCode, setEditProjectCode] = useState('');
+  const [editProjectName, setEditProjectName] = useState('');
   const [editCategory, setEditCategory] = useState<string | null>(null);
   const [editNote, setEditNote] = useState('');
   const [editStartTime, setEditStartTime] = useState('');
@@ -146,6 +149,8 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
   const [inlineTitle, setInlineTitle] = useState('');
   const [editingInlineProject, setEditingInlineProject] = useState<string | null>(null); // 편집 중인 task.title
   const [inlineProjectCode, setInlineProjectCode] = useState('');
+  // 목록에 없는 코드를 인라인으로 넣었을 때 이름을 물어보는 창
+  const [new_project_code, setNewProjectCode] = useState('');
   const [editingInlineCategory, setEditingInlineCategory] = useState<string | null>(null); // 편집 중인 task.title
   const [inlineCategory, setInlineCategory] = useState<string | null>(null);
   
@@ -161,6 +166,9 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
   const [inlineNoteValue, setInlineNoteValue] = useState('');
   
   // 프로젝트 옵션 (코드 + 이름 형태로 표시)
+  const projectCodeOptions = useMemo(() => projects.map((p) => p.code), [projects]);
+  const projectNameOptions = useMemo(() => projects.map((p) => p.name), [projects]);
+
   const projectOptions = useMemo(() => {
     return projects.map(p => `[${p.code}] ${p.name}`);
   }, [projects]);
@@ -487,6 +495,7 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
     setEditingLog(log);
     setEditTitle(log.title);
     setEditProjectCode(log.projectCode || '');
+    setEditProjectName(log.projectCode ? (projects.find((p) => p.code === log.projectCode)?.name ?? '') : '');
     setEditCategory(log.category || null);
     setEditNote(log.note || '');
     setEditStartTime(timestampToDatetimeLocal(log.startTime));
@@ -495,6 +504,10 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
 
   const handleEditSave = () => {
     if (editingLog && editTitle.trim()) {
+      // 코드와 이름을 모두 넣었으면 프로젝트 목록에 등록/갱신
+      if (editProjectCode.trim() && editProjectName.trim()) {
+        addProject({ code: editProjectCode.trim(), name: editProjectName.trim() });
+      }
       const newStartTime = datetimeLocalToTimestamp(editStartTime);
       const newEndTime = datetimeLocalToTimestamp(editEndTime);
       
@@ -535,6 +548,7 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
 
   const handleEditClose = () => {
     setEditingLog(null);
+    setEditProjectName('');
     setEditTitle('');
     setEditProjectCode('');
     setEditCategory(null);
@@ -584,6 +598,10 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
         updateLog(session.id, { projectCode: code || undefined });
       });
     }
+    // 목록에 없는 코드면 이름을 받아 새 프로젝트로 등록할 수 있게 한다
+    if (code && !projects.some((p) => p.code === code)) {
+      setNewProjectCode(code);
+      }
     setEditingInlineProject(null);
     setInlineProjectCode('');
   };
@@ -721,14 +739,22 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
   };
   
   // 프로젝트 코드 입력 처리 (자동완성 선택 또는 직접 입력)
+  // 이름을 고르면 코드도 채운다 (이름을 지워도 코드는 남긴다)
+  const handleProjectNameChange = (value: string) => {
+    setEditProjectName(value);
+    if (!value) return;
+    const matched = projects.find((p) => p.name === value);
+    if (matched) setEditProjectCode(matched.code);
+  };
+
   const handleProjectCodeChange = (value: string) => {
     // [코드] 이름 형태에서 코드 추출
     const match = value.match(/^\[([^\]]+)\]/);
-    if (match) {
-      setEditProjectCode(match[1]);
-    } else {
-      setEditProjectCode(value);
-    }
+    const code = match ? match[1] : value;
+    setEditProjectCode(code);
+    // 아는 코드면 이름도 채운다. 코드를 지워도 이름은 남긴다.
+    const matched = projects.find((p) => p.code === code);
+    if (matched) setEditProjectName(matched.name);
   };
   
   // 프로젝트 코드에서 표시용 문자열 생성
@@ -768,18 +794,32 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
       <Autocomplete
         freeSolo
         size="small"
-        options={projectOptions}
-        value={getProjectDisplayValue(inlineProjectCode)}
+        options={projectCodeOptions}
+        // value 대신 inputValue 만 제어한다 — value 가 입력값과 같으면 MUI 가 목록을 거르지 않는다
+        value={null}
+        inputValue={inlineProjectCode}
+        filterOptions={(options, state) => filterProjectCodeOptions(options, state.inputValue, projects)}
         onInputChange={(_e, newValue) => setInlineProjectCode(newValue)}
         onChange={(_e, newValue) => {
-          saveInlineProject(task, newValue || '');
+          const value = newValue || '';
+          // 새 프로젝트 줄을 골랐으면 코드만 적용하고 이름 받는 창을 띄운다 (saveInlineProject 가 처리)
+          const code = value.startsWith(NEW_PROJECT_OPTION) ? value.slice(NEW_PROJECT_OPTION.length) : value;
+          saveInlineProject(task, code);
         }}
         onBlur={() => saveInlineProject(task, inlineProjectCode)}
+        renderOption={(props, option) =>
+          option.startsWith(NEW_PROJECT_OPTION)
+            ? renderNewProjectOption(props, option.slice(NEW_PROJECT_OPTION.length))
+            : renderProjectOption(props, option, projects.find((p) => p.code === option)?.name, () => deleteProject(option))
+        }
+        // 목록 칸이 좁아 글자가 세 줄로 접히던 문제 — 드롭다운만 넓게
+        componentsProps={{ popper: { style: { width: 300 }, placement: 'bottom-start' } }}
         renderInput={(params) => (
           <TextField
             {...params}
             variant="standard"
             autoFocus
+            placeholder="코드 입력 / 선택"
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 saveInlineProject(task, inlineProjectCode);
@@ -1697,6 +1737,9 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
         )}
       </Paper>
 
+      {/* 목록에 없는 코드를 인라인으로 넣었을 때 이름 받기 */}
+      <NewProjectDialog code={new_project_code} onClose={() => setNewProjectCode('')} />
+
       {/* 수정 다이얼로그 */}
       <Dialog 
         open={!!editingLog} 
@@ -1720,23 +1763,44 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
               onChange={(e) => setEditTitle(e.target.value)}
               autoFocus
             />
-            <Box sx={{ display: 'flex', gap: 2 }}>
+            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
               <Autocomplete
                 freeSolo
-                options={projectOptions}
-                value={getProjectDisplayValue(editProjectCode)}
+                options={projectCodeOptions}
+                value={null}
+                inputValue={editProjectCode}
                 onInputChange={(_e, newValue) => handleProjectCodeChange(newValue)}
+                renderOption={(props, option) =>
+                  renderProjectOption(props, option, projects.find((p) => p.code === option)?.name, () => deleteProject(option))
+                }
                 renderInput={(params) => <TextField {...params} label="프로젝트 코드" />}
-                sx={{ flex: 1 }}
+                sx={{ flex: 1, minWidth: 180 }}
               />
-              <CategoryAutocomplete
-                value={editCategory}
-                onChange={(newValue) => setEditCategory(newValue)}
-                label="카테고리"
-                variant="outlined"
-                sx={{ flex: 1 }}
+              {/* 코드 + 이름을 모두 넣고 저장하면 새 프로젝트로 등록된다 */}
+              <Autocomplete
+                freeSolo
+                options={projectNameOptions}
+                value={null}
+                inputValue={editProjectName}
+                onInputChange={(_e, newValue) => handleProjectNameChange(newValue || '')}
+                renderOption={(props, option) =>
+                  renderProjectOption(props, option, projects.find((p) => p.name === option)?.code, () => {
+                    const target = projects.find((p) => p.name === option);
+                    if (target) deleteProject(target.code);
+                  })
+                }
+                renderInput={(params) => (
+                  <TextField {...params} label="프로젝트 명" placeholder="새 프로젝트면 이름 입력" />
+                )}
+                sx={{ flex: 1, minWidth: 180 }}
               />
             </Box>
+            <CategoryAutocomplete
+              value={editCategory}
+              onChange={(newValue) => setEditCategory(newValue)}
+              label="카테고리"
+              variant="outlined"
+            />
             <TextField
               label="비고"
               placeholder="추가 메모"
