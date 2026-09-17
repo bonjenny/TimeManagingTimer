@@ -87,6 +87,8 @@ export const filterProjectCodeOptions = (
     const name = projects.find((p) => p.code === code)?.name ?? '';
     return `${code} ${name}`.toLowerCase().includes(keyword);
   });
-  if (input && !options.includes(input)) filtered.unshift(NEW_PROJECT_OPTION + input);
+  // 이미 있는 코드거나 이미 있는 이름이면 등록 줄을 띄우지 않는다
+  const exists = options.includes(input) || projects.some((p) => p.name === input);
+  if (input && !exists) filtered.unshift(NEW_PROJECT_OPTION + input);
   return filtered;
 };

@@ -168,16 +168,25 @@ const ActiveTimer: React.FC = () => {
     />
   );
 
-  // 프로젝트 편집: 코드 한 칸. 나갈 때 저장하고, 목록에 없는 코드면 이름 받는 창을 띄운다.
+  // 칸에는 프로젝트 명을 보여주되(등록된 이름이 없으면 코드), 저장은 코드로 한다.
+  const resolveProjectCode = (text: string) => {
+    const value = text.trim();
+    if (!value) return '';
+    if (projects.some((p) => p.code === value)) return value;
+    return projects.find((p) => p.name === value)?.code ?? value;
+  };
+
+  // 프로젝트 편집: 한 칸. 나갈 때 저장하고, 목록에 없는 코드면 이름 받는 창을 띄운다.
   const commitProject = () => {
-    const code = editProjectCode.trim();
+    const code = resolveProjectCode(editProjectCode);
     updateActiveTimer({ projectCode: code || undefined });
     setIsEditingProject(false);
     if (code && !projects.some((p) => p.code === code)) setNewProjectCode(code);
   };
 
   const startProjectEdit = () => {
-    setEditProjectCode(activeTimer.projectCode || '');
+    const code = activeTimer.projectCode || '';
+    setEditProjectCode(code ? getProjectName(code) : '');
     setIsEditingProject(true);
   };
 
@@ -201,13 +210,16 @@ const ActiveTimer: React.FC = () => {
           onChange={(_e, newValue) => {
             const value = newValue || '';
             // "새 프로젝트로 등록" 줄: 코드만 적용하고 이름은 창에서 받는다 (commitProject 가 띄운다)
-            const code = value.startsWith(NEW_PROJECT_OPTION) ? value.slice(NEW_PROJECT_OPTION.length) : value;
-            setEditProjectCode(code);
             if (value.startsWith(NEW_PROJECT_OPTION)) {
+              const code = value.slice(NEW_PROJECT_OPTION.length);
+              setEditProjectCode(code);
               updateActiveTimer({ projectCode: code });
               setIsEditingProject(false);
               setNewProjectCode(code);
+              return;
             }
+            // 목록에서 고르면 칸에는 이름을 보여준다 (값은 코드로 저장)
+            setEditProjectCode(projects.find((p) => p.code === value)?.name ?? value);
           }}
           renderOption={(props, option) =>
             option.startsWith(NEW_PROJECT_OPTION)
@@ -219,7 +231,7 @@ const ActiveTimer: React.FC = () => {
             <TextField
               {...params}
               variant="standard"
-              placeholder="프로젝트 코드"
+              placeholder="프로젝트 명 또는 코드"
               autoFocus
               onKeyDown={(e) => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) commitProject(); }}
               sx={project_field_sx}
@@ -232,7 +244,8 @@ const ActiveTimer: React.FC = () => {
     </ClickAwayListener>
   ) : activeTimer.projectCode ? (
     <Chip
-      label={activeTimer.projectCode}
+      // 이름이 등록돼 있으면 이름, 없으면 코드 (getProjectName 이 코드를 그대로 돌려준다)
+      label={getProjectName(activeTimer.projectCode)}
       size="small"
       variant="outlined"
       onClick={startProjectEdit}

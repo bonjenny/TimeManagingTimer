@@ -556,12 +556,17 @@ const TimeManagement: React.FC = () => {
             onKeyDown={handleKeyDown}
             size="small"
             autoFocus
-            sx={{ minWidth: 120 }}
+            sx={{ minWidth: 140 }}
+            // 목록은 두 줄이지만 고른 뒤에는 표와 같이 프로젝트명 한 줄로 보여준다
+            renderValue={(value) => (value ? getProjectName(value as string) : '없음')}
           >
             <MenuItem value="">없음</MenuItem>
             {projects.map((project) => (
-              <MenuItem key={project.code} value={project.code}>
-                {project.name}
+              <MenuItem key={project.code} value={project.code} sx={{ display: 'block', py: 0.75 }}>
+                <Typography sx={{ fontSize: '0.8rem', fontWeight: 700, lineHeight: 1.3 }}>{project.code}</Typography>
+                <Typography sx={{ fontSize: '0.95rem', color: 'text.secondary', lineHeight: 1.35 }}>
+                  {project.name}
+                </Typography>
               </MenuItem>
             ))}
           </Select>
