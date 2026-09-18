@@ -253,7 +253,7 @@ const SettingsPage: React.FC = () => {
   const { setThemeConfig, themeConfig } = useTimerStore();
   const { categories, addCategory, removeCategory, reorderCategories, resetToDefault: resetCategories } = useCategoryStore();
   const { statuses, addStatus, removeStatus, reorderStatuses, resetToDefault: resetStatuses } = useStatusStore();
-  const { weeks_to_show, setWeeksToShow } = useDeployCalendarStore();
+  const { weeks_to_show, setWeeksToShow, show_today, setShowToday, view_mode, setViewMode } = useDeployCalendarStore();
   
   // 카테고리 관리 상태
   const [newCategory, setNewCategory] = useState('');
@@ -744,8 +744,38 @@ const SettingsPage: React.FC = () => {
           </Typography>
         </Box>
 
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-          배포 캘린더에서 한 번에 표시할 주 수를 선택합니다. 설정은 자동으로 저장됩니다.
+        <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
+          보기 방식
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+          배포 캘린더를 열 때 보여줄 방식입니다. 캘린더 상단의 「주 | 월」 버튼과 같은 설정이며 자동으로 저장됩니다.
+        </Typography>
+        <ToggleButtonGroup
+          value={view_mode}
+          exclusive
+          size="small"
+          onChange={(_, mode) => mode && setViewMode(mode)}
+          aria-label="배포 캘린더 보기 방식"
+          sx={{ mb: 3 }}
+        >
+          <ToggleButton value="week" sx={{ px: 2 }}>주 단위</ToggleButton>
+          <ToggleButton value="month" sx={{ px: 2 }}>월 단위 (한 달 고정)</ToggleButton>
+        </ToggleButtonGroup>
+
+        <FormControlLabel
+          control={<Switch checked={show_today} onChange={(e) => setShowToday(e.target.checked)} />}
+          label="오늘 날짜 강조"
+          sx={{ display: 'flex' }}
+        />
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 3, ml: { xs: 0, md: 6 } }}>
+          오늘 칸에 「오늘」 표시와 색을 넣습니다. 화면을 캡처해 공유할 때는 끄세요. (HTML 복사에는 켜져 있어도 들어가지 않습니다)
+        </Typography>
+
+        <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
+          주 단위 보기 - 표시할 주 수
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          캘린더 상단에서 「주」를 골랐을 때 보여줄 주 수입니다. 1주: 이번 주 / 2주: 저번 주~이번 주 / 3주: 저번 주~다음 주 / 4주: 저저번 주~다음 주. 「월」을 고르면 그 달 전체(4~5주)를 보여줍니다.
         </Typography>
 
         <ToggleButtonGroup

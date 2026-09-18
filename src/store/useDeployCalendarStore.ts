@@ -28,11 +28,18 @@ export const DEPLOY_CALENDAR_WEEKS_MIN = 1;
 export const DEPLOY_CALENDAR_WEEKS_MAX = 4;
 export const DEPLOY_CALENDAR_WEEKS_DEFAULT = 2;
 
+/** 보기 방식: week = 설정한 주 수만큼(이번 주가 마지막), month = 한 달 고정 */
+export type DeployCalendarViewMode = 'week' | 'month';
+
 interface DeployCalendarState {
   events: DeployEvent[];
   job_colors: JobColor[];
-  /** 표시할 주 수 (1~4). 설정에서 변경 가능 */
+  /** 표시할 주 수 (1~4). 주 단위 보기에서만 쓴다. 설정에서 변경 */
   weeks_to_show: number;
+  /** 주 / 월 보기. 캘린더 상단에서 바꾸고 저장된다 */
+  view_mode: DeployCalendarViewMode;
+  /** 오늘 날짜 강조 표시. 설정에서 끄고 켠다 */
+  show_today: boolean;
 
   // --- Actions ---
   addEvent: (event: Omit<DeployEvent, 'id'>) => string;
@@ -40,6 +47,8 @@ interface DeployCalendarState {
   deleteEvent: (id: string) => void;
 
   setWeeksToShow: (weeks: number) => void;
+  setViewMode: (mode: DeployCalendarViewMode) => void;
+  setShowToday: (show: boolean) => void;
 
   // 잡 색상 관리
   setJobColor: (job_code: string, color: string) => void;
@@ -74,6 +83,11 @@ export const useDeployCalendarStore = create<DeployCalendarState>()(
       events: [],
       job_colors: [],
       weeks_to_show: DEPLOY_CALENDAR_WEEKS_DEFAULT,
+      view_mode: 'week',
+      show_today: true,
+
+      setViewMode: (mode) => set({ view_mode: mode }),
+      setShowToday: (show) => set({ show_today: show }),
 
       setWeeksToShow: (weeks) => set(() => ({
         weeks_to_show: Math.max(DEPLOY_CALENDAR_WEEKS_MIN, Math.min(DEPLOY_CALENDAR_WEEKS_MAX, Math.floor(weeks))),

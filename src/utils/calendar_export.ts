@@ -47,6 +47,34 @@ export function addDays(date: Date, days: number): Date {
   return result;
 }
 
+/**
+ * 주차: 그 주 금요일이 있는 달의 몇 번째 금요일인지.
+ * 예) 8/31(월)~9/4(금) → 9월 1주차, 9/14~9/18 → 9월 3주차, 8/24~8/28 → 8월 4주차
+ */
+export function getWeekOfMonth(week_monday: Date): { year: number; month: number; week: number } {
+  const friday = addDays(week_monday, 4);
+  return { year: friday.getFullYear(), month: friday.getMonth() + 1, week: Math.ceil(friday.getDate() / 7) };
+}
+
+/**
+ * 월 고정 보기: 그 달의 평일(월~금)이 하루라도 들어 있는 주의 월요일 목록.
+ * 평일만 보여주므로 최대 5주다. 1일이 토·일이면 그 주는 평일이 모두 전달이라 뺀다.
+ * month 는 0~11.
+ */
+export function getMonthWeekMondays(year: number, month: number): Date[] {
+  const first_day = new Date(year, month, 1);
+  const last_day = new Date(year, month + 1, 0);
+  let monday = getMonday(first_day);
+  // 1일이 주말이면 그 주 평일(월~금)은 전부 전달
+  if (addDays(monday, 4) < first_day) monday = addDays(monday, 7);
+  const mondays: Date[] = [];
+  while (monday <= last_day) {
+    mondays.push(monday);
+    monday = addDays(monday, 7);
+  }
+  return mondays;
+}
+
 // ----------------------------------------------------------------------
 // HTML 테이블 생성 (ecount 웹에디터 호환, 열 너비 유지 + 잡 색상 인라인 적용)
 // ----------------------------------------------------------------------

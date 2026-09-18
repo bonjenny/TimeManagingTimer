@@ -10,6 +10,8 @@ import {
   Menu,
   MenuItem,
   ListItemIcon,
+  ToggleButton,
+  ToggleButtonGroup,
   useMediaQuery,
   useTheme,
 } from '@mui/material';
@@ -21,6 +23,8 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import PaletteIcon from '@mui/icons-material/Palette';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
+import ViewWeekIcon from '@mui/icons-material/ViewWeek';
+import CalendarViewMonthIcon from '@mui/icons-material/CalendarViewMonth';
 import {
   DndContext,
   PointerSensor,
@@ -37,11 +41,14 @@ import {
   formatDateToDisplay,
   getMonday,
   addDays,
+  getMonthWeekMondays,
+  getWeekOfMonth,
   generateCalendarHtml,
   copyHtmlToClipboard,
 } from '../../utils/calendar_export';
 import DeployEventModal from '../calendar/DeployEventModal';
 import JobColorManager from '../calendar/JobColorManager';
+import { getHolidayName } from '../../constants/krHolidays';
 
 // 드래그 시 활성화 거리(px) - 클릭과 구분
 const DRAG_ACTIVATION_DISTANCE = 8;
@@ -113,6 +120,7 @@ const DraggableEventChip: React.FC<DraggableEventChipProps> = ({
 
 interface DroppableCellProps {
   date: Date;
+  is_today: boolean;
   week_idx: number;
   day_idx: number;
   total_weeks: number;
@@ -122,6 +130,7 @@ interface DroppableCellProps {
 
 const DroppableCell: React.FC<DroppableCellProps> = ({
   date,
+  is_today,
   week_idx,
   day_idx,
   total_weeks,
@@ -147,7 +156,11 @@ const DroppableCell: React.FC<DroppableCellProps> = ({
         borderColor: 'divider',
         cursor: 'pointer',
         minHeight: 80,
-        bgcolor: isOver ? 'var(--bg-selected)' : undefined,
+        bgcolor: isOver
+          ? 'var(--bg-selected)'
+          : is_today
+            ? 'color-mix(in srgb, var(--primary-color) 6%, transparent)'
+            : undefined,
         ...(is_dragging ? {} : { '&:hover': { bgcolor: 'var(--bg-hover)' } }),
         position: 'relative',
       }}
@@ -161,19 +174,28 @@ const DroppableCell: React.FC<DroppableCellProps> = ({
 // Component
 // ----------------------------------------------------------------------
 
-const DeployCalendar: React.FC = () => {
-  const { events, job_colors, weeks_to_show, getJobColor, updateEvent, deleteEvent } = useDeployCalendarStore();
+// 주 단위 보기 시작 주: 이번 주 앞에 몇 주를 둘지 (1주: 이번 주 / 2주: 저번~이번 / 3주: 저번~다음 / 4주: 저저번~다음)
+const getWeekViewStart = (weeks: number) => addDays(getMonday(new Date()), -7 * Math.floor(weeks / 2));
 
-  // 현재 표시 시작일: (weeks_to_show에 따라) 이번 주가 마지막에 오도록
+const DeployCalendar: React.FC = () => {
+  const { events, job_colors, weeks_to_show, view_mode, show_today, setViewMode, getJobColor, updateEvent, deleteEvent } =
+    useDeployCalendarStore();
+  const is_month_view = view_mode === 'month';
+  const today_str = formatDateToString(new Date());
+
+  // 월 보기 기준 달 (1일) — 오늘이 든 달
+  const [month_anchor, setMonthAnchor] = useState<Date>(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+
+  // 현재 표시 시작일
   const [start_date, setStartDate] = useState<Date>(() =>
-    addDays(getMonday(new Date()), -7 * (weeks_to_show - 1))
+    getWeekViewStart(weeks_to_show)
   );
 
   const prev_weeks_to_show = React.useRef(weeks_to_show);
   useEffect(() => {
     if (prev_weeks_to_show.current !== weeks_to_show) {
       prev_weeks_to_show.current = weeks_to_show;
-      setStartDate(addDays(getMonday(new Date()), -7 * (weeks_to_show - 1)));
+      setStartDate(getWeekViewStart(weeks_to_show));
     }
   }, [weeks_to_show]);
 
@@ -209,54 +231,29 @@ const DeployCalendar: React.FC = () => {
   
   // 표시할 날짜 범위 계산
   const date_range = useMemo(() => {
-    const dates: Date[][] = [];
-    for (let week = 0; week < weeks_to_show; week++) {
-      const week_dates: Date[] = [];
-      for (let day = 0; day < 5; day++) { // 월~금
-        week_dates.push(addDays(start_date, week * 7 + day));
-      }
-      dates.push(week_dates);
-    }
-    return dates;
-  }, [start_date, weeks_to_show]);
+    const mondays = is_month_view
+      ? getMonthWeekMondays(month_anchor.getFullYear(), month_anchor.getMonth())
+      : Array.from({ length: weeks_to_show }, (_, week) => addDays(start_date, week * 7));
+    // 월~금
+    return mondays.map((monday) => [0, 1, 2, 3, 4].map((day) => addDays(monday, day)));
+  }, [is_month_view, month_anchor, start_date, weeks_to_show]);
+  const total_weeks = date_range.length;
+
+  // 월 보기에서 앞뒤 달 날짜(첫 주·마지막 주에 섞인 날)는 흐리게
+  const isOtherMonth = (date: Date) => is_month_view && date.getMonth() !== month_anchor.getMonth();
   
-  // 주차 계산 함수 (해당 주의 금요일 기준 월의 주차)
-  const getWeekInfo = (week_start: Date): { year: number; month: number; week: number } => {
-    // 금요일 기준으로 월 결정 (주의 대부분이 속한 월)
-    const friday = addDays(week_start, 4);
-    const year = friday.getFullYear();
-    const month = friday.getMonth();
-    
-    // 해당 월의 첫 번째 날
-    const first_day_of_month = new Date(year, month, 1);
-    
-    // 해당 월의 첫 번째 월요일 찾기
-    let first_monday = new Date(first_day_of_month);
-    const day_of_week = first_day_of_month.getDay();
-    if (day_of_week === 0) {
-      // 일요일이면 다음날이 월요일
-      first_monday.setDate(first_monday.getDate() + 1);
-    } else if (day_of_week !== 1) {
-      // 월요일이 아니면 다음 월요일로
-      first_monday.setDate(first_monday.getDate() + (8 - day_of_week));
-    }
-    
-    // 주차 계산: 현재 주의 월요일이 첫 번째 월요일로부터 몇 주 후인지
-    const diff_time = week_start.getTime() - first_monday.getTime();
-    const diff_weeks = Math.floor(diff_time / (7 * 24 * 60 * 60 * 1000));
-    
-    // 첫 번째 월요일 이전이면 1주차, 아니면 주차 계산
-    const week_num = diff_weeks < 0 ? 1 : diff_weeks + 1;
-    
-    return { year, month: month + 1, week: week_num };
-  };
-  
+  // 주차: 그 주의 금요일이 있는 달의 몇 번째 금요일인지 (예: 금요일 9/18 → 9월 3주차)
+  const getWeekInfo = (week_start: Date) => getWeekOfMonth(week_start);
+
   // 현재 표시 주차 정보 (첫 주 ~ 마지막 주)
   const display_month = useMemo(() => {
+    if (is_month_view) return `${month_anchor.getFullYear()}년 ${month_anchor.getMonth() + 1}월`;
     if (date_range.length === 0) return '';
     const first_week = getWeekInfo(date_range[0][0]);
     const last_week = getWeekInfo(date_range[date_range.length - 1][0]);
 
+    // 1주만 볼 때는 "~" 없이 한 주만
+    if (date_range.length === 1) return `${first_week.year}년 ${first_week.month}월 ${first_week.week}주차`;
     if (first_week.year === last_week.year && first_week.month === last_week.month) {
       return `${first_week.year}년 ${first_week.month}월 ${first_week.week}주차 ~ ${last_week.week}주차`;
     } else if (first_week.year === last_week.year) {
@@ -264,33 +261,39 @@ const DeployCalendar: React.FC = () => {
     } else {
       return `${first_week.year}년 ${first_week.month}월 ${first_week.week}주차 ~ ${last_week.year}년 ${last_week.month}월 ${last_week.week}주차`;
     }
-  }, [date_range]);
+  }, [date_range, is_month_view, month_anchor]);
 
   // 모바일 헤더용 짧은 제목 (예: "9월 1~2주차", "9월 5주차 ~ 10월 1주차")
   const display_month_short = useMemo(() => {
+    if (is_month_view) return `${month_anchor.getFullYear()}년 ${month_anchor.getMonth() + 1}월`;
     if (date_range.length === 0) return '';
     const first_week = getWeekInfo(date_range[0][0]);
     const last_week = getWeekInfo(date_range[date_range.length - 1][0]);
     if (first_week.year === last_week.year && first_week.month === last_week.month) {
-      return first_week.week === last_week.week
+      return date_range.length === 1 || first_week.week === last_week.week
         ? `${first_week.month}월 ${first_week.week}주차`
         : `${first_week.month}월 ${first_week.week}~${last_week.week}주차`;
     }
     return `${first_week.month}월 ${first_week.week}주차 ~ ${last_week.month}월 ${last_week.week}주차`;
-  }, [date_range]);
+  }, [date_range, is_month_view, month_anchor]);
 
   // 네비게이션
-  const handlePrevWeek = () => {
-    setStartDate(prev => addDays(prev, -7));
+  // 주 보기는 한 주씩, 월 보기는 한 달씩
+  const moveBy = (step: number) => {
+    if (is_month_view) {
+      setMonthAnchor((prev) => new Date(prev.getFullYear(), prev.getMonth() + step, 1));
+    } else {
+      setStartDate((prev) => addDays(prev, 7 * step));
+    }
   };
-  
-  const handleNextWeek = () => {
-    setStartDate(prev => addDays(prev, 7));
-  };
-  
+  const handlePrevWeek = () => moveBy(-1);
+  const handleNextWeek = () => moveBy(1);
+
   const handleToday = () => {
-    setStartDate(addDays(getMonday(new Date()), -7 * (weeks_to_show - 1)));
+    setStartDate(getWeekViewStart(weeks_to_show));
+    setMonthAnchor(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   };
+  const unit_label = is_month_view ? '달' : '주';
   
   // 셀 클릭 - 이벤트 추가/수정
   const handleCellClick = (date: Date, event?: DeployEvent) => {
@@ -302,17 +305,26 @@ const DeployCalendar: React.FC = () => {
   
   // HTML 복사
   const handleCopyHtml = async () => {
-    const end_date = addDays(start_date, weeks_to_show * 7 - 1);
-    const start_str = formatDateToString(start_date);
+    // 화면에 보이는 범위 그대로 (월 보기면 4~5주). 오늘 강조는 넣지 않는다 — 붙여넣은 뒤엔 날짜가 지나므로
+    const first_monday = date_range[0][0];
+    const end_date = addDays(first_monday, total_weeks * 7 - 1);
+    const start_str = formatDateToString(first_monday);
     const end_str = formatDateToString(end_date);
 
     const range_events = events.filter(e => e.date >= start_str && e.date <= end_str);
+    const holiday_events: DeployEvent[] = date_range.flat().flatMap((date) => {
+      const name = getPublicHoliday(date);
+      return name
+        ? [{ id: `kr-holiday-${formatDateToString(date)}`, date: formatDateToString(date), job_code: '', job_name: name, status: '', is_holiday: true }]
+        : [];
+    });
 
     const html = generateCalendarHtml({
-      events: range_events,
+      // 공휴일을 그날 맨 위에
+      events: [...holiday_events, ...range_events],
       job_colors,
-      start_date,
-      weeks: weeks_to_show,
+      start_date: first_monday,
+      weeks: total_weeks,
     });
     
     const success = await copyHtmlToClipboard(html);
@@ -329,6 +341,14 @@ const DeployCalendar: React.FC = () => {
   const getEventsForDate = (date: Date): DeployEvent[] => {
     const date_str = formatDateToString(date);
     return events.filter(e => e.date === date_str);
+  };
+
+  // 공휴일 이름. 그날 직접 넣은 휴일 이벤트(연차 등)가 있으면 중복 표시하지 않는다
+  const getPublicHoliday = (date: Date): string | undefined => {
+    const date_str = formatDateToString(date);
+    const name = getHolidayName(date_str);
+    if (!name) return undefined;
+    return events.some((e) => e.date === date_str && e.is_holiday && e.job_name === name) ? undefined : name;
   };
   
   // 우클릭 삭제
@@ -418,8 +438,6 @@ const DeployCalendar: React.FC = () => {
   // (터치에서 드래그 대신 이벤트 모달의 날짜 입력으로 이동)
   // ------------------------------------------------------------------
   if (is_mobile) {
-    const today_str = formatDateToString(new Date());
-
     return (
       <Box sx={{ p: { xs: 1, sm: 2 } }}>
         {/* 헤더: 제목 + 주 이동 + 더보기 */}
@@ -438,13 +456,13 @@ const DeployCalendar: React.FC = () => {
           >
             {display_month_short}
           </Typography>
-          <IconButton aria-label="이전 주" onClick={handlePrevWeek} sx={{ width: 40, height: 40 }}>
+          <IconButton aria-label={`이전 ${unit_label}`} onClick={handlePrevWeek} sx={{ width: 40, height: 40 }}>
             <ChevronLeftIcon />
           </IconButton>
-          <IconButton aria-label="다음 주" onClick={handleNextWeek} sx={{ width: 40, height: 40 }}>
+          <IconButton aria-label={`다음 ${unit_label}`} onClick={handleNextWeek} sx={{ width: 40, height: 40 }}>
             <ChevronRightIcon />
           </IconButton>
-          <IconButton aria-label="이번 주로 이동" onClick={handleToday} sx={{ width: 40, height: 40 }}>
+          <IconButton aria-label={is_month_view ? '이번 달로 이동' : '이번 주로 이동'} onClick={handleToday} sx={{ width: 40, height: 40 }}>
             <TodayIcon />
           </IconButton>
           <IconButton aria-label="더보기" onClick={(e) => setMoreAnchor(e.currentTarget)} sx={{ width: 40, height: 40 }}>
@@ -457,6 +475,18 @@ const DeployCalendar: React.FC = () => {
             anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
             transformOrigin={{ vertical: 'top', horizontal: 'right' }}
           >
+            <MenuItem
+              onClick={() => {
+                setMoreAnchor(null);
+                setViewMode(is_month_view ? 'week' : 'month');
+              }}
+              sx={{ minHeight: 44 }}
+            >
+              <ListItemIcon>
+                {is_month_view ? <ViewWeekIcon fontSize="small" /> : <CalendarViewMonthIcon fontSize="small" />}
+              </ListItemIcon>
+              {is_month_view ? '주 단위로 보기' : '월 단위로 보기'}
+            </MenuItem>
             <MenuItem
               onClick={() => {
                 setMoreAnchor(null);
@@ -486,7 +516,7 @@ const DeployCalendar: React.FC = () => {
             const week_info = getWeekInfo(week[0]);
             return (
               <Box key={week_idx}>
-                {date_range.length > 1 && (
+                {total_weeks > 1 && (
                   <Typography sx={{ fontSize: 13, fontWeight: 700, color: 'text.secondary', mb: 1 }}>
                     {week_info.month}월 {week_info.week}주차
                   </Typography>
@@ -495,9 +525,16 @@ const DeployCalendar: React.FC = () => {
                   {week.map((date) => {
                     const date_str = formatDateToString(date);
                     const day_events = getEventsForDate(date);
-                    const is_today = date_str === today_str;
-                    const has_holiday = day_events.some((e) => e.is_holiday);
-                    const date_color = has_holiday ? HOLIDAY_COLOR : is_today ? 'primary.main' : 'text.primary';
+                    const is_today = show_today && date_str === today_str;
+                    const public_holiday = getPublicHoliday(date);
+                    const has_holiday = !!public_holiday || day_events.some((e) => e.is_holiday);
+                    const date_color = has_holiday
+                      ? HOLIDAY_COLOR
+                      : is_today
+                        ? 'primary.main'
+                        : isOtherMonth(date)
+                          ? 'text.disabled'
+                          : 'text.primary';
                     return (
                       <Paper
                         key={date_str}
@@ -539,6 +576,14 @@ const DeployCalendar: React.FC = () => {
                         {/* 이벤트 칩 + 추가 */}
                         <Box sx={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 0.5, py: 0.75, pl: 1, pr: 0.5 }}>
                           <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
+                            {public_holiday && (
+                              <Box
+                                component="span"
+                                sx={{ minHeight: 32, display: 'inline-flex', alignItems: 'center', px: 0.5, fontSize: 13, fontWeight: 600, color: HOLIDAY_COLOR }}
+                              >
+                                {public_holiday}
+                              </Box>
+                            )}
                             {day_events.map((event) => {
                               const display_text = event.status ? `${event.job_name} ${event.status}` : event.job_name;
                               return (
@@ -612,7 +657,7 @@ const DeployCalendar: React.FC = () => {
       >
         {/* 네비게이션 */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Tooltip title="이전 주">
+          <Tooltip title={`이전 ${unit_label}`}>
             <IconButton onClick={handlePrevWeek}>
               <ChevronLeftIcon />
             </IconButton>
@@ -622,17 +667,34 @@ const DeployCalendar: React.FC = () => {
             {display_month}
           </Typography>
           
-          <Tooltip title="다음 주">
+          <Tooltip title={`다음 ${unit_label}`}>
             <IconButton onClick={handleNextWeek}>
               <ChevronRightIcon />
             </IconButton>
           </Tooltip>
           
-          <Tooltip title="이번 주로 이동">
+          <Tooltip title={is_month_view ? '이번 달로 이동' : '이번 주로 이동'}>
             <IconButton onClick={handleToday}>
               <TodayIcon />
             </IconButton>
           </Tooltip>
+
+          {/* 보기 방식: 주 단위(설정한 주 수) / 월 단위(한 달 고정). 선택은 저장된다 */}
+          <ToggleButtonGroup
+            size="small"
+            exclusive
+            value={view_mode}
+            onChange={(_, mode) => mode && setViewMode(mode)}
+            aria-label="보기 방식"
+            sx={{ ml: 1, '& .MuiToggleButton-root': { px: 1.5, py: 0.5, gap: 0.5 } }}
+          >
+            <ToggleButton value="week" aria-label="주 단위">
+              <ViewWeekIcon fontSize="small" />주
+            </ToggleButton>
+            <ToggleButton value="month" aria-label="월 단위">
+              <CalendarViewMonthIcon fontSize="small" />월
+            </ToggleButton>
+          </ToggleButtonGroup>
         </Box>
         
         {/* 버튼들 */}
@@ -677,25 +739,77 @@ const DeployCalendar: React.FC = () => {
               }}
             >
               {/* 헤더 행 (날짜) */}
-              {week.map((date, day_idx) => (
-                <Box
-                  key={`h-${day_idx}`}
-                  sx={{
-                    p: 1,
-                    minWidth: 0,
-                    textAlign: 'center',
-                    fontWeight: 'bold',
-                    bgcolor: 'var(--bg-tertiary)',
-                    borderRight: day_idx < 4 ? '1px solid' : 'none',
-                    borderBottom: '1px solid',
-                    borderColor: 'divider',
-                  }}
-                >
-                  <Typography variant="body2" fontWeight={600} noWrap>
-                    {formatDateToDisplay(date)}
-                  </Typography>
-                </Box>
-              ))}
+              {week.map((date, day_idx) => {
+                const is_today = show_today && formatDateToString(date) === today_str;
+                const public_holiday = getPublicHoliday(date);
+                const is_holiday = !!public_holiday || getEventsForDate(date).some((e) => e.is_holiday);
+                return (
+                  <Box
+                    key={`h-${day_idx}`}
+                    sx={{
+                      p: 1,
+                      minWidth: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 0.75,
+                      bgcolor: is_today
+                        ? 'color-mix(in srgb, var(--primary-color) 14%, var(--bg-tertiary))'
+                        : 'var(--bg-tertiary)',
+                      borderRight: day_idx < 4 ? '1px solid' : 'none',
+                      borderBottom: '1px solid',
+                      borderColor: 'divider',
+                      // 오늘 칸 위쪽에 브랜드색 막대
+                      boxShadow: is_today ? 'inset 0 3px 0 var(--primary-color)' : undefined,
+                    }}
+                  >
+                    <Typography
+                      variant="body2"
+                      fontWeight={600}
+                      noWrap
+                      sx={{
+                        color: is_holiday
+                          ? HOLIDAY_COLOR
+                          : is_today
+                            ? 'primary.main'
+                            : isOtherMonth(date)
+                              ? 'text.disabled'
+                              : undefined,
+                        opacity: is_holiday && isOtherMonth(date) ? 0.5 : 1,
+                      }}
+                    >
+                      {formatDateToDisplay(date)}
+                    </Typography>
+                    {public_holiday && (
+                      <Typography
+                        variant="caption"
+                        noWrap
+                        sx={{ color: HOLIDAY_COLOR, fontWeight: 600, minWidth: 0, opacity: isOtherMonth(date) ? 0.5 : 1 }}
+                        title={public_holiday}
+                      >
+                        {public_holiday}
+                      </Typography>
+                    )}
+                    {is_today && (
+                      <Box
+                        component="span"
+                        sx={{
+                          px: 0.75,
+                          borderRadius: 10,
+                          fontSize: 11,
+                          fontWeight: 700,
+                          lineHeight: '18px',
+                          color: '#fff',
+                          bgcolor: 'var(--primary-color)',
+                          flexShrink: 0,
+                        }}
+                      >
+                        오늘
+                      </Box>
+                    )}
+                  </Box>
+                );
+              })}
               
               {/* 데이터 행 (이벤트) - Droppable 셀 */}
               {week.map((date, day_idx) => {
@@ -704,9 +818,10 @@ const DeployCalendar: React.FC = () => {
                   <DroppableCell
                     key={`b-${day_idx}`}
                     date={date}
+                    is_today={show_today && formatDateToString(date) === today_str}
                     week_idx={week_idx}
                     day_idx={day_idx}
-                    total_weeks={weeks_to_show}
+                    total_weeks={total_weeks}
                     onCellClick={handleCellClick}
                   >
                     {day_events.length === 0 ? (
