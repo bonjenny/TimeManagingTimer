@@ -256,3 +256,20 @@ it('진행상태 이력: 신규·상태변경만, 로컬 날짜로', async () =>
   expect(body).toMatchObject({ target_bizz_sid: 'B_000000E074008', target_data_sid: 'D', target_record_sid: 'R', data_dt: '20260911', data_no: 12221 });
   expect((global.fetch as jest.Mock).mock.calls[0][0]).toContain('GetHistoryCommonAction:slip_history:input');
 });
+
+it('이력: 「수정」 행에서 바뀐 진행상태도 잡고, 같은 상태가 이어지면 하나로', async () => {
+  const { fetchErpStatusHistory } = jest.requireActual('../../utils/erpTimelog');
+  const slip = [
+    { write_dtm: '∬D:2026-10-01T06:45:54.270Z∬', target_progress_status_nm: '테스트', act_type_nm: '상태변경' },
+    { write_dtm: '∬D:2026-10-01T07:05:48.838Z∬', target_progress_status_nm: '테스트', act_type_nm: '수정' },
+    { write_dtm: '∬D:2026-10-01T08:20:48.392Z∬', target_progress_status_nm: '테스트중단', act_type_nm: '수정' },
+  ];
+  global.fetch = jest.fn().mockResolvedValue({
+    ok: true, status: 200, text: () => Promise.resolve(JSON.stringify({ Status: 200, Data: { history_slip: slip } })),
+  }) as unknown as typeof fetch;
+  const history = await fetchErpStatusHistory(
+    { sid: 'E-x', origin: 'https://logine.ecount.com' },
+    { bizz_sid: 'B_000000E074020', data_sid: 'D', record_sid: 'R', data_dt8: '20260930', data_no: 7534 }
+  );
+  expect(history.map((h: { status: string }) => h.status)).toEqual(['테스트', '테스트중단']);
+});

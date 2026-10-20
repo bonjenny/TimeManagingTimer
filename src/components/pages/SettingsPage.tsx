@@ -36,6 +36,9 @@ import AddIcon from '@mui/icons-material/Add';
 import RestoreIcon from '@mui/icons-material/Restore';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import ZoomInIcon from '@mui/icons-material/ZoomIn';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import { useTimeInputStore } from '../../store/useTimeInputStore';
+import TimeField from '../common/TimeField';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import {
   DndContext,
@@ -254,6 +257,8 @@ const SettingsPage: React.FC = () => {
   const { categories, addCategory, removeCategory, reorderCategories, resetToDefault: resetCategories } = useCategoryStore();
   const { statuses, addStatus, removeStatus, reorderStatuses, resetToDefault: resetStatuses } = useStatusStore();
   const { weeks_to_show, setWeeksToShow, show_today, setShowToday, view_mode, setViewMode } = useDeployCalendarStore();
+  const { time_input_style, setTimeInputStyle } = useTimeInputStore();
+  const [time_preview, setTimePreview] = useState('09:00');
   
   // 카테고리 관리 상태
   const [newCategory, setNewCategory] = useState('');
@@ -732,6 +737,33 @@ const SettingsPage: React.FC = () => {
               100%로 되돌리기
             </Button>
           )}
+        </Box>
+      </Paper>
+
+      {/* 시간 입력 방식 */}
+      <Paper variant="outlined" sx={SECTION_SX}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+          <AccessTimeIcon sx={{ color: 'text.secondary' }} />
+          <Typography variant="h6" sx={SECTION_TITLE_SX}>
+            시간 입력 방식
+          </Typography>
+        </Box>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+          업무 기록 수정·작업 이력·예약 시간에서 시간을 고르는 방식입니다. 시계 위젯은 위쪽 시 : 분 칸에 숫자를 직접 쳐도 됩니다.
+        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+          <ToggleButtonGroup
+            value={time_input_style}
+            exclusive
+            size="small"
+            onChange={(_, style) => style && setTimeInputStyle(style)}
+            aria-label="시간 입력 방식"
+          >
+            <ToggleButton value="native" sx={{ px: 2 }}>기본 입력</ToggleButton>
+            <ToggleButton value="clock" sx={{ px: 2 }}>시계 위젯</ToggleButton>
+          </ToggleButtonGroup>
+          {/* 바로 눌러 보는 미리보기 */}
+          <TimeField label="미리보기" size="small" value={time_preview} onChange={setTimePreview} InputLabelProps={{ shrink: true }} sx={{ width: 150 }} />
         </Box>
       </Paper>
 

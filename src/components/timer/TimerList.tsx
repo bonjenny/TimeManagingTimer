@@ -43,9 +43,15 @@ import RestoreFromTrashIcon from '@mui/icons-material/RestoreFromTrash';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
+import TimeField from '../common/TimeField';
+import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
+import { DndContext, DragEndEvent, PointerSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core';
+import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { useTimerStore, TimerLog, DeletedLog } from '../../store/useTimerStore';
 import { useProjectStore } from '../../store/useProjectStore';
 import NewProjectDialog from '../common/NewProjectDialog';
+import ProjectCodeNameFields from '../common/ProjectCodeNameFields';
 import { NEW_PROJECT_OPTION, filterProjectCodeOptions, renderNewProjectOption, renderProjectOption } from '../common/projectOptions';
 import { formatDuration, formatDurationShort, getDurationSecondsExcludingLunch } from '../../utils/timeUtils';
 import { getItem, setItem as setStorageItem } from '../../utils/storage';
@@ -120,6 +126,44 @@ interface TaskGroup {
   has_running: boolean;
 }
 
+// 수동 정렬 순서 (group_key 목록). 날짜와 상관없이 하나로 저장
+const MANUAL_ORDER_KEY = 'timerlist-manual-order';
+
+const loadManualOrder = (): string[] => {
+  try {
+    const parsed = JSON.parse(getItem(MANUAL_ORDER_KEY) || '[]');
+    return Array.isArray(parsed) ? parsed.map(String) : [];
+  } catch {
+    return [];
+  }
+};
+
+/** 끌어서 순서를 바꾸는 한 줄. 손잡이(⠿)에만 드래그를 건다 — 줄 클릭(펼치기)·버튼과 겹치지 않게 */
+type DragHandleProps = Record<string, unknown>;
+const SortableTaskRow: React.FC<{ id: string; children: (handle: DragHandleProps, dragging: boolean) => React.ReactNode }> = ({ id, children }) => {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Translate.toString(transform), transition, position: 'relative', zIndex: isDragging ? 2 : undefined, opacity: isDragging ? 0.85 : 1 }}
+    >
+      {children({ ...attributes, ...listeners }, isDragging)}
+    </div>
+  );
+};
+
+/** 손잡이 아이콘 */
+const DragHandle: React.FC<{ handle: DragHandleProps; size?: number }> = ({ handle, size = 16 }) => (
+  <Box
+    {...handle}
+    aria-label="끌어서 순서 바꾸기"
+    onClick={(e) => e.stopPropagation()}
+    sx={{ display: 'flex', alignItems: 'center', color: 'text.disabled', cursor: 'grab', touchAction: 'none', '&:hover': { color: 'text.secondary' }, '&:active': { cursor: 'grabbing' } }}
+  >
+    <DragIndicatorIcon sx={{ fontSize: size }} />
+  </Box>
+);
+
 const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
   const { logs, deleteLog, startTimer, updateLog, updateActiveTimer, deleted_logs, restoreLog, permanentlyDeleteLog, emptyTrash, reopenTimer, activeTimer, pauseAndMoveToLogs, themeConfig } = useTimerStore();
   const { getProjectName, projects, addProject, deleteProject } = useProjectStore();
@@ -167,11 +211,6 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
   
   // 프로젝트 옵션 (코드 + 이름 형태로 표시)
   const projectCodeOptions = useMemo(() => projects.map((p) => p.code), [projects]);
-  const projectNameOptions = useMemo(() => projects.map((p) => p.name), [projects]);
-
-  const projectOptions = useMemo(() => {
-    return projects.map(p => `[${p.code}] ${p.name}`);
-  }, [projects]);
 
   // 복사 다이얼로그 상태
   const [copyingTask, setCopyingTask] = useState<TaskGroup | null>(null);
@@ -182,6 +221,10 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
   const [trash_modal_open, setTrashModalOpen] = useState(false);
 
   // 세션 정렬 상태 (asc: 오래된 순, desc: 최근 순)
+  // 수동 정렬 (끌어서 바꾼 순서). 비어 있으면 기본 정렬
+  const [manual_order, setManualOrder] = useState<string[]>(loadManualOrder);
+  const drag_sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
+
   const [session_sort_order, setSessionSortOrder] = useState<'asc' | 'desc'>(() => {
     const saved = getItem('timerlist-session-sort-order');
     return (saved === 'asc' || saved === 'desc') ? saved : 'asc';
@@ -337,7 +380,7 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
     });
 
     // 정렬: 진행 중 우선 → 미완료 우선 → 프로젝트 코드 오름차순 → 작업명 오름차순
-    return Array.from(groups.values()).sort((a, b) => {
+    const default_sorted = Array.from(groups.values()).sort((a, b) => {
       const active_key = activeTimer ? makeGroupKey(activeTimer.title, activeTimer.category) : '';
       const a_is_active = active_key === a.group_key;
       const b_is_active = active_key === b.group_key;
@@ -362,7 +405,37 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
       // 3. 작업명 오름차순
       return a.title.localeCompare(b.title);
     });
-  }, [logs, showCompleted, selectedDate, activeTimer, is_today]);
+
+    // 수동 순서가 있으면: 진행 중 → 아직 순서를 안 정한 새 업무(기본 정렬) → 끌어서 정한 순서
+    if (manual_order.length === 0) return default_sorted;
+    const rank = new Map(manual_order.map((key, i) => [key, i]));
+    const active_key = activeTimer ? makeGroupKey(activeTimer.title, activeTimer.category) : '';
+    const active = default_sorted.filter((t) => t.group_key === active_key);
+    const rest = default_sorted.filter((t) => t.group_key !== active_key);
+    return [
+      ...active,
+      ...rest.filter((t) => !rank.has(t.group_key)),
+      ...rest.filter((t) => rank.has(t.group_key)).sort((a, b) => rank.get(a.group_key)! - rank.get(b.group_key)!),
+    ];
+  }, [logs, showCompleted, selectedDate, activeTimer, is_today, manual_order]);
+
+  // 끌어 놓으면 지금 보이는 순서를 저장한다. 안 보이는 업무(다른 날 등)의 순서는 뒤에 그대로 둔다
+  const handleTaskDragEnd = ({ active, over }: DragEndEvent) => {
+    if (!over || active.id === over.id) return;
+    const visible = groupedTasks.map((t) => t.group_key);
+    const from = visible.indexOf(String(active.id));
+    const to = visible.indexOf(String(over.id));
+    if (from < 0 || to < 0) return;
+    const next_visible = arrayMove(visible, from, to);
+    const next = [...next_visible, ...manual_order.filter((k) => !next_visible.includes(k))];
+    setManualOrder(next);
+    setStorageItem(MANUAL_ORDER_KEY, JSON.stringify(next));
+  };
+
+  const resetManualOrder = () => {
+    setManualOrder([]);
+    setStorageItem(MANUAL_ORDER_KEY, '[]');
+  };
 
   // 총 시간 합계 계산 (상단 헤더는 오늘 시간 합계)
   const totalDurationSeconds = useMemo(() => {
@@ -737,32 +810,6 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
     setStorageItem('timerlist-session-sort-order', new_order);
   };
   
-  // 프로젝트 코드 입력 처리 (자동완성 선택 또는 직접 입력)
-  // 이름을 고르면 코드도 채운다 (이름을 지워도 코드는 남긴다)
-  const handleProjectNameChange = (value: string) => {
-    setEditProjectName(value);
-    if (!value) return;
-    const matched = projects.find((p) => p.name === value);
-    if (matched) setEditProjectCode(matched.code);
-  };
-
-  const handleProjectCodeChange = (value: string) => {
-    const code = value;
-    setEditProjectCode(code);
-    // 아는 코드면 이름도 채운다. 코드를 지워도 이름은 남긴다.
-    const matched = projects.find((p) => p.code === code);
-    if (matched) setEditProjectName(matched.name);
-  };
-  
-  // 프로젝트 코드에서 표시용 문자열 생성
-  const getProjectDisplayValue = (code: string) => {
-    if (!code) return '';
-    const name = getProjectName(code);
-    if (name && name !== code) {
-      return `[${code}] ${name}`;
-    }
-    return code;
-  };
 
   // 선택된 날짜 로그 확인 (미완료 업무 포함)
   const date_range = getDateRange(selectedDate);
@@ -959,12 +1006,14 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
   const session_input_size = (compact: boolean) => (compact ? 16 : '0.8rem');
 
   const renderSessionTimeEditor = (session: TimerLog, field: 'start' | 'end', compact: boolean) => (
-    <TextField
-      type="time"
+    <TimeField
       size="small"
       variant="standard"
       value={inlineTimeValue}
-      onChange={(e) => setInlineTimeValue(e.target.value)}
+      onChange={setInlineTimeValue}
+      // 시계 위젯: 확인 = 저장, 취소 = 편집 취소 (blur·Enter 대신)
+      onCommit={(v) => saveInlineTime(session, field, v)}
+      onCancel={cancelInlineTimeEdit}
       onBlur={() => saveInlineTime(session, field, inlineTimeValue)}
       onKeyDown={(e) => {
         if (e.key === 'Enter') {
@@ -977,7 +1026,8 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
       onClick={(e) => e.stopPropagation()}
       InputProps={{ disableUnderline: true }}
       sx={{
-        width: 110,
+        width: '100%',
+        maxWidth: 110,
         '& input': {
           fontSize: session_input_size(compact),
           p: 0,
@@ -1154,6 +1204,13 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
           )}
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          {manual_order.length > 0 && (
+            <Tooltip title="끌어서 바꾼 순서를 지우고 기본 정렬(진행 중 → 미완료 → 프로젝트 코드)로">
+              <Button size="small" color="inherit" onClick={resetManualOrder} sx={{ color: 'text.secondary', whiteSpace: 'nowrap' }}>
+                기본 정렬로
+              </Button>
+            </Tooltip>
+          )}
           {show_completed_switch}
           {trash_button}
         </Box>
@@ -1171,7 +1228,7 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
         {!is_compact && (
         <Box sx={{
           display: 'grid',
-          gridTemplateColumns: '56px 140px 1fr 90px 110px 110px 130px 50px 50px',
+          gridTemplateColumns: '72px 140px 1fr 90px 110px 110px 130px 50px 50px',
           gap: 1,
           px: 2,
           py: 1,
@@ -1194,8 +1251,12 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
         </Box>
         )}
 
-        {/* 업무 목록 */}
-        {groupedTasks.map((task) => {
+        {/* 업무 목록 (손잡이 ⠿ 를 끌어 순서 변경) */}
+        <DndContext sensors={drag_sensors} collisionDetection={closestCenter} onDragEnd={handleTaskDragEnd}>
+        <SortableContext items={groupedTasks.map((t) => t.group_key)} strategy={verticalListSortingStrategy}>
+        {groupedTasks.map((task) => (
+          <SortableTaskRow key={task.group_key} id={task.group_key}>
+          {(drag_handle) => {
           const is_expanded = expandedTasks.has(task.group_key);
           const active_group_key = activeTimer ? makeGroupKey(activeTimer.title, activeTimer.category) : '';
           const is_active_task = active_group_key === task.group_key;
@@ -1216,8 +1277,9 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                 {/* 카드 본문: 탭하면 작업 이력 펼침 */}
                 <Box
                   onClick={() => toggleExpand(task.group_key)}
-                  sx={{ display: 'flex', alignItems: 'center', gap: 1.25, py: 1.5, pl: 1.5, pr: 0.5, cursor: 'pointer' }}
+                  sx={{ display: 'flex', alignItems: 'center', gap: 1.25, py: 1.5, pl: 0.5, pr: 0.5, cursor: 'pointer' }}
                 >
+                  <DragHandle handle={drag_handle} size={20} />
                   <IconButton
                     aria-label={is_active_task ? '일시정지' : '진행'}
                     onClick={(e) => {
@@ -1434,7 +1496,7 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                 onClick={() => toggleExpand(task.group_key)}
                 sx={{
                   display: 'grid',
-                  gridTemplateColumns: '56px 140px 1fr 90px 110px 110px 130px 50px 50px',
+                  gridTemplateColumns: '72px 140px 1fr 90px 110px 110px 130px 50px 50px',
                   gap: 1,
                   px: 2,
                   py: 1.5,
@@ -1451,8 +1513,9 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                   }
                 }}
               >
-                {/* 좌측: 펼치기 토글 + 완료상태 토글 버튼 + 시작/재시작 버튼 */}
+                {/* 좌측: 순서 손잡이 + 펼치기 토글 + 완료상태 토글 버튼 + 시작/재시작 버튼 */}
                 <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 0.25 }}>
+                  <DragHandle handle={drag_handle} />
                   {/* 펼치기/접기 토글 아이콘 */}
                   <Box
                     sx={{
@@ -1623,10 +1686,11 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                     작업 이력 (총 {task.sessions.length}회 작업)
                   </Typography>
                   <TableContainer>
-                    <Table size="small">
+                    {/* 칸 비율 고정. 비고(6번째 칸)만 줄바꿈, 나머지는 한 줄 */}
+                    <Table size="small" sx={{ tableLayout: 'fixed', '& .MuiTableCell-root:not(:nth-of-type(6))': { whiteSpace: 'nowrap' } }}>
                       <TableHead>
                         <TableRow>
-                          <TableCell sx={{ width: 40, py: 0.5, cursor: 'pointer', userSelect: 'none' }} onClick={toggleSessionSortOrder}>
+                          <TableCell sx={{ width: '6%', py: 0.5, cursor: 'pointer', userSelect: 'none' }} onClick={toggleSessionSortOrder}>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                               <Typography variant="caption">#</Typography>
                               {session_sort_order === 'asc' ? (
@@ -1636,12 +1700,12 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
                               )}
                             </Box>
                           </TableCell>
-                          <TableCell sx={{ width: 100, py: 0.5 }}>날짜</TableCell>
-                          <TableCell sx={{ width: 120, py: 0.5 }}>시작 시간</TableCell>
-                          <TableCell sx={{ width: 120, py: 0.5 }}>종료 시간</TableCell>
-                          <TableCell sx={{ width: 80, py: 0.5 }}>소요 시간</TableCell>
-                          <TableCell sx={{ width: 180, py: 0.5 }}>비고</TableCell>
-                          <TableCell sx={{ width: 80, py: 0.5 }}></TableCell>
+                          <TableCell sx={{ width: '13%', py: 0.5 }}>날짜</TableCell>
+                          <TableCell sx={{ width: '12%', py: 0.5 }}>시작 시간</TableCell>
+                          <TableCell sx={{ width: '12%', py: 0.5 }}>종료 시간</TableCell>
+                          <TableCell sx={{ width: '10%', py: 0.5 }}>소요 시간</TableCell>
+                          <TableCell sx={{ width: '36%', py: 0.5 }}>비고</TableCell>
+                          <TableCell sx={{ width: '11%', minWidth: 80, py: 0.5 }}></TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
@@ -1725,7 +1789,11 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
               </Collapse>
             </Box>
           );
-        })}
+          }}
+          </SortableTaskRow>
+        ))}
+        </SortableContext>
+        </DndContext>
 
         {groupedTasks.length === 0 && (
           <Box sx={{ p: 3, textAlign: 'center', color: 'text.secondary' }}>
@@ -1760,38 +1828,13 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
               onChange={(e) => setEditTitle(e.target.value)}
               autoFocus
             />
-            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-              <Autocomplete
-                freeSolo
-                options={projectCodeOptions}
-                value={null}
-                inputValue={editProjectCode}
-                onInputChange={(_e, newValue) => handleProjectCodeChange(newValue)}
-                renderOption={(props, option) =>
-                  renderProjectOption(props, option, projects.find((p) => p.code === option)?.name, () => deleteProject(option))
-                }
-                renderInput={(params) => <TextField {...params} label="프로젝트 코드" />}
-                sx={{ flex: 1, minWidth: 180 }}
-              />
-              {/* 코드 + 이름을 모두 넣고 저장하면 새 프로젝트로 등록된다 */}
-              <Autocomplete
-                freeSolo
-                options={projectNameOptions}
-                value={null}
-                inputValue={editProjectName}
-                onInputChange={(_e, newValue) => handleProjectNameChange(newValue || '')}
-                renderOption={(props, option) =>
-                  renderProjectOption(props, option, projects.find((p) => p.name === option)?.code, () => {
-                    const target = projects.find((p) => p.name === option);
-                    if (target) deleteProject(target.code);
-                  })
-                }
-                renderInput={(params) => (
-                  <TextField {...params} label="프로젝트 명" placeholder="새 프로젝트면 이름 입력" />
-                )}
-                sx={{ flex: 1, minWidth: 180 }}
-              />
-            </Box>
+            {/* 코드 + 이름을 모두 넣고 저장하면 새 프로젝트로 등록된다 */}
+            <ProjectCodeNameFields
+              code={editProjectCode}
+              name={editProjectName}
+              onCodeChange={setEditProjectCode}
+              onNameChange={setEditProjectName}
+            />
             <CategoryAutocomplete
               value={editCategory}
               onChange={(newValue) => setEditCategory(newValue)}

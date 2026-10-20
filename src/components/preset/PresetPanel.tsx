@@ -52,6 +52,7 @@ import { useProjectStore } from '../../store/useProjectStore';
 import { getAdjustedPalette, loadPaletteSettings } from '../../utils/colorPalette';
 import { getItem, setItem } from '../../utils/storage';
 import CategoryAutocomplete from '../common/CategoryAutocomplete';
+import ProjectCodeNameFields from '../common/ProjectCodeNameFields';
 import { renderProjectOption } from '../common/projectOptions';
 
 // 프리셋 데이터 타입
@@ -475,14 +476,6 @@ const PresetPanel: React.FC = () => {
     setEditPreset(null);
   };
   
-  const handleProjectCodeChange = (value: string) => {
-    setModalProjectCode(value);
-    const existingProject = projects.find(p => p.code === value);
-    if (existingProject) {
-      setModalProjectName(existingProject.name);
-    }
-  };
-
   const handleSavePreset = () => {
     if (!modal_title.trim()) return;
     
@@ -564,6 +557,7 @@ const PresetPanel: React.FC = () => {
           borderColor: 'var(--border-color)',
           resize: 'horizontal',
           overflow: 'auto',
+          width: 280, // 기본 폭. 모서리로 끌면 브라우저가 인라인 width 로 덮어쓴다
           minWidth: 200,
           maxWidth: 450,
         }}
@@ -783,37 +777,15 @@ const PresetPanel: React.FC = () => {
         <DialogTitle>{edit_preset ? '프리셋 수정' : '새 프리셋 추가'}</DialogTitle>
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, mt: 1 }}>
-            <Autocomplete
-              freeSolo
-              options={projectOptions}
-              value={null}
-              inputValue={modal_project_code}
-              onInputChange={(_e, newValue) => handleProjectCodeChange(newValue)}
-              renderOption={(props, option) =>
-                renderProjectOption(props, option, projects.find((p) => p.code === option)?.name)
-              }
-              renderInput={(params) => (
-                <TextField 
-                  {...params} 
-                  label="프로젝트 코드" 
-                  placeholder="예: A25_01846 (미입력 시 A00_00000)"
-                  helperText="기존 프로젝트를 선택하거나 새 코드를 입력하세요"
-                />
-              )}
-              fullWidth
+            {/* 코드 + 이름을 모두 넣고 저장하면 새 프로젝트로 등록된다 (업무 기록 창과 같은 두 칸) */}
+            <ProjectCodeNameFields
+              code={modal_project_code}
+              name={modal_project_name}
+              onCodeChange={setModalProjectCode}
+              onNameChange={setModalProjectName}
+              codePlaceholder="예: A25_01846"
               autoFocus
             />
-            
-            {modal_project_code && (
-              <TextField
-                label="프로젝트명"
-                placeholder="예: 5.6 프레임워크 FE"
-                value={modal_project_name}
-                onChange={(e) => setModalProjectName(e.target.value)}
-                fullWidth
-                helperText="프로젝트 코드와 매핑되는 이름입니다"
-              />
-            )}
 
             <Box sx={{ display: 'flex', gap: 2 }}>
               <TextField

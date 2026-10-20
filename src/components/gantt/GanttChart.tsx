@@ -10,7 +10,6 @@ import {
   DialogActions,
   Button,
   TextField,
-  Autocomplete,
   Chip,
   Menu,
   MenuItem,
@@ -32,8 +31,10 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import { useTimerStore, TimerLog } from '../../store/useTimerStore';
 import { useProjectStore } from '../../store/useProjectStore';
-import { renderProjectOption } from '../common/projectOptions';
-import { formatTimeRange, formatDuration } from '../../utils/timeUtils';
+import ProjectCodeNameFields from '../common/ProjectCodeNameFields';
+import { formatTimeRange, formatDuration, formatDurationShort } from '../../utils/timeUtils';
+import TimeField from '../common/TimeField';
+import { PointerSample, pointerSpeed, recordPointer, snapThresholdForSpeed } from '../../utils/snapSpeed';
 import CategoryAutocomplete from '../common/CategoryAutocomplete';
 import { getPalette, getAdjustedPalette, getColorByIndex, loadPaletteSettings } from '../../utils/colorPalette';
 import { getItem, setItem as setStorageItem } from '../../utils/storage';
@@ -101,15 +102,7 @@ const LABEL_WIDTH_STORAGE_KEY = 'timekeeper-gantt-label-width';
 
 const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
   const { logs, activeTimer, addLog, updateLog, deleteLog, stopTimer, themeConfig, getOrAssignColorIndex, activateScheduledTask } = useTimerStore();
-  const { getProjectName, projects, addProject, deleteProject } = useProjectStore();
-  
-  // 프로젝트 옵션 (코드 + 이름 형태로 표시)
-  const projectCodeOptions = useMemo(() => projects.map((p) => p.code), [projects]);
-  const projectNameOptions = useMemo(() => projects.map((p) => p.name), [projects]);
-
-  const projectOptions = useMemo(() => {
-    return projects.map(p => `[${p.code}] ${p.name}`);
-  }, [projects]);
+  const { getProjectName, projects, addProject } = useProjectStore();
 
   // 컬러 팔레트 설정 로드 (다크모드일 때 색상 보정 적용)
   const [paletteSettings, setPaletteSettings] = useState(() => loadPaletteSettings());
@@ -276,6 +269,8 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
   const [editProjectName, setEditProjectName] = useState('');
   const [editCategory, setEditCategory] = useState<string | null>(null);
   const [editNote, setEditNote] = useState('');
+  const [editStart, setEditStart] = useState(''); // HH:mm
+  const [editEnd, setEditEnd] = useState('');
   
   // 충돌 알림 상태
   const [snackbar, setSnackbar] = useState<{
@@ -347,35 +342,6 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
     };
   }, [isResizingLabel]);
   
-  // 프로젝트 코드 입력 처리 함수
-  // 프로젝트 칸은 코드만 다룬다. 예전처럼 "[코드] 이름" 문자열에서 대괄호를 떼어 내면
-  // 이름이 "[5.6] 판매" 처럼 대괄호로 시작할 때 그 안을 코드로 잘못 읽는다.
-  const handleProjectCodeChange = (value: string, setter: (value: string) => void) => setter(value);
-  
-  // 수정 창: 코드를 고르면 이름도 채운다 (코드를 지워도 이름은 남긴다)
-  // 이름을 고르면 코드도 채운다 (이름을 지워도 코드는 남긴다)
-  const handleEditProjectNameChange = (value: string) => {
-    setEditProjectName(value);
-    if (!value) return;
-    const matched = projects.find((p) => p.name === value);
-    if (matched) setEditProjectCode(matched.code);
-  };
-
-  const handleEditProjectCodeChange = (value: string) => {
-    handleProjectCodeChange(value, setEditProjectCode);
-    const matched = projects.find((p) => p.code === value);
-    if (matched) setEditProjectName(matched.name);
-  };
-
-  // 프로젝트 코드에서 표시용 문자열 생성
-  const getProjectDisplayValue = (code: string) => {
-    if (!code) return '';
-    const name = getProjectName(code);
-    if (name && name !== code) {
-      return `[${code}] ${name}`;
-    }
-    return code;
-  };
 
   // 선택된 날짜의 06:00 기준 시작 시간
   const getBaseTime = useCallback((date?: Date) => {
@@ -447,9 +413,15 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
     return snapPoints;
   }, [timeStringToTimestamp, lunchConfig]);
 
-  const getSnappedTime = useCallback((targetTime: number, excludeId?: string | null) => {
+  // threshold: 세션 경계에 붙는 거리. 끌기 속도에 따라 달라진다 (snapThresholdForSpeed)
+  // 끌기 중 마우스 위치 기록 (놓을 때 속도로 스냅 강도 결정)
+  const pointer_samples = useRef<PointerSample[]>([]);
+  const releaseSnapThreshold = () => snapThresholdForSpeed(pointerSpeed(pointer_samples.current));
+
+  const getSnappedTime = useCallback((targetTime: number, excludeId?: string | null, threshold = SNAP_THRESHOLD_MS) => {
     let closestTime = targetTime;
-    let minDiff = SNAP_THRESHOLD_MS;
+    let minDiff = threshold;
+    const key_threshold = Math.min(KEY_SNAP_THRESHOLD_MS, threshold / 3);
 
     // 기존 로그들의 시작/종료 시간에 스냅 (15분 이내)
     todayLogs.forEach(log => {
@@ -477,7 +449,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
     keySnapPoints.forEach(snapPoint => {
       const diff = Math.abs(snapPoint - targetTime);
       // 주요 스냅 포인트는 5분 이내일 때만 스냅 (더 엄격한 조건)
-      if (diff <= KEY_SNAP_THRESHOLD_MS && diff < minDiff) {
+      if (diff <= key_threshold && diff < minDiff) {
         minDiff = diff;
         closestTime = snapPoint;
       }
@@ -487,9 +459,10 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
   }, [todayLogs, getKeySnapPoints]);
 
   // 특정 행(작업명)의 세션 경계에 스냅하는 함수
-  const getSnappedTimeForRow = useCallback((targetTime: number, rowTitle: string) => {
+  const getSnappedTimeForRow = useCallback((targetTime: number, rowTitle: string, threshold = SNAP_THRESHOLD_MS) => {
     let closestTime = targetTime;
-    let minDiff = SNAP_THRESHOLD_MS;
+    let minDiff = threshold;
+    const key_threshold = Math.min(KEY_SNAP_THRESHOLD_MS, threshold / 3);
 
     // 해당 행의 세션들만 필터링 (15분 이내)
     const rowSessions = todayLogs.filter(log => log.title === rowTitle);
@@ -517,7 +490,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
     keySnapPoints.forEach(snapPoint => {
       const diff = Math.abs(snapPoint - targetTime);
       // 주요 스냅 포인트는 5분 이내일 때만 스냅 (더 엄격한 조건)
-      if (diff <= KEY_SNAP_THRESHOLD_MS && diff < minDiff) {
+      if (diff <= key_threshold && diff < minDiff) {
         minDiff = diff;
         closestTime = snapPoint;
       }
@@ -832,6 +805,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
       e.preventDefault();
     }
 
+    pointer_samples.current = [];
     setIsDragging(true);
     setIsScheduleDrag(e.button === 2);
     setDragStartPercent(percent);
@@ -842,6 +816,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
   const handleMouseMove = (e: React.MouseEvent) => {
     // 드래그 중일 때
     if (isDragging) {
+      recordPointer(pointer_samples.current, e.clientX);
       setDragCurrentPercent(getPercentFromEvent(e));
       return;
     }
@@ -891,14 +866,17 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
     let clamped_end = Math.max(dayStart, Math.min(dayEnd, end_time));
 
     // 기존 작업 행에서 드래그한 경우: 해당 행의 세션 경계에 스냅 적용
+    // 끌기 시작점은 클릭한 자리라 항상 기본 스냅, 놓은 쪽은 속도에 따라
+    const release_threshold = releaseSnapThreshold();
+    const start_is_release = dragCurrentPercent < dragStartPercent;
     if (dragRowIndex !== null && dragRowIndex < uniqueRows.length) {
       const rowTitle = uniqueRows[dragRowIndex].title;
-      clamped_start = getSnappedTimeForRow(clamped_start, rowTitle);
-      clamped_end = getSnappedTimeForRow(clamped_end, rowTitle);
+      clamped_start = getSnappedTimeForRow(clamped_start, rowTitle, start_is_release ? release_threshold : undefined);
+      clamped_end = getSnappedTimeForRow(clamped_end, rowTitle, start_is_release ? undefined : release_threshold);
     } else {
       // 새 작업 생성: 전체 세션 경계에 스냅 적용
-      clamped_start = getSnappedTime(clamped_start, null);
-      clamped_end = getSnappedTime(clamped_end, null);
+      clamped_start = getSnappedTime(clamped_start, null, start_is_release ? release_threshold : undefined);
+      clamped_end = getSnappedTime(clamped_end, null, start_is_release ? undefined : release_threshold);
     }
 
     // --- 충돌 자동 조정 로직 (동시에 여러 작업 세션 불가) ---
@@ -1037,6 +1015,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
     if (is_visually_small || is_short_duration) {
       const percent = getPercentFromEvent(e);
       
+      pointer_samples.current = [];
       setIsResizing(true);
       setResizeLogId(item.id);
       setResizeType('smart'); // 방향 미정 상태
@@ -1060,6 +1039,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
     
     const percent = getPercentFromEvent(e);
     
+    pointer_samples.current = [];
     setIsResizing(true);
     setResizeLogId(log_id);
     setResizeType(type);
@@ -1079,6 +1059,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
       const x = e.clientX - rect.left - LABEL_WIDTH - 16; // 패딩 16px 고려
       const width = rect.width - LABEL_WIDTH - 32; // 양쪽 패딩 32px 고려
       const percent = Math.min(Math.max((x / width) * 100, 0), 100);
+      recordPointer(pointer_samples.current, e.clientX);
       setResizeCurrentPercent(percent);
 
       // 스마트 리사이즈 방향 결정
@@ -1157,7 +1138,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
           new_start = Math.max(dayStart, new_start);
           
           // 스냅 적용
-          new_start = getSnappedTime(new_start, resizeLogId);
+          new_start = getSnappedTime(new_start, resizeLogId, releaseSnapThreshold());
 
           // 2. 시작 시간이 종료 시간보다 늦어지지 않도록 (최소 5분 간격)
           if (new_start >= new_end - 5 * 60 * 1000) {
@@ -1170,7 +1151,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
           new_end = Math.min(dayEnd, new_end);
 
           // 스냅 적용
-          new_end = getSnappedTime(new_end, resizeLogId);
+          new_end = getSnappedTime(new_end, resizeLogId, releaseSnapThreshold());
 
           // 2. 종료 시간이 시작 시간보다 빨라지지 않도록 (최소 5분 간격)
           if (new_end <= new_start + 5 * 60 * 1000) {
@@ -1330,10 +1311,48 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
     setEditProjectName(log.projectCode ? (projects.find((p) => p.code === log.projectCode)?.name ?? '') : '');
     setEditCategory(log.category || null);
     setEditNote(log.note || '');
+    setEditStart(toHHmm(log.startTime));
+    setEditEnd(log.endTime ? toHHmm(log.endTime) : '');
   };
 
+  // HH:mm ↔ 타임스탬프. 그 기록이 속한 하루(06:00 ~ 익일 06:00) 안으로 맞춘다 — 새벽 01:00 은 다음 날
+  const toHHmm = (t: number) => {
+    const d = new Date(t);
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  };
+  const editTimeToStamp = (log: TimerLog, hhmm: string) => {
+    const day_start = getBaseTime(new Date(log.startTime - DAY_START_HOUR * 60 * 60 * 1000));
+    const [h, m] = hhmm.split(':').map(Number);
+    const d = new Date(day_start);
+    d.setHours(h, m, 0, 0);
+    return d.getTime() < day_start ? d.getTime() + 24 * 60 * 60 * 1000 : d.getTime();
+  };
+  const edit_is_running = !!editingLog && (!editingLog.endTime || editingLog.status === 'RUNNING' || editingLog.status === 'PAUSED');
+  const edit_start_ms = editingLog && editStart ? editTimeToStamp(editingLog, editStart) : null;
+  const edit_end_ms = editingLog ? (edit_is_running ? currentTime : editEnd ? editTimeToStamp(editingLog, editEnd) : null) : null;
+  const edit_time_error = !editingLog
+    ? ''
+    : edit_start_ms === null || edit_end_ms === null
+      ? '시간을 입력해 주세요'
+      : edit_end_ms < edit_start_ms // 종료가 시작보다 이르지만 않으면 된다
+        ? edit_is_running ? '시작이 지금보다 늦을 수 없어요' : '종료가 시작보다 이를 수 없어요'
+        : '';
+
   const handleEditSave = () => {
-    if (editingLog && editTitle.trim()) {
+    if (editingLog && editTitle.trim() && !edit_time_error && edit_start_ms !== null && edit_end_ms !== null) {
+      // 시간을 바꿨으면 겹치는 기록·점심시간을 피해 조정 (막대 끌기와 같은 규칙)
+      let time_patch: Partial<TimerLog> = {};
+      const start_changed = editStart !== toHHmm(editingLog.startTime);
+      const end_changed = !edit_is_running && editEnd !== (editingLog.endTime ? toHHmm(editingLog.endTime) : '');
+      if (start_changed || end_changed) {
+        const { adjustedStart, adjustedEnd, wasAdjusted } = adjustForOverlap(edit_start_ms, edit_end_ms, editingLog.id);
+        if (adjustedEnd < adjustedStart) {
+          setSnackbar({ open: true, message: '다른 기록과 겹쳐 그 시간으로는 바꿀 수 없어요.', severity: 'warning' });
+          return;
+        }
+        if (wasAdjusted) setSnackbar({ open: true, message: '시간 충돌로 인해 자동 조정되었습니다.', severity: 'info' });
+        time_patch = edit_is_running ? { startTime: adjustedStart } : { startTime: adjustedStart, endTime: adjustedEnd };
+      }
       // 코드와 이름을 모두 넣었으면 프로젝트 목록에 등록/갱신
       if (editProjectCode.trim() && editProjectName.trim()) {
         addProject({ code: editProjectCode.trim(), name: editProjectName.trim() });
@@ -1342,19 +1361,16 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
         title: editTitle,
         projectCode: editProjectCode || undefined,
         category: editCategory || undefined,
-        note: editNote.trim() || undefined
+        note: editNote.trim() || undefined,
+        ...time_patch,
       });
       handleEditClose();
     }
   };
 
+  // 입력값은 비우지 않는다 — 닫히는 동안 빈 칸·오류가 깜빡이지 않게. 열 때 openEditModal 이 다시 채운다
   const handleEditClose = () => {
     setEditingLog(null);
-    setEditTitle('');
-    setEditProjectCode('');
-    setEditProjectName('');
-    setEditCategory(null);
-    setEditNote('');
   };
 
   return (
@@ -1925,46 +1941,13 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
                   onChange={(e) => setNewTitle(e.target.value)}
                   autoFocus
                 />
-                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                  <Autocomplete
-                    freeSolo
-                    options={projectCodeOptions}
-                    value={null}
-                    inputValue={newProjectCode}
-                    onInputChange={(_e, newValue) => {
-                      setNewProjectCode(newValue);
-                      const matched = projects.find((p) => p.code === newValue);
-                      if (matched) setNewProjectName(matched.name);
-                    }}
-                    renderOption={(props, option) =>
-                      renderProjectOption(props, option, projects.find((p) => p.code === option)?.name, () => deleteProject(option))
-                    }
-                    renderInput={(params) => <TextField {...params} label="프로젝트 코드" />}
-                    sx={{ flex: 1, minWidth: 180 }}
-                  />
-                  {/* 코드 + 이름을 모두 넣고 저장하면 새 프로젝트로 등록된다 */}
-                  <Autocomplete
-                    freeSolo
-                    options={projectNameOptions}
-                    value={null}
-                    inputValue={newProjectName}
-                    onInputChange={(_e, newValue) => {
-                      setNewProjectName(newValue || '');
-                      const matched = newValue ? projects.find((p) => p.name === newValue) : undefined;
-                      if (matched) setNewProjectCode(matched.code);
-                    }}
-                    renderOption={(props, option) =>
-                      renderProjectOption(props, option, projects.find((p) => p.name === option)?.code, () => {
-                        const target = projects.find((p) => p.name === option);
-                        if (target) deleteProject(target.code);
-                      })
-                    }
-                    renderInput={(params) => (
-                      <TextField {...params} label="프로젝트 명" placeholder="새 프로젝트면 이름 입력" />
-                    )}
-                    sx={{ flex: 1, minWidth: 180 }}
-                  />
-                </Box>
+                {/* 코드 + 이름을 모두 넣고 저장하면 새 프로젝트로 등록된다 */}
+                <ProjectCodeNameFields
+                  code={newProjectCode}
+                  name={newProjectName}
+                  onCodeChange={setNewProjectCode}
+                  onNameChange={setNewProjectName}
+                />
                 <CategoryAutocomplete
                   value={newCategory}
                   onChange={(newValue) => setNewCategory(newValue)}
@@ -1999,7 +1982,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
         maxWidth="sm" 
         fullWidth
         onKeyDown={(e) => {
-          if (e.key === 'Enter' && !e.shiftKey && editTitle.trim()) {
+          if (e.key === 'Enter' && !e.shiftKey && editTitle.trim() && !edit_time_error) {
             e.preventDefault();
             handleEditSave();
           }
@@ -2015,39 +1998,48 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
               onChange={(e) => setEditTitle(e.target.value)}
               autoFocus
             />
-            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-              <Autocomplete
-                freeSolo
-                options={projectCodeOptions}
-                // value 대신 inputValue 만 제어한다 — value 가 입력값과 같으면 MUI 가 목록을 거르지 않는다
-                value={null}
-                inputValue={editProjectCode}
-                onInputChange={(_e, newValue) => handleEditProjectCodeChange(newValue)}
-                renderOption={(props, option) =>
-                  renderProjectOption(props, option, projects.find((p) => p.code === option)?.name, () => deleteProject(option))
-                }
-                renderInput={(params) => <TextField {...params} label="프로젝트 코드" />}
-                sx={{ flex: 1, minWidth: 180 }}
+            {/* 이 막대(세션)의 시간: 시작 – 종료 · 소요 */}
+            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+              <TimeField
+                label="시작"
+                value={editStart}
+                onChange={setEditStart}
+                error={!!edit_time_error}
+                InputLabelProps={{ shrink: true }}
+                sx={{ flex: 1, '& input::-webkit-calendar-picker-indicator': { filter: themeConfig.isDark ? 'invert(1)' : 'none' } }}
               />
-              {/* 코드 + 이름을 모두 넣고 저장하면 새 프로젝트로 등록된다 */}
-              <Autocomplete
-                freeSolo
-                options={projectNameOptions}
-                value={null}
-                inputValue={editProjectName}
-                onInputChange={(_e, newValue) => handleEditProjectNameChange(newValue || '')}
-                renderOption={(props, option) =>
-                  renderProjectOption(props, option, projects.find((p) => p.name === option)?.code, () => {
-                    const target = projects.find((p) => p.name === option);
-                    if (target) deleteProject(target.code);
-                  })
-                }
-                renderInput={(params) => (
-                  <TextField {...params} label="프로젝트 명" placeholder="새 프로젝트면 이름 입력" />
-                )}
-                sx={{ flex: 1, minWidth: 180 }}
-              />
+              <Typography sx={{ pt: 2, color: 'text.secondary' }}>–</Typography>
+              {edit_is_running ? (
+                <TextField label="종료" value="진행 중" disabled InputLabelProps={{ shrink: true }} sx={{ flex: 1 }} />
+              ) : (
+                <TimeField
+                  label="종료"
+                  value={editEnd}
+                  onChange={setEditEnd}
+                  error={!!edit_time_error}
+                  InputLabelProps={{ shrink: true }}
+                  sx={{ flex: 1, '& input::-webkit-calendar-picker-indicator': { filter: themeConfig.isDark ? 'invert(1)' : 'none' } }}
+                />
+              )}
+              <Box sx={{ minWidth: 88, pt: 1, textAlign: 'right' }}>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.2 }}>소요</Typography>
+                <Typography sx={{ fontWeight: 600, color: edit_time_error ? 'error.main' : 'text.primary' }}>
+                  {edit_start_ms !== null && edit_end_ms !== null && edit_end_ms > edit_start_ms
+                    ? formatDurationShort((edit_end_ms - edit_start_ms) / 1000)
+                    : '-'}
+                </Typography>
+              </Box>
             </Box>
+            {edit_time_error && (
+              <Typography variant="caption" color="error" sx={{ mt: -1.5 }}>{edit_time_error}</Typography>
+            )}
+            {/* 코드 + 이름을 모두 넣고 저장하면 새 프로젝트로 등록된다 */}
+            <ProjectCodeNameFields
+              code={editProjectCode}
+              name={editProjectName}
+              onCodeChange={setEditProjectCode}
+              onNameChange={setEditProjectName}
+            />
             <CategoryAutocomplete
               value={editCategory}
               onChange={(newValue) => setEditCategory(newValue)}
@@ -2067,7 +2059,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
         </DialogContent>
         <DialogActions>
           <Button onClick={handleEditClose}>취소</Button>
-          <Button onClick={handleEditSave} variant="contained" color="primary">저장(Enter)</Button>
+          <Button onClick={handleEditSave} variant="contained" color="primary" disabled={!editTitle.trim() || !!edit_time_error}>저장(Enter)</Button>
         </DialogActions>
       </Dialog>
       

@@ -297,3 +297,45 @@ describe('상태 변경 이력으로 그 주 시점 상태', () => {
     expect(rowAt(new Date(2026, 8, 14)).status).toBe('진행중');
   });
 });
+
+describe('테스트/배포 게시글 이력 (7534 deploy flag 관리 개선, 2026-10-20 캡처)', () => {
+  const { testPostAtRef } = jest.requireActual('../../utils/weeklyStatusReport');
+  const post = {
+    created: '2026-09-30',
+    history: [
+      { date: '2026-09-30', status: 'QC배정완료' },
+      { date: '2026-10-01', status: '테스트예정' },
+      { date: '2026-10-01', status: '테스트' },
+      { date: '2026-10-01', status: '테스트중단' },
+      { date: '2026-10-13', status: '테스트' },
+      { date: '2026-10-14', status: '테스트완료' },
+      { date: '2026-10-15', status: '스테이지확정' },
+      { date: '2026-10-15', status: '배포프로그램확인' },
+      { date: '2026-10-15', status: '푸시확인' },
+      { date: '2026-10-15', status: '스테이지확인' },
+      { date: '2026-10-19', status: '수시확인(B,E,I)' },
+    ],
+  };
+  it('9/28 주(기준 10/2): 테스트중단', () => {
+    expect(testPostAtRef(post, '2026-09-28', '2026-10-02')).toEqual({ status: '테스트', note: '10/01(목) 테스트중단' });
+  });
+  it('10/12 주(기준 10/16): 목 스테이지 → 다음 주 월 수시배포 예정', () => {
+    expect(testPostAtRef(post, '2026-10-12', '2026-10-16')).toEqual({ status: '배포대기', note: '10/19(월) 수시배포 예정' });
+  });
+  it('10/19 주(기준 10/20): 수시확인 → 배포완료', () => {
+    expect(testPostAtRef(post, '2026-10-19', '2026-10-20')).toEqual({ status: '배포완료', note: '10/19(월) 수시배포' });
+  });
+  it('지난 주에 끝난 배포, 아직 글이 없던 주는 null', () => {
+    expect(testPostAtRef(post, '2026-10-26', '2026-10-30')).toBeNull();
+    expect(testPostAtRef(post, '2026-09-21', '2026-09-25')).toBeNull();
+  });
+  it('현황표에서는 작업 게시글 상태보다 테스트/배포 게시글을 먼저 쓴다', () => {
+    const row = buildWeeklyReport(
+      base({
+        logs: [log('A26_05087', '2026-10-13', 9, 10)],
+        erp_info: { A26_05087: { status: '테스트중', changed: '2026-10-14', dates: [], board: 'work', test_posts: [post] } },
+      })
+    )[0];
+    expect(row).toMatchObject({ status: '배포대기', note: '10/19(월) 수시배포 예정' });
+  });
+});

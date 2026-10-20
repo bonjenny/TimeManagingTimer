@@ -88,7 +88,7 @@ describe('PresetPanel', () => {
         const saved = JSON.parse(localStorage.getItem('timekeeper-manual-presets') || '[]');
         expect(saved[0].projectCode).toBe('[5.6] 판매조회');
       });
-    });
+    }, 20000); // 한 글자씩 치는 테스트라 전체 테스트를 같이 돌리면 기본 5초를 넘긴다
   });
 
   describe('색상 커스텀', () => {

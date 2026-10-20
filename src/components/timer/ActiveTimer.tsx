@@ -8,6 +8,7 @@ import { useProjectStore } from '../../store/useProjectStore';
 import { useTimerLogic } from '../../hooks/useTimerLogic';
 import { formatTimeDisplay, formatDuration, formatDurationShort } from '../../utils/timeUtils';
 import CategoryAutocomplete from '../common/CategoryAutocomplete';
+import { estimateTextWidth } from '../../utils/textWidth';
 import NewProjectDialog from '../common/NewProjectDialog';
 import { NEW_PROJECT_OPTION, filterProjectCodeOptions, renderNewProjectOption, renderProjectOption } from '../common/projectOptions';
 
@@ -352,7 +353,8 @@ const ActiveTimer: React.FC = () => {
           disableUnderline: true,
           sx: { fontSize: is_compact ? 16 : '0.8rem' }
         }}
-        sx={{ minWidth: 150 }}
+        // 데스크톱: 글자에 맞춰 늘어나되 제목 끝(카드 정보 영역 오른쪽 끝)까지만
+        sx={is_compact ? { minWidth: 150 } : { width: Math.max(150, estimateTextWidth(editNote)), maxWidth: '100%', minWidth: 150, flex: '0 1 auto' }}
       />
     </ClickAwayListener>
   ) : (
@@ -601,8 +603,8 @@ const ActiveTimer: React.FC = () => {
       {status_bar}
 
       <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: { md: 'center' }, gap: 2 }}>
-        {/* 타이머 정보 */}
-        <Box sx={{ flexGrow: 1 }}>
+        {/* 타이머 정보 (minWidth 0: 긴 비고 입력칸이 이 영역을 넘어 늘어나지 않게) */}
+        <Box sx={{ flexGrow: 1, minWidth: 0 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, flexWrap: 'wrap' }}>
             {status_chip}
             {/* 카테고리 편집 */}
@@ -611,8 +613,8 @@ const ActiveTimer: React.FC = () => {
             {project_chip}
           </Box>
           {title_node}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-            <Typography variant="body2" color="text.secondary">
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: isEditingNote ? 'nowrap' : 'wrap', minWidth: 0 }}>
+            <Typography variant="body2" color="text.secondary" sx={{ flexShrink: 0 }}>
               시작: {new Date(activeTimer.startTime).toLocaleTimeString()}
             </Typography>
 

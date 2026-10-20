@@ -520,6 +520,8 @@ export interface ErpPostSummary {
   dev_error?: string;
   /** 작업에 연결된 테스트/배포 게시글 작성일들 = 테스트 요청일 (오름차순) */
   test_dates?: string[];
+  /** 작업에 연결된 테스트/배포 게시글과 그 진행상태 이력 (폐기 제외). 테스트 이후 단계는 이게 가장 정확하다 */
+  test_posts?: { created: string; history: { date: string; status: string }[] }[];
   /** 작업 게시글 진행상태 변경 이력 (신규·상태변경만, 오래된 순). 기준일 시점 상태를 구할 때 쓴다 */
   status_history?: { date: string; status: string }[];
 }
@@ -541,12 +543,13 @@ export async function fetchErpStatusHistory(
     data_no: target.data_no,
     menu_sid: 'M_000000E040716',
   });
-  return (data.history_slip || [])
-    .filter((h) => /신규|상태변경/.test(String(h.act_type_nm ?? '')))
+  // 「상태변경」 행만 보면 안 된다: 테스트/배포 게시판은 「수정」 행에서도 진행상태가 바뀐다 (7534: 테스트→테스트중단).
+  // 시간순으로 놓고 앞 행과 진행상태가 달라진 지점만 남긴다
+  const rows = (data.history_slip || [])
     .map((h) => ({ at: String(h.write_dtm ?? ''), date: parseErpDate(h.write_dtm), status: String(h.target_progress_status_nm ?? '') }))
     .filter((h) => h.date && h.status)
-    .sort((a, b) => a.at.localeCompare(b.at))
-    .map(({ date, status }) => ({ date, status }));
+    .sort((a, b) => a.at.localeCompare(b.at));
+  return rows.filter((h, i) => i === 0 || h.status !== rows[i - 1].status).map(({ date, status }) => ({ date, status }));
 }
 
 /** "20260928" · "2026-09-28" · "∬D:2026-09-28T…Z∬" → 로컬 날짜 YYYY-MM-DD. 아니면 '' */
@@ -668,17 +671,36 @@ export async function fetchErpWorkSummary(session: ErpSession, work: ErpPost): P
 
   // 테스트 요청일 = 연결된 테스트/배포 게시글 작성일. 실패해도 나머지 값은 살린다
   let test_dates: string[] | undefined;
+  let test_posts: { created: string; history: { date: string; status: string }[] }[] | undefined;
   try {
     const from8 = work_summary.created ? work_summary.created.replace(/-/g, '') : yearAgo8();
-    const tests = await listBoard(session, testBoardBody(work, work_summary.record_sid ?? '', from8));
-    test_dates = tests
+    const tests = (await listBoard(session, testBoardBody(work, work_summary.record_sid ?? '', from8)))
       .filter((r) => r['board_s$conn_data_sid_001'] === work.sid || r['b_000000e074008_001$board_s$data_sid'] === work.sid)
       .filter((r) => !/폐기/.test(String((r['board_s$progress_status'] as { name?: string } | undefined)?.name ?? '')))
-      .map((r) => parseErpDate(r['board_s$data_dt']))
-      .filter(Boolean)
-      .sort();
+      .filter((r) => parseErpDate(r['board_s$data_dt']));
+    test_dates = tests.map((r) => parseErpDate(r['board_s$data_dt'])).sort();
+    // 테스트/배포 게시글마다 진행상태 이력. 실패하면 지금 상태 하나로 대신한다
+    test_posts = [];
+    for (const r of tests) {
+      const created = parseErpDate(r['board_s$data_dt']);
+      const now_status = String((r['board_s$progress_status'] as { name?: string } | undefined)?.name ?? r['board_s$progress_status_nm'] ?? '');
+      let history: { date: string; status: string }[];
+      try {
+        history = await fetchErpStatusHistory(session, {
+          bizz_sid: BOARD_TEST,
+          data_sid: String(r['board_s$data_sid'] ?? ''),
+          record_sid: String(r['board_s$record_sid'] ?? ''),
+          data_dt8: created.replace(/-/g, ''),
+          data_no: Number(r['board_s$data_no']),
+        });
+      } catch {
+        history = [];
+      }
+      test_posts.push({ created, history: history.length ? history : [{ date: parseErpDate(r['board_s$update_dtm']) || created, status: now_status }] });
+    }
   } catch {
     test_dates = undefined;
+    test_posts = undefined;
   }
 
   // 진행상태 변경 이력: 지난 주 표를 그 주 시점 상태로 쓰기 위해. 실패해도 나머지 값은 살린다
@@ -702,6 +724,7 @@ export async function fetchErpWorkSummary(session: ErpSession, work: ErpPost): P
     dates: dev_dates.length ? dev_dates : work_summary.dates,
     dev_statuses: devs.map((d) => d.status).filter(Boolean),
     test_dates,
+    test_posts,
     status_history,
   };
 }

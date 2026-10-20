@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Paper, IconButton, Box, Autocomplete, TextField, Tooltip, Typography, Button, Collapse, FormControlLabel, Switch, useMediaQuery, useTheme } from '@mui/material';
+import TimeField from '../common/TimeField';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import ScheduleIcon from '@mui/icons-material/Schedule';
 import EventNoteIcon from '@mui/icons-material/EventNote';
@@ -34,6 +35,10 @@ const ROW_ICON_BTN_SX = {
   // 기본 비활성색(0.26)은 옆 아이콘보다 너무 흐려서 한 세트로 안 보인다
   '&.Mui-disabled': { color: 'text.disabled' },
 } as const;
+import { estimateTextWidth } from '../../utils/textWidth';
+
+/** 비고 칸 폭: 글자에 맞춰 120~360px */
+const noteFieldWidth = (text: string) => Math.min(360, Math.max(120, estimateTextWidth(text)));
 
 const TimerInput: React.FC = () => {
   const { startTimer, addLog, getRecentTitles, removeRecentTitle } = useTimerStore();
@@ -420,18 +425,19 @@ const TimerInput: React.FC = () => {
       onKeyDown={handleKeyDown}
       InputProps={withUnderlineOff({})}
       size="small"
+      // 비고가 길어지면 칸도 늘어난다 (120px ~ 360px)
       sx={is_compact ? COMPACT_FIELD_SX : {
-        width: 120,
+        width: noteFieldWidth(note),
+        transition: 'width 0.15s',
         '& .MuiInputBase-input': { fontSize: '0.8rem', p: '0 !important' }
       }}
     />
   );
 
   const renderTimeField = (value: string, onChange: (v: string) => void, with_key_down: boolean) => (
-    <TextField
-      type="time"
+    <TimeField
       value={value}
-      onChange={(e) => onChange(e.target.value)}
+      onChange={onChange}
       size="small"
       variant="standard"
       InputProps={{ disableUnderline: true }}

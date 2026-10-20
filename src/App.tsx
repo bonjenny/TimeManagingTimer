@@ -15,6 +15,7 @@ const TimeManagement = lazy(() => import('./components/pages/TimeManagement'));
 const SettingsPage = lazy(() => import('./components/pages/SettingsPage'));
 const GuidePage = lazy(() => import('./components/pages/GuidePage'));
 import NewTaskModal from './components/modal/NewTaskModal';
+import HalloweenEffects from './components/HalloweenEffects';
 import { Box, Typography, IconButton, Tooltip, useMediaQuery, Snackbar, CircularProgress } from '@mui/material';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
@@ -306,7 +307,8 @@ function App() {
     <Box
       sx={{
         display: 'grid',
-        gridTemplateColumns: is_mobile ? 'minmax(0, 1fr)' : '280px 1fr',
+        // 왼쪽 칸은 프리셋 패널 폭을 따라간다 (패널 모서리로 크기 조절 시 오른쪽이 그만큼 늘고 준다)
+        gridTemplateColumns: is_mobile ? 'minmax(0, 1fr)' : 'auto minmax(0, 1fr)',
         gridTemplateRows: is_mobile ? 'auto auto auto auto auto' : 'auto auto auto auto',
         gap: is_mobile ? 1.5 : 2,
         minHeight: is_mobile ? undefined : 'calc(100vh - 180px)',
@@ -482,6 +484,9 @@ function App() {
         </Layout>
       </Box>
       
+      {/* 할로윈 팔레트일 때만: 유령 장식 + 빈 곳 5번 클릭 이스터에그 */}
+      <HalloweenEffects />
+
       {/* F8 새 작업 추가 모달 */}
       <NewTaskModal
         open={is_new_task_modal_open}

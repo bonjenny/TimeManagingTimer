@@ -221,6 +221,48 @@ function erpAtRef(erp: ErpPostSummary, ref_str: string): ErpPostSummary | null {
   return erp;
 }
 
+/**
+ * 테스트/배포 게시글 이력 → 기준일 시점의 진행상태·비고. 테스트 이후 단계는 이게 가장 정확하다.
+ * - 테스트 요청 단계(QC배정완료 · 테스트예정 · 테스트 …): 테스트 + "작성일 테스트요청"
+ * - 테스트중단: 테스트 + "그 날 테스트중단" / 테스트완료: 배포대기 + "그 날 테스트완료"
+ * - 스테이지확정 · 배포프로그램확인 · 푸시확인 · 스테이지확인: 배포대기 + 스테이지 날로 정한 "수시배포 예정"
+ * - 수시확인 · 동기화완료: 배포완료 + "그 날 수시배포" (지난 주에 끝난 배포면 null → 이번 주 비고 아님)
+ * 기준일에 아직 글이 없었거나 폐기면 null
+ */
+export function testPostAtRef(
+  post: { created: string; history: { date: string; status: string }[] },
+  week_start_str: string,
+  ref_str: string
+): { status: string; note: string } | null {
+  if (!post.created || post.created > ref_str) return null;
+  const upto = post.history.filter((h) => h.date <= ref_str);
+  const at = upto[upto.length - 1] ?? { date: post.created, status: '테스트' };
+  const s = at.status;
+  if (/폐기/.test(s)) return null;
+  if (/수시확인|동기화완료/.test(s)) {
+    if (at.date < week_start_str) return null;
+    return { status: '배포완료', note: `${formatMonthDay(at.date)} 수시배포` };
+  }
+  if (/스테이지|배포프로그램|푸시확인/.test(s)) {
+    const stage = [...upto].reverse().find((h) => /스테이지확정/.test(h.status))?.date ?? at.date;
+    return { status: '배포대기', note: `${formatMonthDay(stageToReleaseDate(stage))} 수시배포 예정` };
+  }
+  if (/테스트완료/.test(s)) return { status: '배포대기', note: `${formatMonthDay(at.date)} 테스트완료` };
+  if (/테스트중단/.test(s)) return { status: '테스트', note: `${formatMonthDay(at.date)} 테스트중단` };
+  if (/^백$|정상화/.test(s)) return { status: '배포대기', note: `${formatMonthDay(at.date)} ${s}` };
+  return { status: '테스트', note: `${formatMonthDay(post.created)} 테스트요청` };
+}
+
+/** 기준일까지 작성된 테스트/배포 게시글 중 가장 최근 글 기준 */
+function latestTestState(
+  posts: { created: string; history: { date: string; status: string }[] }[],
+  week_start_str: string,
+  ref_str: string
+): { status: string; note: string } | null {
+  const post = posts.filter((p) => p.created && p.created <= ref_str).sort((a, b) => b.created.localeCompare(a.created))[0];
+  return post ? testPostAtRef(post, week_start_str, ref_str) : null;
+}
+
 /** 비고에 남길 만한 진행상황: 개발완료 이후 단계만 (진행중·시작 같은 건 쓰지 않는다) */
 const NOTE_STATUSES = ['개발완료', '테스트', '배포대기', '배포완료', '폐기', '보류'];
 
@@ -307,9 +349,11 @@ export function buildWeeklyReport(input: BuildReportInput): ReportRow[] {
     // ERP 게시글이 있으면 그 진행상태·날짜를 먼저, 없으면 배포 캘린더
     const erp = group.map((k) => erp_info[k]).find(Boolean);
     const calendar = deriveStatus(project_events, ws_str, ref_str);
+    // 1순위: 테스트/배포 게시글 이력 (테스트 이후 단계) → 2순위: 작업·개발 게시글 → 3순위: 배포 캘린더
+    const test_state = erp?.test_posts?.length ? latestTestState(erp.test_posts, ws_str, ref_str) : null;
     const erp_at_ref = erp ? erpAtRef(erp, ref_str) : null;
     const erp_status = erp_at_ref ? resolveErpStatus(erp_at_ref) : '';
-    const auto = erp_status ? { status: erp_status, note: erpNote(erp_at_ref!, calendar.note, ref_str) } : calendar;
+    const auto = test_state ?? (erp_status ? { status: erp_status, note: erpNote(erp_at_ref!, calendar.note, ref_str) } : calendar);
     const auto_start = erp?.dates[0] || (Number.isFinite(first) ? formatDateToString(new Date(first)) : '');
     const auto_end = (erp && erp.dates.length > 1 ? erp.dates[erp.dates.length - 1] : '') || end_dates[end_dates.length - 1] || '';
 
