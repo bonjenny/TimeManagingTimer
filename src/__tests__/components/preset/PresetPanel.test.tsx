@@ -69,6 +69,26 @@ describe('PresetPanel', () => {
         expect(screen.getByText('테스트 프리셋')).toBeInTheDocument();
       });
     });
+
+    it('프로젝트 코드 칸에 대괄호로 시작하는 값을 넣어도 대괄호 안을 코드로 떼어 내지 않는다', async () => {
+      const user = userEvent.setup();
+      render(<PresetPanel />);
+
+      await user.click(screen.getByRole('button', { name: /프리셋 추가/i }));
+      await user.click(screen.getByText('새 프리셋 추가'));
+
+      const code_input = screen.getByLabelText(/프로젝트 코드/i) as HTMLInputElement;
+      // userEvent 에서 [ 는 특수 키라 [[ 로 적는다
+      await user.type(code_input, '[[5.6] 판매조회');
+      await user.type(screen.getByLabelText(/업무명/i), '대괄호 테스트');
+      await user.click(screen.getByRole('button', { name: /추가\(Enter\)/i }));
+
+      // 예전에는 "[5.6]" 의 5.6 만 코드로 저장됐다
+      await waitFor(() => {
+        const saved = JSON.parse(localStorage.getItem('timekeeper-manual-presets') || '[]');
+        expect(saved[0].projectCode).toBe('[5.6] 판매조회');
+      });
+    });
   });
 
   describe('색상 커스텀', () => {

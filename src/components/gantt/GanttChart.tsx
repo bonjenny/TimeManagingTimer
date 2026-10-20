@@ -253,6 +253,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
   const [newLogEnd, setNewLogEnd] = useState<number>(0);
   const [newTitle, setNewTitle] = useState('');
   const [newProjectCode, setNewProjectCode] = useState('');
+  const [newProjectName, setNewProjectName] = useState('');
   const [newCategory, setNewCategory] = useState<string | null>(null);
   const [newNote, setNewNote] = useState('');
   const [isAddingSession, setIsAddingSession] = useState(false); // 기존 작업에 세션 추가 여부
@@ -347,14 +348,9 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
   }, [isResizingLabel]);
   
   // 프로젝트 코드 입력 처리 함수
-  const handleProjectCodeChange = (value: string, setter: (value: string) => void) => {
-    const match = value.match(/^\[([^\]]+)\]/);
-    if (match) {
-      setter(match[1]);
-    } else {
-      setter(value);
-    }
-  };
+  // 프로젝트 칸은 코드만 다룬다. 예전처럼 "[코드] 이름" 문자열에서 대괄호를 떼어 내면
+  // 이름이 "[5.6] 판매" 처럼 대괄호로 시작할 때 그 안을 코드로 잘못 읽는다.
+  const handleProjectCodeChange = (value: string, setter: (value: string) => void) => setter(value);
   
   // 수정 창: 코드를 고르면 이름도 채운다 (코드를 지워도 이름은 남긴다)
   // 이름을 고르면 코드도 채운다 (이름을 지워도 코드는 남긴다)
@@ -367,8 +363,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
 
   const handleEditProjectCodeChange = (value: string) => {
     handleProjectCodeChange(value, setEditProjectCode);
-    const code = value.match(/^\[([^\]]+)\]/)?.[1] ?? value;
-    const matched = projects.find((p) => p.code === code);
+    const matched = projects.find((p) => p.code === value);
     if (matched) setEditProjectName(matched.name);
   };
 
@@ -942,6 +937,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
       const existing_row = uniqueRows[dragRowIndex];
       setNewTitle(existing_row.title);
       setNewProjectCode(existing_row.projectCode || '');
+      setNewProjectName(projects.find((p) => p.code === existing_row.projectCode)?.name ?? '');
       setNewCategory(existing_row.category || null);
       const first_same_title = todayLogs.find((l) => l.title === existing_row.title);
       setNewNote(first_same_title?.note || '');
@@ -950,6 +946,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
       // 새 작업 생성
       setNewTitle('');
       setNewProjectCode('');
+      setNewProjectName('');
       setNewCategory(null);
       setNewNote('');
       setIsAddingSession(false);
@@ -965,12 +962,16 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
 
   const handleCreateSave = () => {
     if (!newTitle.trim()) return;
+    // 코드와 이름을 모두 넣었으면 프로젝트 목록에 등록/갱신
+    if (newProjectCode.trim() && newProjectName.trim()) {
+      addProject({ code: newProjectCode.trim(), name: newProjectName.trim() });
+    }
 
     const is_future = newLogStart > Date.now();
     const new_log: TimerLog = {
       id: crypto.randomUUID(),
       title: newTitle,
-      projectCode: newProjectCode || undefined,
+      projectCode: newProjectCode.trim() || undefined,
       category: newCategory || undefined,
       note: newNote.trim() || undefined,
       startTime: newLogStart,
@@ -987,6 +988,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
     setShowCreateModal(false);
     setNewTitle('');
     setNewProjectCode('');
+    setNewProjectName('');
     setNewCategory(null);
     setNewNote('');
     setIsAddingSession(false);
@@ -1893,6 +1895,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
                       setIsAddingSession(false);
                       setNewTitle('');
                       setNewProjectCode('');
+                      setNewProjectName('');
                       setNewCategory(null);
                       setNewNote('');
                     }}
@@ -1922,23 +1925,52 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
                   onChange={(e) => setNewTitle(e.target.value)}
                   autoFocus
                 />
-                <Box sx={{ display: 'flex', gap: 2 }}>
+                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
                   <Autocomplete
                     freeSolo
-                    options={projectOptions}
-                    value={getProjectDisplayValue(newProjectCode)}
-                    onInputChange={(_e, newValue) => handleProjectCodeChange(newValue, setNewProjectCode)}
+                    options={projectCodeOptions}
+                    value={null}
+                    inputValue={newProjectCode}
+                    onInputChange={(_e, newValue) => {
+                      setNewProjectCode(newValue);
+                      const matched = projects.find((p) => p.code === newValue);
+                      if (matched) setNewProjectName(matched.name);
+                    }}
+                    renderOption={(props, option) =>
+                      renderProjectOption(props, option, projects.find((p) => p.code === option)?.name, () => deleteProject(option))
+                    }
                     renderInput={(params) => <TextField {...params} label="프로젝트 코드" />}
-                    sx={{ flex: 1 }}
+                    sx={{ flex: 1, minWidth: 180 }}
                   />
-                  <CategoryAutocomplete
-                    value={newCategory}
-                    onChange={(newValue) => setNewCategory(newValue)}
-                    label="카테고리"
-                    variant="outlined"
-                    sx={{ flex: 1 }}
+                  {/* 코드 + 이름을 모두 넣고 저장하면 새 프로젝트로 등록된다 */}
+                  <Autocomplete
+                    freeSolo
+                    options={projectNameOptions}
+                    value={null}
+                    inputValue={newProjectName}
+                    onInputChange={(_e, newValue) => {
+                      setNewProjectName(newValue || '');
+                      const matched = newValue ? projects.find((p) => p.name === newValue) : undefined;
+                      if (matched) setNewProjectCode(matched.code);
+                    }}
+                    renderOption={(props, option) =>
+                      renderProjectOption(props, option, projects.find((p) => p.name === option)?.code, () => {
+                        const target = projects.find((p) => p.name === option);
+                        if (target) deleteProject(target.code);
+                      })
+                    }
+                    renderInput={(params) => (
+                      <TextField {...params} label="프로젝트 명" placeholder="새 프로젝트면 이름 입력" />
+                    )}
+                    sx={{ flex: 1, minWidth: 180 }}
                   />
                 </Box>
+                <CategoryAutocomplete
+                  value={newCategory}
+                  onChange={(newValue) => setNewCategory(newValue)}
+                  label="카테고리"
+                  variant="outlined"
+                />
               </>
             )}
             <TextField

@@ -31,6 +31,8 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import PaletteIcon from '@mui/icons-material/Palette';
+import TableChartIcon from '@mui/icons-material/TableChart';
+import WeeklyStatusReportDialog from '../report/WeeklyStatusReportDialog';
 import { useTimerStore, TimerLog } from '../../store/useTimerStore';
 import { useProjectStore } from '../../store/useProjectStore';
 import { useStatusStore } from '../../store/useStatusStore';
@@ -142,6 +144,8 @@ const WeeklySchedule: React.FC = () => {
   const is_mobile = useMediaQuery(theme.breakpoints.down('md'));
   const [more_anchor, setMoreAnchor] = useState<HTMLElement | null>(null);
   const [preview_open, setPreviewOpen] = useState(false);
+  // 주간 진행 현황표 (주간보고 표)
+  const [report_open, setReportOpen] = useState(false);
 
   // 이번 주인지 확인
   const isCurrentWeek = useMemo(() => {
@@ -714,8 +718,23 @@ const WeeklySchedule: React.FC = () => {
       <div dangerouslySetInnerHTML={{ __html: generateFormatHtml() }} />
     );
 
+  // 현황표에서도 화면 필터(관리업무 제외 / 특정 프로젝트 제외)를 따른다
+  const report_excluded_codes = useMemo(() => {
+    const codes: string[] = [];
+    if (viewMode === 'exclude_management') codes.push('A25_05591');
+    if (filterMode === 'exclude' && excludedProject) codes.push(excludedProject);
+    return codes;
+  }, [viewMode, filterMode, excludedProject]);
+
   const shared_overlays = (
     <>
+      <WeeklyStatusReportDialog
+        open={report_open}
+        onClose={() => setReportOpen(false)}
+        week_start={selectedWeekStart}
+        excluded_codes={report_excluded_codes}
+      />
+
       {/* 잡 색상 설정 모달 (배포 캘린더와 동일 스토어로 동기화, localStorage+주간 잡 포함) */}
       <JobColorManager
         open={colorManagerOpen}
@@ -796,6 +815,16 @@ const WeeklySchedule: React.FC = () => {
               >
                 <ListItemIcon><ContentCopyIcon fontSize="small" /></ListItemIcon>
                 복사
+              </MenuItem>
+              <MenuItem
+                onClick={() => {
+                  setMoreAnchor(null);
+                  setReportOpen(true);
+                }}
+                sx={{ minHeight: 44 }}
+              >
+                <ListItemIcon><TableChartIcon fontSize="small" /></ListItemIcon>
+                진행 현황표
               </MenuItem>
               {copyFormat === '3' && (
                 <MenuItem
@@ -1177,6 +1206,9 @@ const WeeklySchedule: React.FC = () => {
               data-testid="copy-header"
             >
               복사
+            </Button>
+            <Button variant="outlined" size="small" startIcon={<TableChartIcon />} onClick={() => setReportOpen(true)}>
+              진행 현황표
             </Button>
           </Box>
         </Box>

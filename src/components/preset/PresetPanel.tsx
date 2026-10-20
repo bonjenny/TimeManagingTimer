@@ -52,6 +52,7 @@ import { useProjectStore } from '../../store/useProjectStore';
 import { getAdjustedPalette, loadPaletteSettings } from '../../utils/colorPalette';
 import { getItem, setItem } from '../../utils/storage';
 import CategoryAutocomplete from '../common/CategoryAutocomplete';
+import { renderProjectOption } from '../common/projectOptions';
 
 // 프리셋 데이터 타입
 interface PresetItem {
@@ -78,7 +79,6 @@ interface SortablePresetItemProps {
   setInlineProjectCode: (code: string) => void;
   projectOptions: string[];
   getProjectName: (code: string) => string;
-  getInlineProjectDisplayValue: (code: string) => string;
   saveInlineProject: (preset: PresetItem, code: string) => void;
   cancelInlineEdit: () => void;
 }
@@ -94,7 +94,6 @@ const SortablePresetItem: React.FC<SortablePresetItemProps> = ({
   setInlineProjectCode,
   projectOptions,
   getProjectName,
-  getInlineProjectDisplayValue,
   saveInlineProject,
   cancelInlineEdit,
 }) => {
@@ -216,8 +215,14 @@ const SortablePresetItem: React.FC<SortablePresetItemProps> = ({
                   freeSolo
                   size="small"
                   options={projectOptions}
-                  value={getInlineProjectDisplayValue(inlineProjectCode)}
+                  value={null}
+                  inputValue={inlineProjectCode}
                   onInputChange={(_e, newValue) => setInlineProjectCode(newValue)}
+                  renderOption={(props, option) => {
+                    const name = getProjectName(option);
+                    return renderProjectOption(props, option, name !== option ? name : undefined);
+                  }}
+                  componentsProps={{ popper: { style: { width: 260 }, placement: 'bottom-start' } }}
                   onChange={(_e, newValue) => {
                     saveInlineProject(preset, newValue || '');
                   }}
@@ -353,7 +358,8 @@ const PresetPanel: React.FC = () => {
   const [modal_note, setModalNote] = useState('');
   const [modal_color, setModalColor] = useState<string | undefined>(undefined);
   
-  const projectOptions = projects.map(p => `[${p.code}] ${p.name}`);
+  // 코드만. "[코드] 이름" 문자열을 다시 쪼개면 이름이 "[..]" 로 시작할 때 코드로 오인한다
+  const projectOptions = projects.map(p => p.code);
 
   const [add_menu_anchor, setAddMenuAnchor] = useState<null | HTMLElement>(null);
 
@@ -470,25 +476,11 @@ const PresetPanel: React.FC = () => {
   };
   
   const handleProjectCodeChange = (value: string) => {
-    const match = value.match(/^\[([^\]]+)\]\s*(.*)$/);
-    if (match) {
-      setModalProjectCode(match[1]);
-      setModalProjectName(match[2] || getProjectName(match[1]));
-    } else {
-      setModalProjectCode(value);
-      const existingProject = projects.find(p => p.code === value);
-      if (existingProject) {
-        setModalProjectName(existingProject.name);
-      }
+    setModalProjectCode(value);
+    const existingProject = projects.find(p => p.code === value);
+    if (existingProject) {
+      setModalProjectName(existingProject.name);
     }
-  };
-  
-  const getProjectDisplayValue = () => {
-    if (!modal_project_code) return '';
-    if (modal_project_name && modal_project_name !== modal_project_code) {
-      return `[${modal_project_code}] ${modal_project_name}`;
-    }
-    return modal_project_code;
   };
 
   const handleSavePreset = () => {
@@ -532,8 +524,7 @@ const PresetPanel: React.FC = () => {
   }, []);
 
   const saveInlinePresetProject = useCallback((preset: PresetItem, newCode: string) => {
-    const match = newCode.match(/^\[([^\]]+)\]/);
-    const code = match ? match[1] : newCode;
+    const code = newCode.trim();
     
     if (code !== preset.projectCode) {
       setPresets(prev =>
@@ -549,14 +540,6 @@ const PresetPanel: React.FC = () => {
     setInlinePresetProjectCode('');
   }, []);
 
-  const getInlineProjectDisplayValue = useCallback((code: string) => {
-    if (!code) return '';
-    const name = getProjectName(code);
-    if (name && name !== code) {
-      return `[${code}] ${name}`;
-    }
-    return code;
-  }, [getProjectName]);
 
   const recent_tasks = getRecentTasks();
 
@@ -758,8 +741,7 @@ const PresetPanel: React.FC = () => {
                       setInlineProjectCode={setInlinePresetProjectCode}
                       projectOptions={projectOptions}
                       getProjectName={getProjectName}
-                      getInlineProjectDisplayValue={getInlineProjectDisplayValue}
-                      saveInlineProject={saveInlinePresetProject}
+                              saveInlineProject={saveInlinePresetProject}
                       cancelInlineEdit={cancelInlinePresetProjectEdit}
                     />
                   </React.Fragment>
@@ -804,8 +786,12 @@ const PresetPanel: React.FC = () => {
             <Autocomplete
               freeSolo
               options={projectOptions}
-              value={getProjectDisplayValue()}
+              value={null}
+              inputValue={modal_project_code}
               onInputChange={(_e, newValue) => handleProjectCodeChange(newValue)}
+              renderOption={(props, option) =>
+                renderProjectOption(props, option, projects.find((p) => p.code === option)?.name)
+              }
               renderInput={(params) => (
                 <TextField 
                   {...params} 

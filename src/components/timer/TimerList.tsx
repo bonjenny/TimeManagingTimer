@@ -588,9 +588,8 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
 
   // 인라인 프로젝트 코드 저장
   const saveInlineProject = (task: TaskGroup, newCode: string) => {
-    // [코드] 이름 형태에서 코드 추출
-    const match = newCode.match(/^\[([^\]]+)\]/);
-    const code = match ? match[1] : newCode;
+    // 칸에는 코드만 들어온다. 대괄호를 떼어 내지 않는다 (이름이 "[..]" 로 시작해도 코드로 오인하지 않게)
+    const code = newCode.trim();
     
     if (code !== task.projectCode) {
       // 모든 세션의 프로젝트 코드 업데이트
@@ -748,9 +747,7 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
   };
 
   const handleProjectCodeChange = (value: string) => {
-    // [코드] 이름 형태에서 코드 추출
-    const match = value.match(/^\[([^\]]+)\]/);
-    const code = match ? match[1] : value;
+    const code = value;
     setEditProjectCode(code);
     // 아는 코드면 이름도 채운다. 코드를 지워도 이름은 남긴다.
     const matched = projects.find((p) => p.code === code);
