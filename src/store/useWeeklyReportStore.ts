@@ -3,6 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
 import { idbStorage } from '../utils/storage';
 import type { ReportExtraRow, ReportProjectOverride, ReportWeekOverride } from '../utils/weeklyStatusReport';
+import type { ErpPostSummary } from '../utils/erpTimelog';
 
 // 주간 진행 현황표에서 손으로 고친 값. 자동값 위에 덮어쓴다.
 const STORAGE_KEY = 'timekeeper-weekly-report';
@@ -15,7 +16,11 @@ interface WeeklyReportState {
   /** key: "주 월요일|프로젝트" */
   week_overrides: Record<string, ReportWeekOverride>;
   extras: ReportExtraRow[];
+  /** ERP 에서 가져온 게시글 요약 (프로젝트 코드별), 가져온 시각 */
+  erp_info: Record<string, ErpPostSummary>;
+  erp_fetched_at: number | null;
 
+  setErpInfo: (info: Record<string, ErpPostSummary>) => void;
   setProjectField: (key: string, field: ProjectField, value: string) => void;
   setWeekField: (week: string, key: string, field: WeekField, value: string) => void;
   /** 그 줄에서 고친 값을 모두 지우고 자동값으로 */
@@ -33,6 +38,10 @@ export const useWeeklyReportStore = create<WeeklyReportState>()(
       project_overrides: {},
       week_overrides: {},
       extras: [],
+      erp_info: {},
+      erp_fetched_at: null,
+
+      setErpInfo: (info) => set((s) => ({ erp_info: { ...s.erp_info, ...info }, erp_fetched_at: Date.now() })),
 
       setProjectField: (key, field, value) =>
         set((s) => ({ project_overrides: { ...s.project_overrides, [key]: { ...s.project_overrides[key], [field]: value } } })),

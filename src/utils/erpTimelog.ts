@@ -417,19 +417,25 @@ export async function searchErpProject(session: ErpSession, code: string): Promi
   return hit ? { code, name: String(hit['pjt$pjt_des']) } : null;
 }
 
-const today8 = () => new Date().toISOString().slice(0, 10).replace(/-/g, '');
+const ymd8 = (d: Date) => `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
+const today8 = () => ymd8(new Date());
+const yearAgo8 = () => {
+  const d = new Date();
+  d.setFullYear(d.getFullYear() - 1);
+  return ymd8(d);
+};
 const range = () => ({ type: 'range', value: {} });
 const contains = (value: unknown[] = []) => ({ type: 'contains', value });
 const like = (value = '') => ({ type: 'like', value });
 const eq = () => ({ type: '=', value: '' });
 
-// ERP 게시판 목록 화면에서 캡처한 조건 그대로. 날짜만 전체 기간으로 넓힘.
-// ponytail: 2000년부터 조회. 서버가 기간 제한을 걸면 여기를 줄일 것
+// ERP 게시판 목록 화면에서 캡처한 조건 그대로. 기본 기간은 최근 1년 (전체 기간은 DB 시간 초과가 난다).
+// ponytail: 1년보다 오래된 게시글은 못 찾는다. 필요하면 호출하는 쪽에서 board_s$data_dt 를 넘긴다
 function listBody(bizz_sid: string, template: string, menu_sid: string, condition: Row) {
   return {
     menu_type: 'list', bizz_sid, page: { current_index: 1, row_count: 50 }, limit: 5000,
     condition: {
-      'board_s$data_dt': { type: 'range', value: { from: '20000101', to: today8() } },
+      'board_s$data_dt': { type: 'range', value: { from: yearAgo8(), to: today8() } },
       'board_s$data_no': like(), 'board_s$title_ctt': like(), 'board_b$body_ctt': like(),
       'board_s$conn_data_001': contains(), 'board_s$conn_data_002': contains(),
       'board_s$dept': contains(), 'board_s$cd_001': contains(), 'board_s$data_no_02': like(),
@@ -490,4 +496,212 @@ export async function findErpDevPosts(session: ErpSession, work: ErpPost, dev_no
     })
   );
   return rows.filter((r) => r['b_000000e074008_001$board_s$data_sid'] === work.sid).map((r) => toPost(r));
+}
+
+// ---------------------------------------------------------------------------
+// 주간 진행 현황표용: 매핑된 작업·개발 게시글의 진행상태·날짜
+// ---------------------------------------------------------------------------
+
+export interface ErpPostSummary {
+  /** 게시글 진행상태 이름 (예정, 진행중, 테스트중, 배포대기, 배포완료 …) */
+  status: string;
+  /** 마지막 수정일 YYYY-MM-DD. 진행상태를 바꾼 날로 쓴다 (목록 API 에는 상태 변경일이 따로 없다) */
+  changed: string;
+  /** 게시글 날짜 칸(dt_00n) 가운데 채워진 값 YYYY-MM-DD, 오름차순 */
+  dates: string[];
+  board: 'work' | 'dev';
+  /** 작업 기준일 때: 연결된 개발 게시글들의 진행상태 (폐기 제외) */
+  dev_statuses?: string[];
+  /** 게시글 작성일 YYYY-MM-DD */
+  created?: string;
+  /** 게시글 record_sid (연결 칸 조건에 같이 넘겨야 한다) */
+  record_sid?: string;
+  /** 연결된 개발 게시글 조회가 실패했을 때 이유 (작업 게시글 값만 씀) */
+  dev_error?: string;
+  /** 작업에 연결된 테스트/배포 게시글 작성일들 = 테스트 요청일 (오름차순) */
+  test_dates?: string[];
+  /** 작업 게시글 진행상태 변경 이력 (신규·상태변경만, 오래된 순). 기준일 시점 상태를 구할 때 쓴다 */
+  status_history?: { date: string; status: string }[];
+}
+
+/**
+ * 게시글 이력 → 진행상태가 바뀐 시점만. ERP 「이력조회」 화면 API (2026-10-20 캡처).
+ * 응답 history_slip[]: { write_dtm, target_progress_status_nm, act_type_nm: 신규|수정|상태변경 }
+ */
+export async function fetchErpStatusHistory(
+  session: ErpSession,
+  target: { bizz_sid: string; data_sid: string; record_sid: string; data_dt8: string; data_no: number }
+): Promise<{ date: string; status: string }[]> {
+  const data = await erpQuery<{ history_slip?: Row[] }>(session, 'app.common/action/GetHistoryCommonAction:slip_history:input', {
+    bizz_sid: 'B_000000E040716',
+    target_bizz_sid: target.bizz_sid,
+    target_data_sid: target.data_sid,
+    target_record_sid: target.record_sid,
+    data_dt: target.data_dt8,
+    data_no: target.data_no,
+    menu_sid: 'M_000000E040716',
+  });
+  return (data.history_slip || [])
+    .filter((h) => /신규|상태변경/.test(String(h.act_type_nm ?? '')))
+    .map((h) => ({ at: String(h.write_dtm ?? ''), date: parseErpDate(h.write_dtm), status: String(h.target_progress_status_nm ?? '') }))
+    .filter((h) => h.date && h.status)
+    .sort((a, b) => a.at.localeCompare(b.at))
+    .map(({ date, status }) => ({ date, status }));
+}
+
+/** "20260928" · "2026-09-28" · "∬D:2026-09-28T…Z∬" → 로컬 날짜 YYYY-MM-DD. 아니면 '' */
+export function parseErpDate(value: unknown): string {
+  const text = String(value ?? '').trim();
+  const iso = text.match(/∬D:([^∬]+)∬/)?.[1];
+  if (iso) {
+    const d = new Date(iso);
+    return Number.isNaN(d.getTime()) ? '' : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+  const m = text.match(/^(\d{4})-?(\d{2})-?(\d{2})/);
+  return m ? `${m[1]}-${m[2]}-${m[3]}` : '';
+}
+
+/** 목록 응답 한 줄 → 요약. 연결 글 칸(b_…$)은 보지 않는다 */
+export function summarizeErpRow(r: Row, board: 'work' | 'dev'): ErpPostSummary {
+  const ps = r['board_s$progress_status'] as { name?: string } | undefined;
+  const dates = Object.keys(r)
+    .filter((k) => /^board_s\$dt_\d+$/.test(k))
+    .map((k) => parseErpDate(r[k]))
+    .filter(Boolean)
+    .sort();
+  return {
+    status: String(ps?.name ?? r['board_s$progress_status_nm'] ?? ''),
+    changed: parseErpDate(r['board_s$update_dtm']),
+    dates,
+    board,
+    created: parseErpDate(r['board_s$data_dt']) || undefined,
+    record_sid: r['board_s$record_sid'] ? String(r['board_s$record_sid']) : undefined,
+  };
+}
+
+/** 게시글 번호로 작업·개발 게시판 한 줄 조회 */
+export async function fetchErpPostSummary(session: ErpSession, board: 'work' | 'dev', no: number): Promise<ErpPostSummary | null> {
+  const body =
+    board === 'dev'
+      ? listBody(BOARD_DEV, 'BRDUSCRM0043901', 'M_000000N000353', {
+          'board_s$data_no': like(String(no)),
+          'board_s$pic': contains(), 'board_s$num_010': { type: 'range' },
+          'board_s$dt_002': range(), 'board_s$dt_003': range(), 'board_s$dt_004': range(),
+        })
+      : listBody(BOARD_WORK, 'BRDUSCRM0043501', 'M_000000N000351', { 'board_s$data_no': like(String(no)) });
+  const rows = await listBoard(session, body);
+  const hit = rows.find((r) => Number(r['board_s$data_no']) === no);
+  return hit ? summarizeErpRow(hit, board) : null;
+}
+
+/** 프로젝트 코드 → 매핑의 작업·개발 게시글 (alias 따라감, 관리업무처럼 카테고리별이면 없음) */
+export function findMappedPosts(mapping: ErpMapping, code: string, depth = 0): { work?: ErpPost; dev?: ErpPost } {
+  const m = mapping[code];
+  if (!m) return {};
+  if (m.alias && depth < 5) return findMappedPosts(mapping, m.alias, depth + 1);
+  return { work: m.work, dev: m.dev };
+}
+
+/**
+ * 작업 게시글 기준 요약. 한 작업에 개발 게시글이 여러 개 달리므로(예: 12221 아래 22247·22483·22985 …)
+ * 매핑된 개발 글 하나만 보면 이미 끝난 옛 개발 글의 "배포완료" 가 나온다.
+ * - 진행상태·수정일: 작업 게시글
+ * - 날짜: 그 작업에 연결된 개발 게시글 전체 (폐기 제외) 의 가장 이른 날 ~ 가장 늦은 날
+ */
+export const BOARD_TEST = 'B_000000E074020';
+
+/** 테스트/배포 게시판에서 작업에 연결된 글 찾기. ERP 테스트/배포 목록 화면 요청 그대로 (2026-10-20 캡처) */
+function testBoardBody(work: ErpPost, record_sid: string, from8: string) {
+  return {
+    menu_type: 'list', bizz_sid: BOARD_TEST, page: { current_index: 1, row_count: 100 }, limit: 5000,
+    condition: {
+      'board_s$data_dt': { type: 'range', value: { from: from8, to: today8() } },
+      'board_s$conn_data_001': contains([{ sid: work.sid, code: work.sid, name: work.title, additional_info: { record_sid } }]),
+      'board_s$dt_001': range(), 'board_s$record_range_dtm': range(), 'board_s$pic': contains(),
+      'board_s$txt_001': like(), 'board_s$pjt': contains(), 'board_s$txt_002': like(),
+      'board_s$record_type': contains(['main']), 'board_s$label': contains(),
+      'board_s$write_dtm': range(), 'board_s$update_dtm': range(),
+      'board_b$body_ctt': like(), 'board_s$data_no': like(), 'board_s$title_ctt': like(),
+      'board_s$status_type': contains(['U']), 'board_s$modified_sort': contains(), 'board_s$data_input_type': { type: 'contains' },
+      'board_s$bizz_sid': eq(), 'board_s$cd_015': contains(), 'board_s$confirm_type': eq(),
+      'board_s$conn_data_002': contains(), 'board_s$conn_data_003': contains(), 'board_s$data_no_02': like(),
+      'board_s$data_sid': eq(), 'board_s$deliver_dept': contains(),
+      'board_s$dt_002': range(), 'board_s$dt_003': range(), 'board_s$dt_004': range(),
+      'board_s$parent_record_sid': eq(), 'board_s$progress_status': contains(),
+      'board_s$record_depth_no': { type: '=' }, 'board_s$record_seq_no': { type: '=' }, 'board_s$record_sid': eq(),
+      'board_s$tenant_sid': eq(), 'board_s$txt_003': like(), 'board_s$update_sid': eq(), 'board_s$updater': contains(),
+      'board_s$ver_no': { type: '=' },
+      ...Object.fromEntries([1, 2, 3, 4, 5, 6, 7].map((n) => [`board_s$tf_00${n}`, { type: '=' }])),
+    },
+    additional: { expand_all: false, notice_count: 0, confirm_type: '' },
+    target: null, current_template: 'BRDUSCRM0045901', template_sub_type: 'fixed', menu_sid: 'M_000000N000363',
+  };
+}
+
+export async function fetchErpWorkSummary(session: ErpSession, work: ErpPost): Promise<ErpPostSummary | null> {
+  const work_summary = await fetchErpPostSummary(session, 'work', work.no);
+  if (!work_summary) return null;
+  // 개발 게시판의 작업 연결 칸(conn_data_001)으로 거른다. ERP 개발 화면에서 「작업」 조건으로 찾을 때와 같은 모양:
+  // { sid, code, name, additional_info: { record_sid } }. record_sid 가 없으면 DB 시간 초과([Sql-PG-T/O])가 난다.
+  // 기간은 작업 작성일부터, 실패해도 작업 게시글 값은 살린다. 결과는 연결 sid 로 한 번 더 확인
+  let rows: Row[];
+  try {
+    rows = await listBoard(
+      session,
+      listBody(BOARD_DEV, 'BRDUSCRM0043901', 'M_000000N000353', {
+        'board_s$data_dt': { type: 'range', value: { from: work_summary.created ? work_summary.created.replace(/-/g, '') : yearAgo8(), to: today8() } },
+        'board_s$conn_data_001': contains([
+          { sid: work.sid, code: work.sid, name: work.title, additional_info: { record_sid: work_summary.record_sid ?? '' } },
+        ]),
+        'board_s$pic': contains(), 'board_s$num_010': { type: 'range' },
+        'board_s$dt_002': range(), 'board_s$dt_003': range(), 'board_s$dt_004': range(),
+      })
+    );
+  } catch (e) {
+    return { ...work_summary, dev_error: (e as Error).message };
+  }
+  const devs = rows
+    .filter((r) => r['b_000000e074008_001$board_s$data_sid'] === work.sid)
+    .map((r) => summarizeErpRow(r, 'dev'))
+    .filter((d) => d.status !== '폐기');
+  const dev_dates = devs.flatMap((d) => d.dates).sort();
+
+  // 테스트 요청일 = 연결된 테스트/배포 게시글 작성일. 실패해도 나머지 값은 살린다
+  let test_dates: string[] | undefined;
+  try {
+    const from8 = work_summary.created ? work_summary.created.replace(/-/g, '') : yearAgo8();
+    const tests = await listBoard(session, testBoardBody(work, work_summary.record_sid ?? '', from8));
+    test_dates = tests
+      .filter((r) => r['board_s$conn_data_sid_001'] === work.sid || r['b_000000e074008_001$board_s$data_sid'] === work.sid)
+      .filter((r) => !/폐기/.test(String((r['board_s$progress_status'] as { name?: string } | undefined)?.name ?? '')))
+      .map((r) => parseErpDate(r['board_s$data_dt']))
+      .filter(Boolean)
+      .sort();
+  } catch {
+    test_dates = undefined;
+  }
+
+  // 진행상태 변경 이력: 지난 주 표를 그 주 시점 상태로 쓰기 위해. 실패해도 나머지 값은 살린다
+  let status_history: { date: string; status: string }[] | undefined;
+  if (work_summary.record_sid && work_summary.created) {
+    try {
+      status_history = await fetchErpStatusHistory(session, {
+        bizz_sid: BOARD_WORK,
+        data_sid: work.sid,
+        record_sid: work_summary.record_sid,
+        data_dt8: work_summary.created.replace(/-/g, ''),
+        data_no: work.no,
+      });
+    } catch {
+      status_history = undefined;
+    }
+  }
+
+  return {
+    ...work_summary,
+    dates: dev_dates.length ? dev_dates : work_summary.dates,
+    dev_statuses: devs.map((d) => d.status).filter(Boolean),
+    test_dates,
+    status_history,
+  };
 }

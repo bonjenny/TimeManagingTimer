@@ -157,3 +157,102 @@ describe('ERP 카테고리', () => {
     expect(r.errors[0]).toContain('ERP 카테고리 목록에 없습니다');
   });
 });
+
+describe('fetchErpWorkSummary (작업 기준)', () => {
+  it('진행상태는 작업 게시글, 날짜는 연결된 개발 게시글 전체(폐기 제외·다른 작업 제외)', async () => {
+    const { fetchErpWorkSummary } = jest.requireActual('../../utils/erpTimelog');
+    const reply = (data: unknown[]) =>
+      Promise.resolve({ ok: true, status: 200, text: () => Promise.resolve(JSON.stringify({ Status: 200, Data: { data } })) });
+    const link = 'b_000000e074008_001$board_s$data_sid';
+    global.fetch = jest
+      .fn()
+      .mockReturnValueOnce(
+        reply([{ 'board_s$data_no': 12221, 'board_s$progress_status': { name: '테스트중' }, 'board_s$update_dtm': '∬D:2026-10-14T01:00:00.000Z∬' }])
+      )
+      .mockReturnValueOnce(
+        reply([
+          { [link]: 'W1', 'board_s$progress_status': { name: '배포완료' }, 'board_s$dt_002': '20260914', 'board_s$dt_003': '20260915' },
+          { [link]: 'W1', 'board_s$progress_status': { name: '테스트중' }, 'board_s$dt_002': '20261007', 'board_s$dt_003': '20261012' },
+          { [link]: 'W1', 'board_s$progress_status': { name: '폐기' }, 'board_s$dt_002': '20260901' },
+          { [link]: 'OTHER', 'board_s$progress_status': { name: '진행중' }, 'board_s$dt_002': '20250101' },
+        ])
+      ) as unknown as typeof fetch;
+    const summary = await fetchErpWorkSummary({ sid: 'E-x', origin: 'https://logine.ecount.com' }, { no: 12221, sid: 'W1', title: 'PageSetup' });
+    expect(summary).toEqual({
+      status: '테스트중',
+      changed: '2026-10-14',
+      dates: ['2026-09-14', '2026-09-15', '2026-10-07', '2026-10-12'],
+      board: 'work',
+      dev_statuses: ['배포완료', '테스트중'],
+      test_dates: undefined,
+    });
+  });
+});
+
+it('연결된 개발 게시글 조회가 시간 초과여도 작업 게시글 값은 살린다', async () => {
+  const { fetchErpWorkSummary } = jest.requireActual('../../utils/erpTimelog');
+  global.fetch = jest
+    .fn()
+    .mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      text: () =>
+        Promise.resolve(
+          JSON.stringify({ Status: 200, Data: { data: [{ 'board_s$data_no': 12818, 'board_s$progress_status': { name: 'PO배정완료' }, 'board_s$data_dt': '20261002', 'board_s$record_sid': 'R1' }] } })
+        ),
+    })
+    .mockResolvedValueOnce({ ok: false, status: 500, text: () => Promise.resolve('{"Status":"500","Data":{"Name":"[Sql-PG-T/O]"}}') }) as unknown as typeof fetch;
+  const summary = await fetchErpWorkSummary({ sid: 'E-x', origin: 'https://logine.ecount.com' }, { no: 12818, sid: 'W', title: 't' });
+  expect(summary).toMatchObject({ status: 'PO배정완료', created: '2026-10-02' });
+  expect(summary.dev_error).toContain('Sql-PG-T/O');
+  // 두 번째 요청(개발 게시판)은 작업 작성일부터만 조회
+  const body = JSON.parse((global.fetch as jest.Mock).mock.calls[1][1].body);
+  expect(body.condition['board_s$data_dt'].value.from).toBe('20261002');
+  // 연결 칸 조건에 작업 record_sid 를 같이 넣는다 (ERP 화면과 같은 모양)
+  expect(body.condition['board_s$conn_data_001'].value[0]).toEqual({ sid: 'W', code: 'W', name: 't', additional_info: { record_sid: 'R1' } });
+  // 작업 게시글 조회는 2000년부터가 아니라 최근 1년
+  const work_body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
+  expect(Number(work_body.condition['board_s$data_dt'].value.from)).toBeGreaterThan(20000101);
+});
+
+it('테스트/배포 게시판에서 연결된 글 작성일을 테스트 요청일로', async () => {
+  const { fetchErpWorkSummary } = jest.requireActual('../../utils/erpTimelog');
+  const reply = (data: unknown[]) => Promise.resolve({ ok: true, status: 200, text: () => Promise.resolve(JSON.stringify({ Status: 200, Data: { data } })) });
+  global.fetch = jest
+    .fn()
+    .mockReturnValueOnce(reply([{ 'board_s$data_no': 12221, 'board_s$progress_status': { name: '테스트중' }, 'board_s$record_sid': 'R1', 'board_s$data_dt': '20260911' }]))
+    .mockReturnValueOnce(reply([]))
+    .mockReturnValueOnce(
+      reply([
+        { 'board_s$conn_data_sid_001': 'W1', 'board_s$data_dt': '20261014', 'board_s$progress_status': { name: '테스트' } },
+        { 'board_s$conn_data_sid_001': 'W1', 'board_s$data_dt': '20260920', 'board_s$progress_status': { name: '폐기' } },
+        { 'board_s$conn_data_sid_001': 'OTHER', 'board_s$data_dt': '20261001' },
+      ])
+    ) as unknown as typeof fetch;
+  const summary = await fetchErpWorkSummary({ sid: 'E-x', origin: 'https://logine.ecount.com' }, { no: 12221, sid: 'W1', title: 'PageSetup' });
+  expect(summary.test_dates).toEqual(['2026-10-14']);
+  const body = JSON.parse((global.fetch as jest.Mock).mock.calls[2][1].body);
+  expect(body.bizz_sid).toBe('B_000000E074020');
+  expect(body.condition['board_s$conn_data_001'].value[0].additional_info).toEqual({ record_sid: 'R1' });
+});
+
+it('진행상태 이력: 신규·상태변경만, 로컬 날짜로', async () => {
+  const { fetchErpStatusHistory } = jest.requireActual('../../utils/erpTimelog');
+  const slip = [
+    { write_dtm: '∬D:2026-09-11T00:24:57.980Z∬', target_progress_status_nm: '개발예정', act_type_nm: '신규' },
+    { write_dtm: '∬D:2026-09-14T01:51:13.930Z∬', target_progress_status_nm: '개발예정', act_type_nm: '수정' },
+    { write_dtm: '∬D:2026-10-13T23:43:19.020Z∬', target_progress_status_nm: '테스트예정', act_type_nm: '상태변경' },
+  ];
+  global.fetch = jest.fn().mockResolvedValue({
+    ok: true, status: 200, text: () => Promise.resolve(JSON.stringify({ Status: 200, Data: { history_slip: slip } })),
+  }) as unknown as typeof fetch;
+  const history = await fetchErpStatusHistory(
+    { sid: 'E-x', origin: 'https://logine.ecount.com' },
+    { bizz_sid: 'B_000000E074008', data_sid: 'D', record_sid: 'R', data_dt8: '20260911', data_no: 12221 }
+  );
+  // 10/13 23:43 UTC = 10/14 08:43 KST (테스트 환경 시간대 기준 로컬 날짜)
+  expect(history.map((h: { status: string }) => h.status)).toEqual(['개발예정', '테스트예정']);
+  const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
+  expect(body).toMatchObject({ target_bizz_sid: 'B_000000E074008', target_data_sid: 'D', target_record_sid: 'R', data_dt: '20260911', data_no: 12221 });
+  expect((global.fetch as jest.Mock).mock.calls[0][0]).toContain('GetHistoryCommonAction:slip_history:input');
+});
