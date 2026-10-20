@@ -44,6 +44,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import TimeField from '../common/TimeField';
+import { useIsHalloween } from '../HalloweenEggs';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import { DndContext, DragEndEvent, PointerSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -216,6 +217,10 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
   const [copyingTask, setCopyingTask] = useState<TaskGroup | null>(null);
   const [copyCategory, setCopyCategory] = useState<string | null>(null);
   const [copyNote, setCopyNote] = useState<string>('');
+
+  // 할로윈 테마: 휴지통이 무덤(🪦)이 된다
+  const is_halloween = useIsHalloween();
+  const trash_icon = is_halloween ? <Box component="span" sx={{ fontSize: 20, lineHeight: 1 }}>🪦</Box> : <RestoreFromTrashIcon />;
 
   // 휴지통 모달 상태
   const [trash_modal_open, setTrashModalOpen] = useState(false);
@@ -1155,7 +1160,7 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
   );
 
   const trash_button = (
-    <Tooltip title={`휴지통 (${deleted_logs.length})`}>
+    <Tooltip title={is_halloween ? `무덤 (${deleted_logs.length})` : `휴지통 (${deleted_logs.length})`}>
       <IconButton
         size="small"
         onClick={() => setTrashModalOpen(true)}
@@ -1164,7 +1169,7 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
           ...(is_compact && { width: 40, height: 40 }),
         }}
       >
-        <RestoreFromTrashIcon />
+        {trash_icon}
       </IconButton>
     </Tooltip>
   );
@@ -1939,8 +1944,8 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
       <Dialog open={trash_modal_open} onClose={() => setTrashModalOpen(false)} maxWidth="md" fullWidth>
         <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <RestoreFromTrashIcon />
-            휴지통
+            {trash_icon}
+            {is_halloween ? '여기 잠든 업무들…' : '휴지통'}
           </Box>
           {deleted_logs.length > 0 && (
             <Button 
@@ -1960,7 +1965,7 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
         <DialogContent>
           {deleted_logs.length === 0 ? (
             <Box sx={{ textAlign: 'center', py: 4, color: 'text.secondary' }}>
-              <Typography variant="body2">휴지통이 비어 있습니다.</Typography>
+              <Typography variant="body2">{is_halloween ? '아직 잠든 업무가 없어요. 👻' : '휴지통이 비어 있습니다.'}</Typography>
             </Box>
           ) : (
             <TableContainer>

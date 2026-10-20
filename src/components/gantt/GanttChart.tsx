@@ -34,6 +34,7 @@ import { useProjectStore } from '../../store/useProjectStore';
 import ProjectCodeNameFields from '../common/ProjectCodeNameFields';
 import { formatTimeRange, formatDuration, formatDurationShort } from '../../utils/timeUtils';
 import TimeField from '../common/TimeField';
+import { LunchBat } from '../HalloweenEggs';
 import { PointerSample, pointerSpeed, recordPointer, snapThresholdForSpeed } from '../../utils/snapSpeed';
 import CategoryAutocomplete from '../common/CategoryAutocomplete';
 import { getPalette, getAdjustedPalette, getColorByIndex, loadPaletteSettings } from '../../utils/colorPalette';
@@ -1547,6 +1548,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
               >
                 점심시간
               </Typography>
+              {paletteSettings.type === 'halloween' && <LunchBat />}
             </Box>
           )}
 

@@ -39,6 +39,7 @@ import ZoomInIcon from '@mui/icons-material/ZoomIn';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import { useTimeInputStore } from '../../store/useTimeInputStore';
 import TimeField from '../common/TimeField';
+import { loadFlyersOn, saveFlyersOn } from '../HalloweenEffects';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import {
   DndContext,
@@ -259,6 +260,7 @@ const SettingsPage: React.FC = () => {
   const { weeks_to_show, setWeeksToShow, show_today, setShowToday, view_mode, setViewMode } = useDeployCalendarStore();
   const { time_input_style, setTimeInputStyle } = useTimeInputStore();
   const [time_preview, setTimePreview] = useState('09:00');
+  const [halloween_flyers, setHalloweenFlyers] = useState(loadFlyersOn);
   
   // 카테고리 관리 상태
   const [newCategory, setNewCategory] = useState('');
@@ -932,6 +934,23 @@ const SettingsPage: React.FC = () => {
             </Box>
           ))}
         </Box>
+
+        {/* 할로윈 팔레트 전용 옵션 */}
+        {palette_type === 'halloween' && (
+          <FormControlLabel
+            sx={{ mt: 2 }}
+            control={
+              <Switch
+                checked={halloween_flyers}
+                onChange={(e) => {
+                  setHalloweenFlyers(e.target.checked);
+                  saveFlyersOn(e.target.checked);
+                }}
+              />
+            }
+            label="👻 유령 · 박쥐 날아다니기 (30초마다 한 무리씩 지나가요)"
+          />
+        )}
 
         {/* 사용자 커스텀 팔레트 */}
         <Divider sx={{ my: 3 }} />

@@ -382,6 +382,7 @@ const ActiveTimer: React.FC = () => {
   const elapsed_node = (
     // 00:00:00 형태로 표시, 5초 이후 초 부분 fade out
     <Box
+      data-tk-elapsed // 할로윈 이스터에그: 04:44 · 13:13 에 숫자가 번진다
       sx={{
         display: 'flex',
         alignItems: 'baseline',
@@ -536,7 +537,7 @@ const ActiveTimer: React.FC = () => {
 
         {/* 경과 시간 */}
         <Box sx={{ textAlign: 'center', mt: 2.5, mb: 2.5 }}>
-          <Box sx={{ display: 'inline-flex', alignItems: 'baseline', fontVariantNumeric: 'tabular-nums' }}>
+          <Box data-tk-elapsed sx={{ display: 'inline-flex', alignItems: 'baseline', fontVariantNumeric: 'tabular-nums' }}>
             <Typography sx={{ fontSize: 52, fontWeight: 700, letterSpacing: '-1.5px', lineHeight: 1, color: 'text.primary' }}>
               {formatTimeDisplay(elapsedSeconds)}
             </Typography>

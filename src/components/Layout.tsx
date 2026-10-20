@@ -19,6 +19,7 @@ import { getItem, getStorageUsage } from '../utils/storage';
 import { recordVisit, getTodayVisitors, VisitorRecord } from '../services/visitorService';
 import { getAdminPassword } from '../utils/env';
 import { simpleHash } from '../services/feedbackService';
+import { HALLOWEEN_MENU_LABELS, useIsHalloween } from './HalloweenEggs';
 
 const SETTINGS_STORAGE_KEY = 'timekeeper-settings';
 
@@ -63,6 +64,9 @@ const ADMIN_PASSWORD_HASH = simpleHash(getAdminPassword());
 const Layout: React.FC<LayoutProps> = ({ children, currentPage, onPageChange }) => {
   const { themeConfig, toggleDarkMode, logs, deleted_logs } = useTimerStore();
   const current_tab_index = PAGE_MAP.findIndex(p => p.page === currentPage);
+  // 할로윈 팔레트: 주간 일정 → 죽어 일정, 프로젝트 분석 → 프로젝트 부검
+  const is_halloween = useIsHalloween();
+  const menuLabel = (label: string) => (is_halloween && HALLOWEEN_MENU_LABELS[label]) || label;
   const [openQnA, setOpenQnA] = useState(false);
   // 태블릿·모바일(900px 미만): 상단 탭 대신 하단 탭 바(자주 쓰는 4개 + 더보기)
   const theme = useTheme();
@@ -168,7 +172,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, onPageChange }) 
                 onDoubleClick={handleLogoDoubleClick}
                 sx={{ flexGrow: 1, minWidth: 0, fontSize: 18, fontWeight: 700, letterSpacing: '-0.3px', userSelect: 'none' }}
               >
-                {PAGE_MAP[current_tab_index]?.label}
+                {menuLabel(PAGE_MAP[current_tab_index]?.label ?? '')}
               </Typography>
             ) : (
             <Tabs
@@ -194,7 +198,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, onPageChange }) 
                   key={item.page}
                   icon={item.icon}
                   iconPosition="start"
-                  label={item.label}
+                  label={menuLabel(item.label)}
                 />
               ))}
             </Tabs>
@@ -230,7 +234,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, onPageChange }) 
               sx={{ minHeight: 52, px: 3 }}
             >
               <ListItemIcon sx={{ minWidth: 40, '& svg': { mr: 0 } }}>{item.icon}</ListItemIcon>
-              <ListItemText primary={item.label} primaryTypographyProps={{ fontSize: 16, fontWeight: 500 }} />
+              <ListItemText primary={menuLabel(item.label)} primaryTypographyProps={{ fontSize: 16, fontWeight: 500 }} />
             </ListItemButton>
           ))}
           <ListItemButton
@@ -287,7 +291,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, onPageChange }) 
                 <BottomNavigationAction
                   key={page}
                   value={page}
-                  label={BOTTOM_NAV_LABEL[page]}
+                  label={menuLabel(BOTTOM_NAV_LABEL[page] ?? '')}
                   icon={item.icon}
                   sx={{ '& svg': { mr: '0 !important', fontSize: 22 } }}
                 />
