@@ -339,3 +339,104 @@ describe('테스트/배포 게시글 이력 (7534 deploy flag 관리 개선, 202
     expect(row).toMatchObject({ status: '배포대기', note: '10/19(월) 수시배포 예정' });
   });
 });
+
+describe('ERP 기준 현황표', () => {
+  const { buildErpWeeklyReport, earliestStart } = jest.requireActual('../../utils/weeklyStatusReport');
+  const base = { from_str: '2026-10-19', to_str: '2026-10-23', events: [], project_overrides: {}, week_overrides: {}, extras: [], now: new Date('2026-10-22T12:00:00').getTime() };
+
+  it('일간 기록 없이 작업·시간·게시글 요약으로 줄을 만든다', () => {
+    const rows = buildErpWeeklyReport({
+      ...base,
+      works: [
+        {
+          key: '작업.12221', title: 'PageSetup v2 Page내 함수 개발 및 적용', total_minutes: 708, created: '2026-09-11',
+          summary: {
+            status: '테스트중', changed: '2026-10-19', dates: ['2026-09-14', '2026-10-30'], board: 'work',
+            test_posts: [{ created: '2026-10-20', history: [{ date: '2026-10-20', status: '테스트' }] }],
+          },
+        },
+        { key: '작업.13000', title: '조회 못 한 작업', total_minutes: 25, created: '2026-10-20' },
+      ],
+    });
+    const r = rows.find((x: { key: string }) => x.key === '작업.12221');
+    expect(r).toMatchObject({ status: '테스트', task: 'PageSetup v2 Page내 함수 개발 및 적용', start_date: '2026-09-14', end_date: '2026-10-30', total: '11:50', note: '10/20(화) 테스트요청' });
+    // 게시글 요약이 없으면 작성일을 시작일로
+    expect(rows.find((x: { key: string }) => x.key === '작업.13000')).toMatchObject({ start_date: '2026-10-20', total: '00:30' });
+  });
+
+  it('숨긴 작업은 빠지고, 고친 값은 기간 키로 기억', () => {
+    const rows = buildErpWeeklyReport({
+      ...base,
+      works: [
+        { key: '작업.1', title: 'A', total_minutes: 60, created: '2026-10-01' },
+        { key: '작업.2', title: 'B', total_minutes: 60, created: '2026-10-01' },
+      ],
+      project_overrides: { '작업.2': { hidden: true } },
+      week_overrides: { '2026-10-19~2026-10-23|작업.1': { note: '직접 쓴 비고' } },
+    });
+    expect(rows.map((r: { key: string }) => r.key)).toEqual(['작업.1']);
+    expect(rows[0]).toMatchObject({ note: '직접 쓴 비고', edited: true });
+  });
+
+  it('누적시간 조회 시작일: 개발 게시글 첫 날짜·작성일 중 가장 이른 날', () => {
+    expect(
+      earliestStart(
+        [
+          { created: '2026-09-11', summary: { status: '', changed: '', dates: ['2026-09-14'], board: 'work', created: '2026-09-11' } },
+          { created: '2026-08-27', summary: { status: '', changed: '', dates: ['2026-08-25'], board: 'work' } },
+          { created: '2026-10-20' },
+        ],
+        '2026-10-19'
+      )
+    ).toBe('2026-08-25');
+    expect(earliestStart([], '2026-10-19')).toBe('2026-10-19');
+  });
+});
+
+describe('담당자 입력 해석', () => {
+  const { parsePic } = jest.requireActual('../../utils/weeklyStatusReport');
+  const people = [{ sid: '2023-026', name: '엄지희' }];
+
+  it('전에 쓴 사람은 이름이나 사번 하나로', () => {
+    expect(parsePic('엄지희', people)).toEqual(people[0]);
+    expect(parsePic('2023-026', people)).toEqual(people[0]);
+    expect(parsePic('엄지희 (2023-026)', people)).toEqual(people[0]);
+  });
+
+  it('처음 찾는 사람은 사번·이름 순서 상관없이 둘 다', () => {
+    expect(parsePic('2024-101 홍길동', people)).toEqual({ sid: '2024-101', name: '홍길동' });
+    expect(parsePic('홍길동 2024-101', people)).toEqual({ sid: '2024-101', name: '홍길동' });
+    expect(parsePic('홍길동', people)).toBeNull();
+    expect(parsePic('', people)).toBeNull();
+  });
+});
+
+describe('ERP 기준 현황표: 테스트/배포 게시글이 없는 작업', () => {
+  const { buildErpWeeklyReport } = jest.requireActual('../../utils/weeklyStatusReport');
+  const base = { from_str: '2026-10-19', to_str: '2026-10-23', events: [], project_overrides: {}, week_overrides: {}, extras: [], now: new Date('2026-10-22T12:00:00').getTime() };
+  const status = (works: unknown[]) => buildErpWeeklyReport({ ...base, works }).map((r: { key: string; status: string }) => [r.key, r.status]);
+
+  it('작업 게시글만 있으면 작업 진행상태, 개발 게시글이 있으면 개발 단계로', () => {
+    expect(
+      status([
+        { key: '작업.1', title: 'A', total_minutes: 60, created: '2026-10-01', summary: { status: '배포완료', changed: '2026-10-20', dates: [], board: 'work' } },
+        { key: '작업.2', title: 'B', total_minutes: 60, created: '2026-10-01', summary: { status: '개발예정', changed: '2026-10-01', dates: [], board: 'work', dev_statuses: ['진행중'] } },
+      ])
+    ).toEqual([
+      ['작업.1', '배포완료'],
+      ['작업.2', '진행중'],
+    ]);
+  });
+
+  it('기준일 뒤에 고친 글이라 그 주 상태를 모르면 지금 상태, 게시글 조회가 실패했으면 시간 로그의 작업 상태', () => {
+    expect(
+      status([
+        { key: '작업.3', title: 'C', total_minutes: 60, created: '2026-10-01', summary: { status: '테스트중', changed: '2026-10-28', dates: [], board: 'work' } },
+        { key: '작업.4', title: 'D', total_minutes: 60, created: '2026-10-01', work_status: '테스트중' },
+      ])
+    ).toEqual([
+      ['작업.3', '테스트'],
+      ['작업.4', '테스트'],
+    ]);
+  });
+});

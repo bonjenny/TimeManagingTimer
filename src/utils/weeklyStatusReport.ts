@@ -286,6 +286,23 @@ function erpNote(erp: ErpPostSummary, calendar_note: string, ref_str: string): s
   return `${formatMonthDay(erp.changed)} ${label}`;
 }
 
+/** 진행상태·비고 자동값. 1순위 테스트/배포 게시글 이력 → 2순위 작업·개발 게시글 → 3순위 배포 캘린더 */
+// no_event_status: 배포 캘린더 일정도 없을 때 진행상태 (내 기록 기준은 진행중, ERP 기준은 ''= 모름)
+function autoStatusNote(
+  erp: ErpPostSummary | undefined,
+  project_events: DeployEvent[],
+  ws_str: string,
+  ref_str: string,
+  no_event_status = '진행중'
+): { status: string; note: string } {
+  const calendar = project_events.length ? deriveStatus(project_events, ws_str, ref_str) : { status: no_event_status, note: '' };
+  const test_state = erp?.test_posts?.length ? latestTestState(erp.test_posts, ws_str, ref_str) : null;
+  if (test_state) return test_state;
+  const erp_at_ref = erp ? erpAtRef(erp, ref_str) : null;
+  const erp_status = erp_at_ref ? resolveErpStatus(erp_at_ref) : '';
+  return erp_status ? { status: erp_status, note: erpNote(erp_at_ref!, calendar.note, ref_str) } : calendar;
+}
+
 const status_rank = (status: string) => {
   const i = (REPORT_STATUSES as readonly string[]).indexOf(status);
   return i === -1 ? REPORT_STATUSES.length : i;
@@ -348,12 +365,7 @@ export function buildWeeklyReport(input: BuildReportInput): ReportRow[] {
       .sort();
     // ERP 게시글이 있으면 그 진행상태·날짜를 먼저, 없으면 배포 캘린더
     const erp = group.map((k) => erp_info[k]).find(Boolean);
-    const calendar = deriveStatus(project_events, ws_str, ref_str);
-    // 1순위: 테스트/배포 게시글 이력 (테스트 이후 단계) → 2순위: 작업·개발 게시글 → 3순위: 배포 캘린더
-    const test_state = erp?.test_posts?.length ? latestTestState(erp.test_posts, ws_str, ref_str) : null;
-    const erp_at_ref = erp ? erpAtRef(erp, ref_str) : null;
-    const erp_status = erp_at_ref ? resolveErpStatus(erp_at_ref) : '';
-    const auto = test_state ?? (erp_status ? { status: erp_status, note: erpNote(erp_at_ref!, calendar.note, ref_str) } : calendar);
+    const auto = autoStatusNote(erp, project_events, ws_str, ref_str);
     const auto_start = erp?.dates[0] || (Number.isFinite(first) ? formatDateToString(new Date(first)) : '');
     const auto_end = (erp && erp.dates.length > 1 ? erp.dates[erp.dates.length - 1] : '') || end_dates[end_dates.length - 1] || '';
 
@@ -370,6 +382,11 @@ export function buildWeeklyReport(input: BuildReportInput): ReportRow[] {
     });
   });
 
+  return finishRows(rows, extras);
+}
+
+/** 직접 추가한 행을 붙이고 진행상태 → 시작일 → 작업명 순으로 */
+function finishRows(rows: ReportRow[], extras: ReportExtraRow[]): ReportRow[] {
   extras.forEach((x) => {
     rows.push({ key: x.id, status: x.status, task: x.task, start_date: x.start_date, end_date: x.end_date, total: '', note: x.note, manual: true, edited: false });
   });
@@ -381,6 +398,97 @@ export function buildWeeklyReport(input: BuildReportInput): ReportRow[] {
       (a.start_date || '9999').localeCompare(b.start_date || '9999') ||
       a.task.localeCompare(b.task)
   );
+}
+
+// ---------------------------------------------------------------------------
+// ERP 기준 현황표: 일간 기록 없이 담당자·기간만으로. 줄 = 그 기간 시간 로그에 시간을 쓴 작업 게시글
+// ---------------------------------------------------------------------------
+
+export interface ErpReportWork {
+  /** "작업.12221" (고친 값·숨김을 이 키로 기억) */
+  key: string;
+  title: string;
+  /** 작업 시작일부터 기준일까지 쓴 시간 (분) */
+  total_minutes: number;
+  /** 작업 게시글 작성일 YYYY-MM-DD (개발 게시글 날짜가 없을 때 시작일) */
+  created: string;
+  /** 시간 로그 집계에 같이 오는 작업 게시글 진행상태 (게시글 조회가 실패했을 때 씀) */
+  work_status?: string;
+  summary?: ErpPostSummary;
+}
+
+export interface BuildErpReportInput {
+  /** 기간 YYYY-MM-DD */
+  from_str: string;
+  to_str: string;
+  works: ErpReportWork[];
+  events: DeployEvent[];
+  project_overrides: Record<string, ReportProjectOverride>;
+  week_overrides: Record<string, ReportWeekOverride>;
+  extras: ReportExtraRow[];
+  now?: number;
+}
+
+export interface ErpPic {
+  sid: string;
+  name: string;
+}
+
+/**
+ * 담당자 칸 입력 → 사번·이름. ERP 검색조건은 사번으로 거르므로 둘 다 있어야 한다.
+ * - 전에 쓴 사람이면 이름이나 사번 하나만 쳐도 된다
+ * - 처음 찾는 사람은 "2023-026 엄지희" / "엄지희 2023-026" 처럼 둘 다 (숫자가 든 쪽이 사번)
+ */
+export function parsePic(input: string, people: ErpPic[]): ErpPic | null {
+  const q = input.trim();
+  if (!q) return null;
+  const known = people.find((p) => p.sid === q || p.name === q || `${p.name} (${p.sid})` === q);
+  if (known) return known;
+  const tokens = q.split(/[\s,/()]+/).filter(Boolean);
+  const sid = tokens.find((t) => /\d/.test(t));
+  const name = tokens.filter((t) => t !== sid).join(' ');
+  return sid && name ? { sid, name } : null;
+}
+
+/** 기간 고친 값 키: 주 단위 대신 "from~to" */
+export const erpPeriodKey = (from_str: string, to_str: string) => `${from_str}~${to_str}`;
+
+export function buildErpWeeklyReport(input: BuildErpReportInput): ReportRow[] {
+  const { from_str, to_str, works, events, project_overrides, week_overrides, extras } = input;
+  // 기준일: 기간 끝. 아직 안 왔으면 오늘
+  const ref_str = [to_str, formatDateToString(new Date(input.now ?? Date.now()))].sort()[0];
+  const period = erpPeriodKey(from_str, to_str);
+  const rows: ReportRow[] = [];
+  works.forEach((w) => {
+    if (project_overrides[w.key]?.hidden) return;
+    const po = project_overrides[w.key] || {};
+    const wo = week_overrides[`${period}|${w.key}`] || {};
+    // 테스트/배포 게시글이 없는 작업도 줄은 생긴다 (시간 로그가 기준). 진행상태는 작업·개발 게시글로.
+    // 그래도 비면(기준일 뒤에 고친 글·게시글 조회 실패) 지금 작업·개발 상태 → 시간 로그 집계의 작업 상태
+    const found = autoStatusNote(w.summary, events.filter((e) => e.job_code === w.key), from_str, ref_str, '');
+    const auto = found.status
+      ? found
+      : { status: w.summary ? resolveErpStatus(w.summary) : mapErpStatus(w.work_status || ''), note: '' };
+    const dates = w.summary?.dates || [];
+    rows.push({
+      key: w.key,
+      status: wo.status ?? auto.status,
+      task: po.task ?? w.title,
+      start_date: po.start_date ?? (dates[0] || w.created),
+      end_date: po.end_date ?? (dates.length > 1 ? dates[dates.length - 1] : ''),
+      total: formatRoundedHours(w.total_minutes * 60),
+      note: wo.note ?? auto.note,
+      manual: false,
+      edited: [po.task, po.start_date, po.end_date, wo.status, wo.note].some((v) => v !== undefined),
+    });
+  });
+  return finishRows(rows, extras);
+}
+
+/** 누적 시간 조회 시작일: 작업마다 시작일(개발 게시글 첫 날짜) · 작성일 중 이른 날, 그 가운데 가장 이른 날 */
+export function earliestStart(works: { created: string; summary?: ErpPostSummary }[], fallback: string): string {
+  const starts = works.flatMap((w) => [w.summary?.dates[0], w.summary?.created, w.created]).filter((d): d is string => !!d);
+  return starts.length ? starts.sort()[0] : fallback;
 }
 
 // ---------------------------------------------------------------------------

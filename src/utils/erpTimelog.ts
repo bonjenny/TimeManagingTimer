@@ -728,3 +728,110 @@ export async function fetchErpWorkSummary(session: ErpSession, work: ErpPost): P
     status_history,
   };
 }
+
+// ---------------------------------------------------------------------------
+// 주간 진행 현황표 (ERP 기준): 시간 로그 게시판 「작업별」 집계 → 담당자가 기간 안에 시간을 쓴 작업과 사용 시간
+// ERP 시간 로그 현황 화면(보고서용_집계양식) 요청 그대로 (2026-10-22 캡처)
+// ---------------------------------------------------------------------------
+
+export interface ErpWorkTime {
+  work: ErpPost;
+  /** 작업 게시글 작성일 YYYY-MM-DD */
+  created: string;
+  /** 작업 게시글 진행상태 (관리업무 · 배포완료 …) */
+  work_status: string;
+  /** 기간 안에 쓴 시간 (분) */
+  minutes: number;
+}
+
+const erpNumber = (v: unknown) => Number(String(v ?? '').replace(/∬N:|∬/g, '')) || 0;
+
+/** 집계 응답 한 줄 → 작업·사용 시간. 작업 연결이 없는 줄(작업 미지정)은 버린다 */
+export function parseTimeByWork(rows: Row[]): ErpWorkTime[] {
+  const P = 'b_000000e074008_m002$board_s$';
+  return rows
+    .filter((r) => r['board_m$conn_data_sid_002'] && r[`${P}data_no`])
+    .map((r) => ({
+      work: { no: Number(r[`${P}data_no`]), sid: String(r['board_m$conn_data_sid_002']), title: String(r['board_m$conn_data_nm_002'] ?? '') },
+      created: parseErpDate(r[`${P}data_dt`]),
+      work_status: String(r[`${P}progress_status_nm`] ?? ''),
+      minutes: Math.round(erpNumber(r['board_m$num_001_sum'] ?? r['board_m$num_001'])),
+    }));
+}
+
+/** 담당자(pic)가 from8~to8 (YYYYMMDD) 동안 시간 로그에 남긴 시간을 작업별로 */
+export async function fetchErpTimeByWork(
+  session: ErpSession,
+  pic: { sid: string; name: string },
+  from8: string,
+  to8: string
+): Promise<ErpWorkTime[]> {
+  const data = await erpQuery<{ data: Row[] }>(session, 'app.board/action/SelectBoardSearchStatusAction:board:status', {
+    menu_type: 'status', bizz_sid: BOARD_TIMELOG,
+    sort: { 'board_m$num_001': { sort_type: 'D', priority: 1 } },
+    limit: 5000,
+    condition: {
+      'board_s$aggregate': {
+        type: '=',
+        value: {
+          condition_01: {
+            label: '작업별', prop_id: 'board_m$summary_conn_data_002', data_type: '$$code', prop_name: '거래형2별',
+            sort_type: 'A', refer_type: 'summary_conn_data_002', show_subtotal: false, item_meaning_id: 'summary_multi_trx_002',
+          },
+          aggregate_key: { key: 'TG_E074025_0005', type: 'free' },
+          details_target: {
+            label: '전표별',
+            props: [{ prop_id: 'board_s$summary_slip', data_type: '$$code', prop_name: '전표별', refer_type: 'summary_slip', refer_group: 'summary', prop_name_code: 'rex00843' }],
+            value: 'slip',
+          },
+          comparison_period: '0',
+        },
+      },
+      'board_s$data_dt': { type: 'range', value: { from: from8, to: to8 } },
+      'board_s$pic': contains([{ sid: pic.sid, code: pic.sid, name: pic.name }]),
+      'board_s$dt_001': range(), 'board_s$title_ctt': like(), 'board_s$dept': contains(), 'board_b$body_ctt': like(),
+      'board_s$user': contains(), 'board_m$cd_001': contains(), 'board_m$conn_data_002': contains(), 'board_m$dynamic_trx': contains(),
+      'board_m$num_001': { type: 'range' }, 'board_s$data_input_type': { type: 'contains' },
+      'board_s$update_dtm': range(), 'board_s$write_dtm': range(), 'board_s$updater': contains(), 'board_s$data_no': like(),
+      'board_s$progress_status': contains(), 'board_s$calc_expression_condition': { type: 'calc' }, 'board_m$dt_001': range(),
+      'board_m$record_sid': eq(), 'board_m$txt_001': like(), 'board_s$bizz_sid': eq(), 'board_s$confirm_type': eq(),
+      'board_s$data_no_02': like(), 'board_s$data_sid': eq(), 'board_s$num_001': { type: 'range' }, 'board_s$parent_record_sid': eq(),
+      'board_s$record_depth_no': { type: '=' }, 'board_s$record_seq_no': { type: '=' }, 'board_s$record_sid': eq(), 'board_s$tenant_sid': eq(),
+      'board_s$ver_no': { type: '=' },
+    },
+    additional: { expand_all: false, item_separate_tf: false },
+    current_template: '7VCU4A9JWF97G9M', current_template_name: '보고서용_집계양식', template_sub_type: 'free',
+    screen_type: 'screen', menu_sid: 'M_000000N000569',
+  });
+  return parseTimeByWork(data.data || []);
+}
+
+// ---------------------------------------------------------------------------
+// 사원(담당자) 검색: 이름이나 사번으로. ERP 담당자 검색 팝업 요청 그대로 (2026-10-22 캡처)
+// 응답 emp$business_no = 사번, emp$cust_name = 이름. 동명이인이면 여러 줄
+// ---------------------------------------------------------------------------
+
+export function parseEmployees(rows: Row[]): { sid: string; name: string }[] {
+  return rows
+    .filter((r) => r['emp$business_no'] && r['emp$cust_name'] && r['emp$cancel'] !== 'Y')
+    .map((r) => ({ sid: String(r['emp$business_no']), name: String(r['emp$cust_name']) }));
+}
+
+export async function searchErpEmployees(session: ErpSession, query: string): Promise<{ sid: string; name: string }[]> {
+  const data = await erpQuery<{ data: Row[] }>(session, 'app.basiccode/action/SelectBasicCodeSearchPopupAction:emp:search', {
+    menu_type: 'search', bizz_sid: 'B_000000E010110', menu_sid: 'M_000000E200616',
+    page: { current_index: 1, row_count: 100 }, limit: 1000,
+    condition: {
+      'emp$business_no': like(), 'emp$cancel': contains(['N']), 'emp$cust_name': like(), 'emp$remarks_win': like(),
+      'emp$bizz_cust_gubun': { type: '=' }, 'emp$com_code': eq(), 'emp$gubun': { type: '=', value: '90' },
+    },
+    condition_quick: { target: { 'emp$business_no': 'like', 'emp$cust_name': 'like', 'emp$remarks_win': 'like' }, value: query.trim() },
+    additional: {
+      balance_option: { prod_cd: '', wh_f_qty: '', wh_t_qty: '' }, form_type: 'SP998',
+      from_bizz_sid: BOARD_TIMELOG, from_menu_type: 'list_search', from_refer_type: 'pic', from_bizz_type: 'board',
+      from_barcode_yn: '', use_etc: true,
+    },
+    current_template: '1000', is_za_template: true,
+  });
+  return parseEmployees(data.data || []);
+}

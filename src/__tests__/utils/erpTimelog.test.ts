@@ -273,3 +273,61 @@ it('이력: 「수정」 행에서 바뀐 진행상태도 잡고, 같은 상태�
   );
   expect(history.map((h: { status: string }) => h.status)).toEqual(['테스트', '테스트중단']);
 });
+
+describe('ERP 기준 현황표: 시간 로그 작업별 집계', () => {
+  // ERP 시간 로그 현황(보고서용_집계양식) 응답 한 줄 (2026-10-22 캡처, 필요한 칸만)
+  const W = 'b_000000e074008_m002$board_s$';
+  const agg = (no: number, sid: string, title: string, minutes: string, status: string, dt: string) => ({
+    'board_m$conn_data_sid_002': sid,
+    'board_m$conn_data_nm_002': title,
+    'board_m$num_001_sum': minutes,
+    [`${W}data_no`]: no,
+    [`${W}data_dt`]: dt,
+    [`${W}progress_status_nm`]: status,
+  });
+
+  it('작업 번호·제목·작성일·진행상태·분을 읽는다 (작업 미지정 줄은 버림)', () => {
+    const { parseTimeByWork } = jest.requireActual('../../utils/erpTimelog');
+    const rows = [
+      agg(12221, '87FA7HFA5O755GB', 'PageSetup v2 Page내 함수 개발 및 적용', '∬N:708∬', '테스트중', '20260911'),
+      agg(12036, '879WR9IPJEH18RP', 'ECFetch에서 Load failed', '∬N:1041.0000000000∬', '배포완료', '20260904'),
+      { 'board_m$num_001_sum': '∬N:30∬' },
+    ];
+    expect(parseTimeByWork(rows)).toEqual([
+      { work: { no: 12221, sid: '87FA7HFA5O755GB', title: 'PageSetup v2 Page내 함수 개발 및 적용' }, created: '2026-09-11', work_status: '테스트중', minutes: 708 },
+      { work: { no: 12036, sid: '879WR9IPJEH18RP', title: 'ECFetch에서 Load failed' }, created: '2026-09-04', work_status: '배포완료', minutes: 1041 },
+    ]);
+  });
+
+  it('담당자·기간을 검색조건에 넣어 집계 API 를 부른다', async () => {
+    const { fetchErpTimeByWork } = jest.requireActual('../../utils/erpTimelog');
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true, status: 200, text: () => Promise.resolve(JSON.stringify({ Status: 200, Data: { data: [] } })),
+    }) as unknown as typeof fetch;
+    await fetchErpTimeByWork({ sid: 'E-x', origin: 'https://logine.ecount.com' }, { sid: '2023-026', name: '엄지희' }, '20260901', '20260930');
+    const [url, init] = (global.fetch as jest.Mock).mock.calls[0];
+    expect(url).toContain('SelectBoardSearchStatusAction:board:status');
+    const body = JSON.parse(init.body);
+    expect(body.bizz_sid).toBe('B_000000E074025');
+    expect(body.condition['board_s$data_dt']).toEqual({ type: 'range', value: { from: '20260901', to: '20260930' } });
+    expect(body.condition['board_s$pic']).toEqual({ type: 'contains', value: [{ sid: '2023-026', code: '2023-026', name: '엄지희' }] });
+  });
+});
+
+describe('담당자 검색', () => {
+  it('이름으로 찾으면 동명이인이 모두 온다 (사번·이름)', async () => {
+    const { searchErpEmployees } = jest.requireActual('../../utils/erpTimelog');
+    const data = [
+      { 'emp$business_no': '2020-029', 'emp$cust_name': '김민주', 'emp$cancel': 'N' },
+      { 'emp$business_no': '2022-009', 'emp$cust_name': '김민주', 'emp$cancel': 'N' },
+    ];
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true, status: 200, text: () => Promise.resolve(JSON.stringify({ Status: 200, Data: { total_count: 2, data } })),
+    }) as unknown as typeof fetch;
+    const found = await searchErpEmployees({ sid: 'E-x', origin: 'https://logine.ecount.com' }, ' 김민주 ');
+    expect(found).toEqual([{ sid: '2020-029', name: '김민주' }, { sid: '2022-009', name: '김민주' }]);
+    const [url, init] = (global.fetch as jest.Mock).mock.calls[0];
+    expect(url).toContain('SelectBasicCodeSearchPopupAction:emp:search');
+    expect(JSON.parse(init.body).condition_quick.value).toBe('김민주');
+  });
+});
