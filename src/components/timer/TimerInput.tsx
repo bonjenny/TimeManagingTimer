@@ -316,14 +316,16 @@ const TimerInput: React.FC = () => {
       renderInput={(params) => (
         <TextField
           {...params}
-          placeholder="프로젝트 코드"
+          placeholder="프로젝트 코드 or 작업 게시글 번호"
           variant={field_variant}
           InputProps={withUnderlineOff(params.InputProps)}
           size="small"
         />
       )}
+      // 비어 있을 땐 안내 문구가 다 보이게 넓게, 코드를 넣으면 원래 폭으로
       sx={is_compact ? COMPACT_FIELD_SX : {
-        width: 120,
+        width: projectCode ? 120 : 230,
+        transition: 'width 0.15s',
         '& .MuiAutocomplete-input': { fontSize: '0.8rem', p: '0 !important' }
       }}
     />

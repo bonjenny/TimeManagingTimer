@@ -66,7 +66,7 @@ describe('TimerInput', () => {
     render(<TimerInput />);
 
     const title_input = screen.getByPlaceholderText(/무엇을 하고 계신가요/);
-    const code_input = screen.getByPlaceholderText(/프로젝트 코드/);
+    const code_input = screen.getByPlaceholderText('프로젝트 코드 or 작업 게시글 번호');
 
     await user.type(title_input, '새로운 작업');
     await user.type(code_input, 'PRJ001');
@@ -84,7 +84,7 @@ describe('TimerInput', () => {
     const user = userEvent.setup();
     render(<TimerInput />);
 
-    const code_input = screen.getByPlaceholderText(/프로젝트 코드/) as HTMLInputElement;
+    const code_input = screen.getByPlaceholderText('프로젝트 코드 or 작업 게시글 번호') as HTMLInputElement;
     const name_input = screen.getByPlaceholderText(/프로젝트 명/) as HTMLInputElement;
 
     await user.type(code_input, 'PRJ001');

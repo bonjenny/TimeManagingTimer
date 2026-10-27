@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Box,
@@ -63,6 +63,9 @@ const ErpRegisterDialog: React.FC<Props> = ({ open, onClose, rows, date }) => {
   const [session_input, setSessionInput] = useState(() => sessionStorage.getItem(SESSION_KEY) || '');
   const [posting, setPosting] = useState(false);
   const [post_result, setPostResult] = useState<ErpPostResult | null>(null);
+  // 저장 결과는 그 날짜에만. 같은 날은 두 번 저장되지 않게 막고, 다른 날짜로 바꾸면 다시 저장할 수 있다
+  // (창이 닫혀도 계속 붙어 있는 컴포넌트라 새로고침 전까지 다른 날도 막히던 문제)
+  useEffect(() => setPostResult(null), [date]);
   const session = parseErpSession(session_input);
 
   const result = useMemo(

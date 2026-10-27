@@ -52,8 +52,8 @@ import { useProjectStore } from '../../store/useProjectStore';
 import { getAdjustedPalette, loadPaletteSettings } from '../../utils/colorPalette';
 import { getItem, setItem } from '../../utils/storage';
 import CategoryAutocomplete from '../common/CategoryAutocomplete';
-import ProjectCodeNameFields from '../common/ProjectCodeNameFields';
 import { renderProjectOption } from '../common/projectOptions';
+import ProjectCodeNameFields from '../common/ProjectCodeNameFields';
 
 // 프리셋 데이터 타입
 interface PresetItem {
@@ -297,7 +297,7 @@ const SortablePresetItem: React.FC<SortablePresetItemProps> = ({
 const SETTINGS_STORAGE_KEY = 'timekeeper-settings';
 
 const PresetPanel: React.FC = () => {
-  const { startTimer, logs, themeConfig } = useTimerStore();
+  const { startTimer, logs, activeTimer, themeConfig } = useTimerStore();
   const { projects, addProject, getProjectName } = useProjectStore();
   const theme = useTheme();
   // md 미만: "빠른 시작" 가로 카드 줄. 「편집」을 누르면 기존 세로 목록(수정/드래그/삭제)
@@ -402,7 +402,8 @@ const PresetPanel: React.FC = () => {
     const preset_titles = new Set(presets.map(p => p.title));
     const recent: { title: string; projectCode?: string; category?: string; note?: string }[] = [];
 
-    const sorted_logs = [...logs].sort((a, b) => b.startTime - a.startTime);
+    // 진행 중인 업무는 멈추기 전까지 logs 에 없다 → 맨 앞에 넣는다
+    const sorted_logs = [...(activeTimer ? [activeTimer] : []), ...[...logs].sort((a, b) => b.startTime - a.startTime)];
     
     for (const log of sorted_logs) {
       if (!seen_titles.has(log.title) && !preset_titles.has(log.title)) {
@@ -613,10 +614,13 @@ const PresetPanel: React.FC = () => {
           </ListItemIcon>
           <ListItemText primary="새 프리셋 추가" />
         </MenuItem>
-        {recent_tasks.length > 0 && <Divider sx={{ my: 1 }} />}
-        {recent_tasks.length > 0 && (
-          <Typography variant="caption" color="text.secondary" sx={{ px: 2, py: 0.5, display: 'block' }}>
-            최근 작업에서 추가
+        <Divider sx={{ my: 1 }} />
+        <Typography variant="caption" color="text.secondary" sx={{ px: 2, py: 0.5, display: 'block' }}>
+          최근 작업에서 추가
+        </Typography>
+        {recent_tasks.length === 0 && (
+          <Typography variant="caption" color="text.disabled" sx={{ px: 2, pb: 1, display: 'block' }}>
+            프리셋에 없는 최근 작업이 없어요
           </Typography>
         )}
         {recent_tasks.map((task, index) => (
@@ -777,13 +781,13 @@ const PresetPanel: React.FC = () => {
         <DialogTitle>{edit_preset ? '프리셋 수정' : '새 프리셋 추가'}</DialogTitle>
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, mt: 1 }}>
-            {/* 코드 + 이름을 모두 넣고 저장하면 새 프로젝트로 등록된다 (업무 기록 창과 같은 두 칸) */}
+            {/* 프로젝트 코드 · 프로젝트 명을 처음부터 따로 (업무 기록 수정 창과 같은 두 칸).
+                기존 프로젝트는 어느 칸에서 골라도 다른 칸이 채워지고, 둘 다 새로 넣고 저장하면 프로젝트로 등록된다 */}
             <ProjectCodeNameFields
               code={modal_project_code}
               name={modal_project_name}
               onCodeChange={setModalProjectCode}
               onNameChange={setModalProjectName}
-              codePlaceholder="예: A25_01846"
               autoFocus
             />
 

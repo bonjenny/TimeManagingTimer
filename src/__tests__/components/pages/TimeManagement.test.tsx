@@ -43,14 +43,13 @@ describe('TimeManagement 컴포넌트', () => {
 
   it('빈 상태에서 렌더링된다', () => {
     renderWithTheme(<TimeManagement />);
-    expect(screen.getByText(/데이터가 없습니다/)).toBeInTheDocument();
+    expect(screen.getByText('여기를 눌러 새 줄 입력')).toBeInTheDocument();
   });
 
   it('새 행을 추가할 수 있다', () => {
     renderWithTheme(<TimeManagement />);
     
-    const add_button = screen.getByRole('button', { name: /새 행 추가/ });
-    fireEvent.click(add_button);
+    fireEvent.click(screen.getByText('여기를 눌러 새 줄 입력'));
 
     const rows = useTimeManagementStore.getState().rows;
     expect(rows.length).toBe(1);
@@ -532,5 +531,168 @@ describe('TimeManagement 컴포넌트', () => {
     expect(data_rows[0]).toHaveTextContent('A작업');
     expect(data_rows[1]).toHaveTextContent('B작업');
     expect(data_rows[2]).toHaveTextContent('C작업');
+  });
+
+  it('작업 드롭다운의 「새 프로젝트 추가」로 코드·이름을 나눠 등록하고 그 행에 바로 넣는다', async () => {
+    const today = new Date();
+    const date_string = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    useTimeManagementStore.setState({
+      rows: [{ id: 'r1', checked: false, project_name: '', work_type: '작업', schedule_name: '팀장 업무', category_code: '07', category_name: '팀장업무', time_minutes: 30, note: '', date: date_string }],
+    });
+    renderWithTheme(<TimeManagement />);
+
+    // 첫 데이터 행의 「작업」 칸 (체크박스 다음 칸)
+    const project_cell = within(screen.getAllByRole('row')[1]).getAllByRole('cell')[1];
+    fireEvent.click(within(project_cell).getByText('-'));
+    // 목록에 없는 걸 치면 「새 프로젝트 추가」 하나만 남고, 친 글자가 코드로 넘어간다
+    const search = within(project_cell).getByLabelText('작업 검색');
+    fireEvent.change(search, { target: { value: '6010' } });
+    fireEvent.keyDown(search, { key: 'Enter' });
+
+    const dialog = await screen.findByRole('dialog', { name: '새 프로젝트 추가' });
+    expect(within(dialog).getByLabelText('프로젝트 코드')).toHaveValue('6010');
+    fireEvent.change(within(dialog).getByLabelText('프로젝트 명'), { target: { value: '팀장업무' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: /추가/ }));
+
+    await waitFor(() => expect(useTimeManagementStore.getState().rows[0].project_name).toBe('6010'));
+    expect(useProjectStore.getState().projects.find((p) => p.code === '6010')?.name).toBe('팀장업무');
+  });
+
+  describe('줄 입력 편의 (5.0 그리드처럼)', () => {
+    const today = new Date();
+    const date_string = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    const base = { checked: false, note: '', date: date_string };
+
+    it('맨 아래 빈 줄을 누르면 새 줄이 생기고 종료예정일은 그 날짜', () => {
+      useTimeManagementStore.setState({ rows: [] });
+      renderWithTheme(<TimeManagement />);
+      fireEvent.click(screen.getByText('여기를 눌러 새 줄 입력'));
+      const rows = useTimeManagementStore.getState().rows;
+      expect(rows).toHaveLength(1);
+      expect(rows[0].end_date).toBe(date_string);
+    });
+
+    it('줄의 + 는 바로 아래에 새 줄을 넣고, 이어서 Ctrl+D 로 그 줄을 복사', () => {
+      useTimeManagementStore.setState({
+        rows: [
+          { ...base, id: 'a', project_name: 'A26_05557', work_type: '개발', schedule_name: '조사', category_code: '17', category_name: '분석', time_minutes: 60, end_date: date_string },
+          { ...base, id: 'z', project_name: '', work_type: '작업', schedule_name: '끝줄', category_code: '9999', category_name: '기타', time_minutes: 0, end_date: date_string },
+        ],
+      });
+      renderWithTheme(<TimeManagement />);
+      fireEvent.click(screen.getAllByRole('button', { name: '아래에 새 줄' })[0]);
+      fireEvent.keyDown(window, { key: 'd', code: 'KeyD', ctrlKey: true });
+      const rows = useTimeManagementStore.getState().rows;
+      expect(rows.map((r) => r.id)[2]).toBe('z');
+      expect(rows[1]).toMatchObject({ project_name: 'A26_05557', schedule_name: '조사', category_code: '17', time_minutes: 0 });
+    });
+
+    it('Ctrl+D: 칸을 눌렀으면 그 칸만 윗줄 값으로 (카테고리는 코드·이름 함께)', () => {
+      useTimeManagementStore.setState({
+        rows: [
+          { ...base, id: 'a', project_name: 'A26_05557', work_type: '개발', schedule_name: '조사', category_code: '17', category_name: '분석', time_minutes: 60, end_date: '2026-10-30' },
+          { ...base, id: 'b', project_name: '', work_type: '작업', schedule_name: '내 일', category_code: '9999', category_name: '기타', time_minutes: 15, end_date: date_string },
+        ],
+      });
+      renderWithTheme(<TimeManagement />);
+      const cells = () => within(screen.getAllByRole('row')[2]).getAllByRole('cell');
+      fireEvent.click(within(cells()[1]).getByText('-')); // 작업 칸
+      fireEvent.keyDown(window, { key: 'd', code: 'KeyD', ctrlKey: true });
+      expect(useTimeManagementStore.getState().rows[1]).toMatchObject({ project_name: 'A26_05557', work_type: '작업', schedule_name: '내 일', category_code: '9999' });
+
+      fireEvent.click(within(cells()[5]).getByText('기타')); // 카테고리명 칸
+      fireEvent.keyDown(window, { key: 'd', code: 'KeyD', ctrlKey: true });
+      expect(useTimeManagementStore.getState().rows[1]).toMatchObject({ work_type: '작업', schedule_name: '내 일', category_code: '17', category_name: '분석', end_date: date_string });
+    });
+
+    it('Ctrl+D: 선택한 줄에 윗줄을 복사 (시간·비고는 그대로)', () => {
+      useTimeManagementStore.setState({
+        rows: [
+          { ...base, id: 'a', project_name: 'A26_05557', work_type: '개발', schedule_name: '조사', category_code: '17', category_name: '분석', time_minutes: 60, note: '윗줄 비고', end_date: '2026-10-30' },
+          { ...base, id: 'b', project_name: '', work_type: '작업', schedule_name: '', category_code: '9999', category_name: '기타', time_minutes: 15, note: '내 비고', end_date: date_string },
+        ],
+      });
+      renderWithTheme(<TimeManagement />);
+      fireEvent.click(within(screen.getAllByRole('row')[2]).getAllByRole('cell')[0]); // 둘째 줄 선택
+      fireEvent.keyDown(window, { key: 'd', code: 'KeyD', ctrlKey: true });
+      const b = useTimeManagementStore.getState().rows.find((r) => r.id === 'b')!;
+      expect(b).toMatchObject({ project_name: 'A26_05557', work_type: '개발', schedule_name: '조사', category_code: '17', category_name: '분석', end_date: '2026-10-30', time_minutes: 15, note: '내 비고' });
+    });
+  });
+
+  describe('일괄 변경 · 필수값 · 작업 검색 · 줄 가져오기', () => {
+    const today = new Date();
+    const date_string = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    const row = (over: Record<string, unknown>) => ({
+      checked: false, project_name: 'A26_00413', work_type: '작업', schedule_name: '', category_code: '17', category_name: '분석',
+      time_minutes: 30, note: '', date: date_string, end_date: date_string, ...over,
+    });
+
+    it('작업 칸 검색: 맞는 게 하나면 Enter 로 바로 고른다 (이름으로도 검색)', () => {
+      useTimeManagementStore.setState({ rows: [row({ id: 'r1', project_name: '' })] as never });
+      renderWithTheme(<TimeManagement />);
+      const project_cell = within(screen.getAllByRole('row')[1]).getAllByRole('cell')[1];
+      fireEvent.click(within(project_cell).getByText('-'));
+      const search = within(project_cell).getByLabelText('작업 검색');
+      fireEvent.change(search, { target: { value: '특수' } });
+      fireEvent.keyDown(search, { key: 'Enter' });
+      expect(useTimeManagementStore.getState().rows[0].project_name).toBe('A25_05591');
+    });
+
+    it('작업이 비면 빨간 칸으로 알린다 (기타 9999 는 등록되니 표시 안 함)', () => {
+      useTimeManagementStore.setState({
+        rows: [row({ id: 'ok' }), row({ id: 'bad', project_name: '', category_code: '9999', category_name: '기타' })] as never,
+      });
+      renderWithTheme(<TimeManagement />);
+      expect(screen.getByText(/빨간 칸 1줄/)).toBeInTheDocument();
+      expect(screen.getByTitle('작업을 골라야 ERP 에 등록돼요')).toBeInTheDocument();
+      expect(screen.queryByTitle(/9999/)).not.toBeInTheDocument();
+    });
+
+    it('체크한 줄만 일괄 변경, 비운 항목은 그대로', async () => {
+      useTimeManagementStore.setState({
+        rows: [row({ id: 'a', checked: true, work_type: '작업' }), row({ id: 'b', checked: false })] as never,
+      });
+      renderWithTheme(<TimeManagement />);
+      fireEvent.click(screen.getByRole('button', { name: /일괄 변경 \(1\)/ }));
+      const dialog = await screen.findByRole('dialog', { name: /일괄 변경/ });
+      fireEvent.change(within(dialog).getByLabelText('종료예정일'), { target: { value: '2026-11-07' } });
+      fireEvent.click(within(dialog).getByRole('button', { name: '적용' }));
+      const rows = useTimeManagementStore.getState().rows;
+      expect(rows.find((r) => r.id === 'a')).toMatchObject({ end_date: '2026-11-07', work_type: '작업', project_name: 'A26_00413' });
+      expect(rows.find((r) => r.id === 'b')!.end_date).toBe(date_string);
+    });
+
+    it('웹자료 올리기: 엑셀 표를 붙여넣으면 그 날짜 줄로 추가', async () => {
+      renderWithTheme(<TimeManagement />);
+      fireEvent.click(screen.getByRole('button', { name: /줄 가져오기/ }));
+      fireEvent.click(await screen.findByRole('menuitem', { name: /웹자료 올리기/ }));
+      const dialog = await screen.findByRole('dialog', { name: /웹자료 올리기/ });
+      fireEvent.change(within(dialog).getByLabelText('붙여넣을 표'), {
+        target: { value: '테스트 프로젝트\t개발\t조사\t17\t분석\t45\t\t메모' },
+      });
+      fireEvent.click(within(dialog).getByRole('button', { name: '1줄 추가' }));
+      const rows = useTimeManagementStore.getState().rows;
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({ project_name: 'A26_00413', work_type: '개발', schedule_name: '조사', category_code: '17', time_minutes: 45, note: '메모', date: date_string, end_date: date_string });
+    });
+
+    it('다른 날짜에서 복사: 종료예정일은 입력하는 날짜, 원래 줄은 그대로', async () => {
+      useTimeManagementStore.setState({
+        rows: [row({ id: 'old', date: '2026-01-05', end_date: '2026-01-09', schedule_name: '어제 일', original_log_id: 'log1' })] as never,
+      });
+      renderWithTheme(<TimeManagement />);
+      fireEvent.click(screen.getByRole('button', { name: /줄 가져오기/ }));
+      fireEvent.click(await screen.findByRole('menuitem', { name: /다른 날짜에서 복사/ }));
+      const dialog = await screen.findByRole('dialog', { name: /다른 날짜에서 복사/ });
+      expect(within(dialog).getByText('어제 일')).toBeInTheDocument();
+      fireEvent.click(within(dialog).getByRole('button', { name: '1줄 복사' }));
+      const rows = useTimeManagementStore.getState().rows;
+      const copied = rows.find((r) => r.date === date_string)!;
+      expect(copied).toMatchObject({ schedule_name: '어제 일', end_date: date_string, checked: false });
+      expect(copied.id).not.toBe('old');
+      expect(copied.original_log_id).toBeUndefined();
+      expect(rows.find((r) => r.id === 'old')!.end_date).toBe('2026-01-09');
+    });
   });
 });

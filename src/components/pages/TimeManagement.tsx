@@ -14,6 +14,7 @@ import {
   TextField,
   IconButton,
   Tooltip,
+  Snackbar,
   Select,
   MenuItem,
   FormControl,
@@ -52,6 +53,9 @@ import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import EditNoteIcon from '@mui/icons-material/EditNote';
+import ContentPasteIcon from '@mui/icons-material/ContentPaste';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { v4 as uuidv4 } from 'uuid';
 import { useTimerStore } from '../../store/useTimerStore';
 import { useTimeManagementStore, TimeManagementRow } from '../../store/useTimeManagementStore';
@@ -60,6 +64,8 @@ import {
   convertLogsToTimeManagement,
   mergeTimeManagementRows,
   formatDateToYYYYMMDD,
+  parsePastedRows,
+  copyRowsToDate,
 } from '../../utils/timeManagementConverter';
 import {
   CATEGORY_CODE_MAP,
@@ -97,6 +103,25 @@ const toSheetDraft = (row: TimeManagementRow): SheetDraft => ({
   note: row.note || '',
 });
 
+// 작업 드롭다운의 「+ 새 프로젝트 추가」 (실제 코드와 겹치지 않는 값)
+const NEW_PROJECT_VALUE = '__new_project__';
+
+// 작업 검색: 코드·이름 어느 쪽이든 (대소문자 무시)
+const matchProject = (project: { code: string; name: string }, query: string) => {
+  const q = query.trim().toLowerCase();
+  return !q || project.code.toLowerCase().includes(q) || project.name.toLowerCase().includes(q);
+};
+
+// ERP 등록을 막는 칸: 작업 없음 (카테고리 기타 9999 는 그대로 등록된다)
+const isMissingProject = (row: TimeManagementRow) => !row.project_name;
+const MISSING_SX = { color: 'error.main', bgcolor: 'rgba(211, 47, 47, 0.08)', borderRadius: 1 } as const;
+
+type BulkDraft = { project_name: string; work_type: string; category_code: string; end_date: string };
+const EMPTY_BULK: BulkDraft = { project_name: '', work_type: '', category_code: '', end_date: '' };
+
+// 맨 아래 빈 줄의 칸 순서 (표 열 순서와 같게)
+const GHOST_FIELDS: (keyof TimeManagementRow)[] = ['project_name', 'work_type', 'schedule_name', 'category_code', 'category_name', 'time_minutes', 'end_date', 'note'];
+
 const TimeManagement: React.FC = () => {
   const [selected_date, setSelectedDate] = useState<Date>(() => {
     const now = new Date();
@@ -109,7 +134,7 @@ const TimeManagement: React.FC = () => {
   const date_input_ref = useRef<HTMLInputElement>(null);
 
   const { logs } = useTimerStore();
-  const { projects, getProjectName } = useProjectStore();
+  const { projects, getProjectName, addProject } = useProjectStore();
   const {
     rows: all_rows,
     default_work_type,
@@ -249,7 +274,7 @@ const TimeManagement: React.FC = () => {
     }
   };
 
-  const handleAddRow = () => {
+  const handleAddRow = (after_id?: string): TimeManagementRow => {
     const new_row: TimeManagementRow = {
       id: uuidv4(),
       checked: false,
@@ -261,9 +286,10 @@ const TimeManagement: React.FC = () => {
       time_minutes: 0,
       note: '',
       date: date_string,
-      end_date: formatDateToYYYYMMDD(new Date()),
+      end_date: date_string, // 종료예정일 기본값은 그 날
     };
-    addRow(new_row);
+    addRow(new_row, after_id);
+    return new_row;
   };
 
   const handleDeleteChecked = () => {
@@ -317,10 +343,14 @@ const TimeManagement: React.FC = () => {
   };
 
   const handleCellClick = (row: TimeManagementRow, field: keyof TimeManagementRow) => {
+    setSelectedRowId(row.id);
     if (field === 'checked' || field === 'id' || field === 'date' || field === 'original_log_id') {
+      setSelectedField(null);
       return;
     }
+    setSelectedField(field);
     setEditingCell({ row_id: row.id, field });
+    setProjectQuery('');
     setEditValue(field === 'end_date' ? row.end_date || row.date : String(row[field]));
   };
 
@@ -343,6 +373,108 @@ const TimeManagement: React.FC = () => {
     setEditValue('');
   };
 
+  // 작업(프로젝트) 목록에 없는 건 드롭다운 맨 위 「+ 새 프로젝트 추가」로 바로 등록하고 그 행에 넣는다.
+  // 코드와 이름은 칸을 나눠 받는다 (코드에 작업번호를 넣어도 된다)
+  const [new_project_for, setNewProjectFor] = useState<{ row_id: string } | { sheet: true } | null>(null);
+  const [np_code, setNpCode] = useState('');
+  const [np_name, setNpName] = useState('');
+  const new_code = np_code.trim();
+  const existing_project = projects.find((p) => p.code === new_code);
+  const openNewProject = (target: { row_id: string } | { sheet: true }, code = '') => {
+    setNpCode(code);
+    setNpName('');
+    setNewProjectFor(target);
+  };
+  const handleSaveNewProject = () => {
+    if (!new_project_for || !new_code || !np_name.trim()) return;
+    addProject({ code: new_code, name: np_name.trim() });
+    if ('row_id' in new_project_for) updateRow(new_project_for.row_id, { project_name: new_code });
+    else setDraftField('project_name', new_code);
+    setNewProjectFor(null);
+  };
+
+  // 마지막으로 누른 줄과 칸. Ctrl+D 가 이 줄에 윗줄을 복사한다 (엑셀처럼). 칸을 눌렀으면 그 칸만
+  const [selected_row_id, setSelectedRowId] = useState<string | null>(null);
+  const [selected_field, setSelectedField] = useState<keyof TimeManagementRow | null>(null);
+  const [copy_toast, setCopyToast] = useState('');
+
+  // 맨 아래 빈 줄(저장 안 됨)을 누르면 진짜 줄을 만들고 그 칸을 바로 편집한다 (5.0 그리드의 「하단 행 클릭 시 행 추가」)
+  const handleGhostCellClick = (field: keyof TimeManagementRow) => {
+    const row = handleAddRow();
+    setSelectedRowId(row.id);
+    handleCellClick(row, field);
+  };
+
+  // 작업 칸 검색어. 맞는 게 하나면 Enter 로 바로 고른다 (autoHighlight 로 첫 후보가 잡혀 있다)
+  const [project_query, setProjectQuery] = useState('');
+  const project_codes = useMemo(() => projects.map((p) => p.code), [projects]);
+  const project_cell_options = useMemo(() => [NEW_PROJECT_VALUE, '', ...project_codes], [project_codes]);
+  const filterProjectOptions = (options: string[], query: string) => {
+    const matches = options.filter((code) => {
+      const project = projects.find((p) => p.code === code);
+      return project && matchProject(project, query);
+    });
+    // 빈 검색: 새 프로젝트 · 없음 · 전체. 검색 중: 맞는 것 먼저, 새 프로젝트는 맨 뒤 (검색어를 코드로 넘긴다)
+    return query.trim() ? [...matches, NEW_PROJECT_VALUE] : [NEW_PROJECT_VALUE, '', ...matches];
+  };
+  const projectOptionLabel = (code: string) =>
+    code === NEW_PROJECT_VALUE ? '새 프로젝트 추가' : code ? `${code} ${getProjectName(code)}` : '없음';
+
+  // 4) 체크한 줄 일괄 변경. 비워 둔 항목은 그대로
+  const [bulk_open, setBulkOpen] = useState(false);
+  const [bulk, setBulk] = useState<BulkDraft>(EMPTY_BULK);
+  const bulk_empty = !bulk.project_name && !bulk.work_type && !bulk.category_code && !bulk.end_date;
+  const handleBulkApply = () => {
+    const patch: Partial<TimeManagementRow> = {};
+    if (bulk.project_name) patch.project_name = bulk.project_name;
+    if (bulk.work_type) patch.work_type = bulk.work_type;
+    if (bulk.category_code) Object.assign(patch, getFieldPatch('category_code', bulk.category_code));
+    if (bulk.end_date) patch.end_date = bulk.end_date;
+    const targets = current_rows.filter((row) => row.checked);
+    targets.forEach((row) => updateRow(row.id, patch));
+    setBulkOpen(false);
+    setCopyToast(`${targets.length}줄을 바꿨어요`);
+  };
+
+  // 줄 가져오기 메뉴: 웹자료 올리기(엑셀 붙여넣기) · 다른 날짜에서 복사
+  const [import_anchor, setImportAnchor] = useState<HTMLElement | null>(null);
+  const [paste_open, setPasteOpen] = useState(false);
+  const [paste_text, setPasteText] = useState('');
+  const pasted_rows = useMemo(
+    () => parsePastedRows(paste_text, date_string, projects, default_work_type, WORK_TYPE_OPTIONS),
+    [paste_text, date_string, projects, default_work_type]
+  );
+  const handlePasteAdd = () => {
+    addRows(pasted_rows);
+    setPasteOpen(false);
+    setPasteText('');
+    setCopyToast(`${pasted_rows.length}줄을 올렸어요`);
+  };
+
+  const [copy_open, setCopyOpen] = useState(false);
+  const [copy_from, setCopyFrom] = useState('');
+  const [copy_ids, setCopyIds] = useState<Set<string>>(new Set());
+  // 기록이 있는 다른 날짜 (최근 순)
+  const row_dates = useMemo(
+    () => [...new Set(all_rows.map((r) => r.date))].filter((d) => d !== date_string).sort().reverse(),
+    [all_rows, date_string]
+  );
+  const copy_source = useMemo(() => all_rows.filter((r) => r.date === copy_from), [all_rows, copy_from]);
+  const pickCopyFrom = (date: string) => {
+    setCopyFrom(date);
+    setCopyIds(new Set(all_rows.filter((r) => r.date === date).map((r) => r.id)));
+  };
+  const openCopy = () => {
+    pickCopyFrom(row_dates.find((d) => d < date_string) ?? row_dates[0] ?? '');
+    setCopyOpen(true);
+  };
+  const handleCopyAdd = () => {
+    const picked = copy_source.filter((r) => copy_ids.has(r.id));
+    addRows(copyRowsToDate(picked, date_string));
+    setCopyOpen(false);
+    setCopyToast(`${copy_from} 에서 ${picked.length}줄을 복사했어요 (종료예정일 ${date_string})`);
+  };
+
   const handleCancelEdit = () => {
     setEditingCell(null);
     setEditValue('');
@@ -359,6 +491,7 @@ const TimeManagement: React.FC = () => {
   };
 
   const total_minutes = current_rows.reduce((sum, row) => sum + row.time_minutes, 0);
+  const missing_count = current_rows.filter(isMissingProject).length;
   const checked_count = current_rows.filter((row) => row.checked).length;
   const all_checked = current_rows.length > 0 && checked_count === current_rows.length;
 
@@ -380,6 +513,35 @@ const TimeManagement: React.FC = () => {
       return prev.filter((k) => k.column !== column); // desc 다음 클릭은 해당 컬럼 정렬 해제
     });
   };
+
+  // Ctrl+D: 선택한 줄에 바로 윗줄(화면 순서) 값을 복사. 칸을 눌렀으면 그 칸만 (카테고리는 코드·이름 함께),
+  // 줄만 골랐으면(+ 로 만든 줄 등) 작업·업무형·거래형·카테고리·종료예정일. 시간·비고는 칸을 눌렀을 때만
+  const copyRowAbove = () => {
+    const index = sorted_rows.findIndex((r) => r.id === selected_row_id);
+    if (index < 0) return setCopyToast('복사할 줄을 먼저 눌러 주세요');
+    if (index === 0) return setCopyToast('첫 줄은 복사할 윗줄이 없어요');
+    const above = sorted_rows[index - 1];
+    const fields: (keyof TimeManagementRow)[] =
+      selected_field === 'category_code' || selected_field === 'category_name' ? ['category_code', 'category_name']
+      : selected_field ? [selected_field]
+      : ['project_name', 'work_type', 'schedule_name', 'category_code', 'category_name', 'end_date'];
+    setEditingCell(null);
+    setEditValue('');
+    updateRow(sorted_rows[index].id, Object.fromEntries(fields.map((f) => [f, f === 'end_date' ? above.end_date || above.date : above[f]])));
+    setCopyToast(selected_field ? '윗줄 값을 이 칸에 복사했어요' : '윗줄을 복사했어요 (시간·비고 제외)');
+  };
+  const copy_ref = useRef(copyRowAbove);
+  copy_ref.current = copyRowAbove;
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      // 한글 입력 상태면 D 가 ㅇ 으로 오므로 자판 위치(code)로 본다. 브라우저 북마크(Ctrl+D)는 막는다
+      if (!(e.ctrlKey || e.metaKey) || e.shiftKey || e.altKey || (e.code !== 'KeyD' && e.key.toLowerCase() !== 'd')) return;
+      e.preventDefault();
+      copy_ref.current();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   const sorted_rows = useMemo(() => {
     if (sort_keys.length === 0) {
@@ -548,28 +710,48 @@ const TimeManagement: React.FC = () => {
       }
 
       if (field === 'project_name') {
+        const row_id = editing_cell!.row_id;
         return (
-          <Select
-            value={edit_value}
-            onChange={(e) => setEditValue(e.target.value)}
-            onBlur={handleSaveEdit}
-            onKeyDown={handleKeyDown}
+          <Autocomplete
             size="small"
-            autoFocus
-            sx={{ minWidth: 140 }}
-            // 목록은 두 줄이지만 고른 뒤에는 표와 같이 프로젝트명 한 줄로 보여준다
-            renderValue={(value) => (value ? getProjectName(value as string) : '없음')}
-          >
-            <MenuItem value="">없음</MenuItem>
-            {projects.map((project) => (
-              <MenuItem key={project.code} value={project.code} sx={{ display: 'block', py: 0.75 }}>
-                <Typography sx={{ fontSize: '0.8rem', fontWeight: 700, lineHeight: 1.3 }}>{project.code}</Typography>
-                <Typography sx={{ fontSize: '0.95rem', color: 'text.secondary', lineHeight: 1.35 }}>
-                  {project.name}
-                </Typography>
-              </MenuItem>
-            ))}
-          </Select>
+            disableClearable
+            openOnFocus
+            autoHighlight
+            options={project_cell_options}
+            value={edit_value}
+            inputValue={project_query}
+            onInputChange={(_e, value, reason) => reason === 'input' && setProjectQuery(value)}
+            filterOptions={(options, state) => filterProjectOptions(options, state.inputValue)}
+            getOptionLabel={projectOptionLabel}
+            onChange={(_e, value) => {
+              handleCancelEdit();
+              if (value === NEW_PROJECT_VALUE) openNewProject({ row_id }, project_query.trim());
+              else updateRow(row_id, { project_name: value });
+            }}
+            onBlur={handleCancelEdit}
+            onKeyDown={(e) => e.key === 'Escape' && handleCancelEdit()}
+            renderOption={(props, code) => (
+              <li {...props} key={code || '__none__'}>
+                {code === NEW_PROJECT_VALUE ? (
+                  <Box sx={{ color: 'primary.main', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    <AddIcon fontSize="small" /> 새 프로젝트 추가{project_query.trim() ? ` (${project_query.trim()})` : ''}
+                  </Box>
+                ) : code ? (
+                  <Box>
+                    <Typography sx={{ fontSize: '0.8rem', fontWeight: 700, lineHeight: 1.3 }}>{code}</Typography>
+                    <Typography sx={{ fontSize: '0.95rem', color: 'text.secondary', lineHeight: 1.35 }}>{getProjectName(code)}</Typography>
+                  </Box>
+                ) : (
+                  '없음'
+                )}
+              </li>
+            )}
+            renderInput={(params) => (
+              <TextField {...params} autoFocus placeholder="코드·이름 검색" inputProps={{ ...params.inputProps, 'aria-label': '작업 검색' }} />
+            )}
+            slotProps={{ popper: { sx: { minWidth: 320 }, placement: 'bottom-start' } }}
+            sx={{ minWidth: 200 }}
+          />
         );
       }
 
@@ -627,12 +809,14 @@ const TimeManagement: React.FC = () => {
       return (
         <Box
           onClick={() => handleCellClick(row, field)}
+          title={isMissingProject(row) ? '작업을 골라야 ERP 에 등록돼요' : undefined}
           sx={{
             cursor: 'pointer',
             minHeight: 24,
             '&:hover': { bgcolor: 'action.hover' },
             px: 1,
             py: 0.5,
+            ...(isMissingProject(row) && MISSING_SX),
           }}
         >
           {display_value}
@@ -757,7 +941,7 @@ const TimeManagement: React.FC = () => {
           </Typography>
         </Box>
         <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', minWidth: 0 }}>
-          <Chip size="small" label={row.project_name ? getProjectName(row.project_name) : '작업 없음'} sx={{ maxWidth: '100%' }} />
+          <Chip size="small" color={isMissingProject(row) ? 'error' : 'default'} label={row.project_name ? getProjectName(row.project_name) : '작업 없음'} sx={{ maxWidth: '100%' }} />
           <Chip size="small" variant="outlined" label={row.work_type} />
           <Chip size="small" variant="outlined" label={`${row.category_code} ${row.category_name}`} sx={{ maxWidth: '100%' }} />
         </Box>
@@ -815,7 +999,7 @@ const TimeManagement: React.FC = () => {
         >
           시간관리 등록
         </Button>
-        <IconButton aria-label="새 행 추가" onClick={handleAddRow} sx={touch_icon_sx}>
+        <IconButton aria-label="새 행 추가" onClick={() => handleAddRow()} sx={touch_icon_sx}>
           <AddIcon />
         </IconButton>
         <IconButton aria-label="더보기" onClick={(e) => setMenuAnchor(e.currentTarget)} sx={touch_icon_sx}>
@@ -826,6 +1010,14 @@ const TimeManagement: React.FC = () => {
         <MenuItem onClick={() => { closeMenu(); handleLoadFromLogs(); }}>
           <ListItemIcon><DownloadIcon fontSize="small" /></ListItemIcon>
           {current_rows.length > 0 ? '일간 타이머에서 다시 불러오기' : '일간 타이머에서 불러오기'}
+        </MenuItem>
+        <MenuItem onClick={() => { closeMenu(); setPasteOpen(true); }}>
+          <ListItemIcon><ContentPasteIcon fontSize="small" /></ListItemIcon>
+          웹자료 올리기
+        </MenuItem>
+        <MenuItem disabled={row_dates.length === 0} onClick={() => { closeMenu(); openCopy(); }}>
+          <ListItemIcon><ContentCopyIcon fontSize="small" /></ListItemIcon>
+          다른 날짜에서 복사
         </MenuItem>
         <MenuItem disabled={current_rows.length === 0} onClick={() => { closeMenu(); handleExportExcel(); }}>
           <ListItemIcon><FileUploadIcon fontSize="small" /></ListItemIcon>
@@ -1009,7 +1201,7 @@ const TimeManagement: React.FC = () => {
             )}
           </Box>
 
-          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap', '& .MuiButton-root': { whiteSpace: 'nowrap' } }}>
             <FormControl size="small" sx={{ minWidth: 120 }}>
               <InputLabel>기본 업무형</InputLabel>
               <Select
@@ -1045,6 +1237,25 @@ const TimeManagement: React.FC = () => {
             <Button
               variant="outlined"
               size="small"
+              onClick={(e) => setImportAnchor(e.currentTarget)}
+              startIcon={<ContentPasteIcon />}
+              endIcon={<ExpandMoreIcon />}
+            >
+              줄 가져오기
+            </Button>
+            <Menu anchorEl={import_anchor} open={!!import_anchor} onClose={() => setImportAnchor(null)}>
+              <MenuItem onClick={() => { setImportAnchor(null); setPasteOpen(true); }}>
+                <ListItemIcon><ContentPasteIcon fontSize="small" /></ListItemIcon>
+                <ListItemText primary="웹자료 올리기" secondary="엑셀에서 복사한 표 붙여넣기" />
+              </MenuItem>
+              <MenuItem disabled={row_dates.length === 0} onClick={() => { setImportAnchor(null); openCopy(); }}>
+                <ListItemIcon><ContentCopyIcon fontSize="small" /></ListItemIcon>
+                <ListItemText primary="다른 날짜에서 복사" secondary="종료예정일은 이 날짜로" />
+              </MenuItem>
+            </Menu>
+            <Button
+              variant="outlined"
+              size="small"
               onClick={handleExportExcel}
               startIcon={<FileUploadIcon />}
               disabled={current_rows.length === 0}
@@ -1063,10 +1274,11 @@ const TimeManagement: React.FC = () => {
             <Button
               variant="outlined"
               size="small"
-              onClick={handleAddRow}
-              startIcon={<AddIcon />}
+              onClick={() => { setBulk(EMPTY_BULK); setBulkOpen(true); }}
+              startIcon={<EditNoteIcon />}
+              disabled={checked_count === 0}
             >
-              새 행 추가
+              일괄 변경 ({checked_count})
             </Button>
             <Button
               variant="outlined"
@@ -1085,7 +1297,7 @@ const TimeManagement: React.FC = () => {
           <Table stickyHeader size="small">
             <TableHead>
               <TableRow>
-                <TableCell padding="checkbox">
+                <TableCell padding="checkbox" sx={{ whiteSpace: 'nowrap' }}>
                   <Checkbox
                     checked={all_checked}
                     indeterminate={checked_count > 0 && !all_checked}
@@ -1168,12 +1380,27 @@ const TimeManagement: React.FC = () => {
             </TableHead>
             <TableBody>
               {sorted_rows.map((row) => (
-                <TableRow key={row.id} hover>
-                  <TableCell padding="checkbox">
+                <TableRow key={row.id} hover selected={row.id === selected_row_id} onClick={() => setSelectedRowId(row.id)}>
+                  <TableCell padding="checkbox" sx={{ whiteSpace: 'nowrap' }} onClick={() => setSelectedField(null)}>
                     <Checkbox
                       checked={row.checked}
                       onChange={() => toggleCheck(row.id)}
                     />
+                    {/* 바로 아래에 새 줄을 넣고 고른다. 이어서 Ctrl+D 면 이 줄을 복사 */}
+                    <Tooltip title="아래에 새 줄">
+                      <IconButton
+                        size="small"
+                        aria-label="아래에 새 줄"
+                        onClick={(e) => {
+                          e.stopPropagation(); // 줄 클릭이 선택을 이 줄로 되돌리지 않게
+                          setSelectedRowId(handleAddRow(row.id).id);
+                          setSelectedField(null);
+                        }}
+                        sx={{ ml: 1, color: 'primary.main' }}
+                      >
+                        <AddIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
                   </TableCell>
                   <TableCell>{renderCell(row, 'project_name')}</TableCell>
                   <TableCell>{renderCell(row, 'work_type')}</TableCell>
@@ -1185,13 +1412,15 @@ const TimeManagement: React.FC = () => {
                   <TableCell>{renderCell(row, 'note')}</TableCell>
                 </TableRow>
               ))}
-              {current_rows.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={9} align="center" sx={{ py: 4, color: 'text.secondary' }}>
-                    데이터가 없습니다. "일간 타이머에서 불러오기" 버튼을 클릭하거나 "새 행 추가"를 눌러 시작하세요.
+              {/* 맨 아래 빈 줄: 저장되지 않는 자리. 칸을 누르면 그 자리에 새 줄이 생긴다 */}
+              <TableRow sx={{ '& td': { color: 'text.disabled', borderBottom: '1px dashed', borderBottomColor: 'divider' } }}>
+                <TableCell padding="checkbox" />
+                {GHOST_FIELDS.map((field) => (
+                  <TableCell key={field} onClick={() => handleGhostCellClick(field)} sx={{ cursor: 'text', height: 41 }}>
+                    {field === 'project_name' ? (current_rows.length === 0 ? '여기를 눌러 새 줄 입력' : '+') : ''}
                   </TableCell>
-                </TableRow>
-              )}
+                ))}
+              </TableRow>
             </TableBody>
           </Table>
         </TableContainer>
@@ -1205,6 +1434,14 @@ const TimeManagement: React.FC = () => {
             gap: 2,
           }}
         >
+          <Typography variant="caption" color="text.secondary" sx={{ mr: 'auto' }}>
+            <b>Ctrl+D</b> 누른 칸에 윗줄 값 복사 (줄 앞 + 로 만든 줄은 작업·업무형·거래형·카테고리·종료예정일 한 번에) · 맨 아래 빈 줄을 누르면 새 줄
+          </Typography>
+          {missing_count > 0 && (
+            <Typography variant="body2" sx={{ color: 'error.main', fontWeight: 600 }}>
+              빨간 칸 {missing_count}줄: 작업을 골라야 ERP 등록돼요
+            </Typography>
+          )}
           <Typography variant="body2" sx={{ fontWeight: 600 }}>
             총 시간: {total_minutes}분 ({(total_minutes / 60).toFixed(1)}시간)
           </Typography>
@@ -1215,6 +1452,185 @@ const TimeManagement: React.FC = () => {
         </>
       )}
 
+
+      <Snackbar open={!!copy_toast} autoHideDuration={1800} onClose={() => setCopyToast('')} message={copy_toast} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }} />
+
+      {/* 4) 일괄 변경 */}
+      <Dialog open={bulk_open} onClose={() => setBulkOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>일괄 변경 ({checked_count}줄)</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            비워 둔 항목은 그대로 둡니다.
+          </Typography>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Autocomplete
+              autoHighlight
+              options={project_codes}
+              value={bulk.project_name || null}
+              onChange={(_e, value) => setBulk((b) => ({ ...b, project_name: value ?? '' }))}
+              filterOptions={(options, state) => options.filter((code) => matchProject({ code, name: getProjectName(code) }, state.inputValue))}
+              getOptionLabel={(code) => `${code} ${getProjectName(code)}`}
+              renderInput={(params) => <TextField {...params} label="작업" placeholder="그대로" InputLabelProps={{ ...params.InputLabelProps, shrink: true }} />}
+            />
+            <TextField select label="업무형" value={bulk.work_type} onChange={(e) => setBulk((b) => ({ ...b, work_type: e.target.value }))} SelectProps={{ displayEmpty: true }} InputLabelProps={{ shrink: true }}>
+              <MenuItem value="">그대로</MenuItem>
+              {WORK_TYPE_OPTIONS.map((type) => (
+                <MenuItem key={type} value={type}>{type}</MenuItem>
+              ))}
+            </TextField>
+            <TextField select label="카테고리" value={bulk.category_code} onChange={(e) => setBulk((b) => ({ ...b, category_code: e.target.value }))} SelectProps={{ displayEmpty: true }} InputLabelProps={{ shrink: true }}>
+              <MenuItem value="">그대로</MenuItem>
+              {getAllCategoryCodes().map((code) => (
+                <MenuItem key={code} value={code}>{code} - {getCategoryName(code)}</MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              type="date"
+              label="종료예정일"
+              value={bulk.end_date}
+              onChange={(e) => setBulk((b) => ({ ...b, end_date: e.target.value }))}
+              InputLabelProps={{ shrink: true }}
+              helperText="비우면 그대로"
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setBulkOpen(false)}>취소</Button>
+          <Button variant="contained" onClick={handleBulkApply} disabled={bulk_empty}>
+            적용
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 웹자료 올리기: 엑셀에서 복사한 표 붙여넣기 */}
+      <Dialog open={paste_open} onClose={() => setPasteOpen(false)} maxWidth="md" fullWidth fullScreen={is_phone}>
+        <DialogTitle>웹자료 올리기 ({date_string})</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+            엑셀에서 줄을 복사해 붙여넣으세요. 열 순서는 표와 같습니다: 작업 · 업무형 · 거래형(일정명) · 카테고리 코드 · 카테고리명 · 시간(분) · 종료예정일 · 비고.
+            머리줄이 있으면 머리 이름으로 맞추고, 작업은 코드·이름 모두 됩니다. 종료예정일이 비면 {date_string}.
+          </Typography>
+          <TextField
+            multiline
+            minRows={5}
+            maxRows={12}
+            fullWidth
+            autoFocus
+            value={paste_text}
+            onChange={(e) => setPasteText(e.target.value)}
+            placeholder="여기에 Ctrl+V"
+            inputProps={{ 'aria-label': '붙여넣을 표', style: { fontFamily: 'monospace', fontSize: 13, whiteSpace: 'pre' } }}
+          />
+          {pasted_rows.length > 0 && (
+            <TableContainer sx={{ mt: 2, maxHeight: 260, border: 1, borderColor: 'divider', borderRadius: 1 }}>
+              <Table size="small" stickyHeader>
+                <TableHead>
+                  <TableRow>
+                    {['작업', '업무형', '거래형(일정명)', '카테고리', '시간(분)', '종료예정일', '비고'].map((h) => (
+                      <TableCell key={h} sx={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</TableCell>
+                    ))}
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {pasted_rows.map((row) => (
+                    <TableRow key={row.id}>
+                      <TableCell sx={isMissingProject(row) ? MISSING_SX : undefined}>{row.project_name ? getProjectName(row.project_name) : '-'}</TableCell>
+                      <TableCell>{row.work_type}</TableCell>
+                      <TableCell>{row.schedule_name}</TableCell>
+                      <TableCell>{row.category_code} {row.category_name}</TableCell>
+                      <TableCell>{row.time_minutes}</TableCell>
+                      <TableCell sx={{ whiteSpace: 'nowrap' }}>{row.end_date}</TableCell>
+                      <TableCell sx={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.note}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPasteOpen(false)}>취소</Button>
+          <Button variant="contained" onClick={handlePasteAdd} disabled={pasted_rows.length === 0}>
+            {pasted_rows.length}줄 추가
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 다른 날짜에서 복사 */}
+      <Dialog open={copy_open} onClose={() => setCopyOpen(false)} maxWidth="sm" fullWidth fullScreen={is_phone}>
+        <DialogTitle>다른 날짜에서 복사 → {date_string}</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap', mt: 1, mb: 1.5 }}>
+            <TextField
+              type="date"
+              size="small"
+              label="가져올 날짜"
+              value={copy_from}
+              onChange={(e) => pickCopyFrom(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+            />
+            {row_dates.slice(0, 6).map((d) => (
+              <Chip
+                key={d}
+                size="small"
+                label={`${d.slice(5)} (${all_rows.filter((r) => r.date === d).length})`}
+                color={d === copy_from ? 'primary' : 'default'}
+                onClick={() => pickCopyFrom(d)}
+              />
+            ))}
+          </Box>
+          <Typography variant="caption" color="text.secondary">
+            작업·업무형·거래형·카테고리·시간·비고를 그대로 복사하고, 종료예정일은 {date_string}로 바꿉니다.
+          </Typography>
+          {copy_source.length === 0 ? (
+            <Typography variant="body2" color="text.secondary" sx={{ py: 3, textAlign: 'center' }}>
+              {copy_from ? '이 날짜에는 줄이 없어요' : '날짜를 고르세요'}
+            </Typography>
+          ) : (
+            <List dense sx={{ mt: 1 }}>
+              <ListItem
+                disablePadding
+                secondaryAction={<Typography variant="caption">{copy_ids.size}/{copy_source.length}</Typography>}
+              >
+                <Checkbox
+                  size="small"
+                  checked={copy_ids.size === copy_source.length}
+                  indeterminate={copy_ids.size > 0 && copy_ids.size < copy_source.length}
+                  onChange={() => setCopyIds(copy_ids.size === copy_source.length ? new Set() : new Set(copy_source.map((r) => r.id)))}
+                  inputProps={{ 'aria-label': '복사할 줄 전체 선택' }}
+                />
+                <ListItemText primary="전체" />
+              </ListItem>
+              {copy_source.map((row) => (
+                <ListItem key={row.id} disablePadding secondaryAction={<Typography variant="body2">{row.time_minutes}분</Typography>}>
+                  <Checkbox
+                    size="small"
+                    checked={copy_ids.has(row.id)}
+                    onChange={() =>
+                      setCopyIds((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(row.id)) next.delete(row.id);
+                        else next.add(row.id);
+                        return next;
+                      })
+                    }
+                  />
+                  <ListItemText
+                    primary={row.schedule_name || '(일정명 없음)'}
+                    secondary={`${row.project_name ? getProjectName(row.project_name) : '작업 없음'} · ${row.work_type} · ${row.category_name}`}
+                  />
+                </ListItem>
+              ))}
+            </List>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCopyOpen(false)}>취소</Button>
+          <Button variant="contained" onClick={handleCopyAdd} disabled={copy_ids.size === 0}>
+            {copy_ids.size}줄 복사
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* 카테고리별 업무형 설정 다이얼로그 */}
       <Dialog open={settings_open} onClose={() => setSettingsOpen(false)} maxWidth="sm" fullWidth fullScreen={is_phone}>
@@ -1389,6 +1805,47 @@ const TimeManagement: React.FC = () => {
           <Button onClick={() => setProjectSettingsOpen(false)}>닫기</Button>
         </DialogActions>
       </Dialog>
+      {/* 새 프로젝트 추가 (프로젝트 코드 · 프로젝트 명 따로) */}
+      <Dialog
+        open={!!new_project_for}
+        onClose={() => setNewProjectFor(null)}
+        maxWidth="xs"
+        fullWidth
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
+            e.preventDefault();
+            handleSaveNewProject();
+          }
+        }}
+      >
+        <DialogTitle>새 프로젝트 추가</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+            <TextField
+              label="프로젝트 코드"
+              placeholder="프로젝트 코드 or 작업 게시글 번호"
+              value={np_code}
+              onChange={(e) => setNpCode(e.target.value)}
+              helperText={existing_project ? `이미 있는 코드예요 (${existing_project.name}). 저장하면 이름이 바뀝니다.` : ' '}
+              autoFocus
+              fullWidth
+            />
+            <TextField
+              label="프로젝트 명"
+              placeholder="예: [5.6] Static P - writable"
+              value={np_name}
+              onChange={(e) => setNpName(e.target.value)}
+              fullWidth
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setNewProjectFor(null)}>취소</Button>
+          <Button variant="contained" onClick={handleSaveNewProject} disabled={!new_code || !np_name.trim()}>
+            {existing_project ? '이름 바꾸고 넣기(Enter)' : '추가(Enter)'}
+          </Button>
+        </DialogActions>
+      </Dialog>
       {/* 모바일 행 편집 시트 */}
       <Dialog open={!!sheet_draft} onClose={closeSheet} fullScreen={is_phone} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 1, py: 1 }}>
@@ -1404,7 +1861,16 @@ const TimeManagement: React.FC = () => {
             dividers
             sx={{ display: 'flex', flexDirection: 'column', gap: 2, '& .MuiInputBase-input': { fontSize: 16 } }}
           >
-            <TextField select fullWidth label="작업" value={sheet_draft.project_name} onChange={(e) => setDraftField('project_name', e.target.value)}>
+            <TextField
+              select
+              fullWidth
+              label="작업"
+              value={sheet_draft.project_name}
+              onChange={(e) => (e.target.value === NEW_PROJECT_VALUE ? openNewProject({ sheet: true }) : setDraftField('project_name', e.target.value))}
+            >
+              <MenuItem value={NEW_PROJECT_VALUE} sx={{ color: 'primary.main', fontWeight: 600, gap: 0.5 }}>
+                <AddIcon fontSize="small" /> 새 프로젝트 추가
+              </MenuItem>
               <MenuItem value="">없음</MenuItem>
               {projects.map((project) => (
                 <MenuItem key={project.code} value={project.code}>

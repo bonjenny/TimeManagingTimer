@@ -27,7 +27,7 @@ interface TimeManagementState {
   erp_user: ErpUser;
   note_include_title: boolean; // 일간 타이머에서 불러올 때 비고에 작업명을 넣을지 (기본 꺼짐)
 
-  addRow: (row: TimeManagementRow) => void;
+  addRow: (row: TimeManagementRow, after_id?: string) => void; // after_id 가 있으면 그 줄 바로 뒤에 넣는다
   addRows: (rows: TimeManagementRow[]) => void;
   updateRow: (id: string, updates: Partial<TimeManagementRow>) => void;
   deleteRow: (id: string) => void;
@@ -65,10 +65,12 @@ export const useTimeManagementStore = create<TimeManagementState>()(
       erp_user: DEFAULT_ERP_USER,
       note_include_title: false,
 
-      addRow: (row) =>
-        set((state) => ({
-          rows: [...state.rows, row],
-        })),
+      addRow: (row, after_id) =>
+        set((state) => {
+          const index = after_id ? state.rows.findIndex((r) => r.id === after_id) : -1;
+          if (index < 0) return { rows: [...state.rows, row] };
+          return { rows: [...state.rows.slice(0, index + 1), row, ...state.rows.slice(index + 1)] };
+        }),
 
       addRows: (rows) =>
         set((state) => ({
@@ -168,7 +170,19 @@ export const useTimeManagementStore = create<TimeManagementState>()(
     {
       name: 'timekeeper-time-management',
       storage: createJSONStorage(() => idbStorage),
-      version: 0,
+      version: 1,
+      // v1: 관리업무(A25_05591)에 팀장업무(카테고리 07)·팀회의(일정명) 매핑 추가. 이미 고친 값은 건드리지 않고 없을 때만 채운다
+      migrate: (persisted, version) => {
+        const state = persisted as { erp_mapping?: ErpMapping };
+        const admin = state?.erp_mapping?.A25_05591;
+        if (version < 1 && admin?.by_category) {
+          const defaults = DEFAULT_ERP_MAPPING.A25_05591;
+          admin.by_category['07'] ??= defaults.by_category!['07'];
+          admin.by_note = { ...admin.by_note };
+          admin.by_note['팀회의'] ??= defaults.by_note!['팀회의'];
+        }
+        return state as TimeManagementState;
+      },
     }
   )
 );

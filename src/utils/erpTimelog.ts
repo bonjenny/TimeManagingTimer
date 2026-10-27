@@ -59,6 +59,7 @@ export const DEFAULT_ERP_MAPPING: ErpMapping = {
   A25_05591: {
     by_category: {
       '05': W(6113, '81BU63SAOMR453R', '회의'),
+      '07': W(6010, '819AD92S13I8QB3', '팀장업무'),
       '10': W(6091, '81BOK7SO3VV6AIR', '질의응답'),
       '11': W(9066, '84KDE7RH2HE52Q8', '문서작업'),
       '28': W(6409, '81JIMS9D1AC4IN5', '센터오류 확인'),
@@ -68,6 +69,7 @@ export const DEFAULT_ERP_MAPPING: ErpMapping = {
       '시간관리 입력': W(6106, '81BSKBKWFVU48EF', '시간관리 보고서 작성'),
       회고보고서: W(6785, '821KAA2ECKT619F', '시간관리 회고보고서 작성'),
       주간일정: W(6207, '81DG4A8BD3M46S1', '주간일정 작성'),
+      팀회의: W(6029, '819F6H9GA9W3FA1', '팀회의'), // 카테고리는 05 회의라 일정명으로 가른다
     },
   },
   'PageSetup Playground': { alias: 'A25_05591' },

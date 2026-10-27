@@ -26,7 +26,8 @@ const ProjectCodeNameFields: React.FC<ProjectCodeNameFieldsProps> = ({
   onCodeChange,
   onNameChange,
   autoFocus,
-  codePlaceholder,
+  // 작업 게시글 번호(6010)나 프로젝트 코드(A26_05557) 어느 쪽이든 넣을 수 있다는 걸 알려 준다
+  codePlaceholder = '프로젝트 코드 or 작업 게시글 번호',
   sx,
 }) => {
   const { projects, deleteProject } = useProjectStore();

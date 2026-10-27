@@ -331,3 +331,35 @@ describe('담당자 검색', () => {
     expect(JSON.parse(init.body).condition_quick.value).toBe('김민주');
   });
 });
+
+describe('관리업무 팀장업무·팀회의 매핑', () => {
+  const { buildErpPayload: build, DEFAULT_ERP_MAPPING: M, DEFAULT_ERP_USER: U } = jest.requireActual('../../utils/erpTimelog');
+  it('카테고리 07 팀장업무 → 6010, 일정명에 팀회의 → 6029', () => {
+    const rows = [
+      row({ project_name: 'A25_05591', category_code: '07', category_name: '팀장업무', schedule_name: '면담', time_minutes: 30 }),
+      row({ project_name: 'A25_05591', category_code: '05', category_name: '회의', schedule_name: '주간 팀회의', time_minutes: 60 }),
+      row({ project_name: 'A25_05591', category_code: '05', category_name: '회의', schedule_name: '설계 리뷰', time_minutes: 20 }),
+    ];
+    const r = build(rows, '2026-10-26', M, U, new Date(2026, 9, 26));
+    expect(r.errors).toEqual([]);
+    expect(r.resolved.map((x: { work: { no: number } }) => x.work.no)).toEqual([6010, 6029, 6113]);
+  });
+});
+
+it('저장된 매핑에 팀장업무·팀회의가 없으면 채우고, 고친 값은 그대로 둔다', () => {
+  const { useTimeManagementStore } = jest.requireActual('../../store/useTimeManagementStore');
+  const migrate = useTimeManagementStore.persist.getOptions().migrate!;
+  const saved = {
+    erp_mapping: {
+      A25_05591: {
+        by_category: { '05': { no: 1, sid: 'mine', title: '내가 고친 회의' }, '07': { no: 2, sid: 'keep', title: '이미 있던 07' } },
+        by_note: { 주간일정: { no: 3, sid: 's', title: '주간' } },
+      },
+    },
+  };
+  const out = migrate(saved, 0) as any;
+  expect(out.erp_mapping.A25_05591.by_category['05'].sid).toBe('mine');
+  expect(out.erp_mapping.A25_05591.by_category['07'].sid).toBe('keep');
+  expect(out.erp_mapping.A25_05591.by_note['팀회의'].no).toBe(6029);
+  expect(out.erp_mapping.A25_05591.by_note['주간일정'].no).toBe(3);
+});

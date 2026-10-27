@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { TimerLog } from '../store/useTimerStore';
 import { TimeManagementRow } from '../store/useTimeManagementStore';
-import { getCategoryCode } from '../constants/categoryCodeMap';
+import { getCategoryCode, getCategoryName } from '../constants/categoryCodeMap';
 
 interface GroupedTask {
   title: string;
@@ -140,4 +140,89 @@ export function formatDateToYYYYMMDD(date: Date): string {
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+}
+
+// 엑셀에서 복사한 표(탭 구분). 줄바꿈이 든 칸은 엑셀이 "..." 로 감싸 준다
+function splitTsv(text: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let cell = '';
+  let quoted = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (quoted) {
+      if (ch === '"' && text[i + 1] === '"') { cell += '"'; i++; }
+      else if (ch === '"') quoted = false;
+      else cell += ch;
+    } else if (ch === '"' && cell === '') quoted = true;
+    else if (ch === '\t') { row.push(cell); cell = ''; }
+    else if (ch === '\n' || ch === '\r') {
+      if (ch === '\r' && text[i + 1] === '\n') i++;
+      row.push(cell); rows.push(row); row = []; cell = '';
+    } else cell += ch;
+  }
+  if (cell !== '' || row.length > 0) { row.push(cell); rows.push(row); }
+  return rows;
+}
+
+// 표 열 순서 = 엑셀 Export 열 순서. 머리줄이 있으면 머리 이름으로 맞춘다
+const PASTE_COLUMNS = ['작업', '업무형', '거래형(일정명)', '카테고리 코드', '카테고리명', '시간(분)', '종료예정일', '비고'] as const;
+type PasteColumn = (typeof PASTE_COLUMNS)[number];
+
+function toDateString(value: string, fallback: string): string {
+  const m = value.trim().match(/^(\d{4})[-./](\d{1,2})[-./](\d{1,2})/);
+  return m ? `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}` : fallback;
+}
+
+/**
+ * 웹자료 올리기: 엑셀에서 복사한 줄을 시간관리 행으로. date 와 빈 종료예정일은 입력하는 날짜.
+ * 작업 칸은 프로젝트 코드나 이름 어느 쪽이든 받는다. 엑셀 Export 의 「합계」 줄은 건너뛴다
+ */
+export function parsePastedRows(
+  text: string,
+  date: string,
+  projects: { code: string; name: string }[],
+  default_work_type: string,
+  work_types: string[]
+): TimeManagementRow[] {
+  const table = splitTsv(text).filter((cells) => cells.some((c) => c.trim()));
+  if (table.length === 0) return [];
+
+  let index_of: Record<PasteColumn, number> = Object.fromEntries(PASTE_COLUMNS.map((c, i) => [c, i])) as Record<PasteColumn, number>;
+  const header = table[0].map((c) => c.trim());
+  // 업무형 값이 「작업」이라 한 칸만 보고 머리줄로 판단하면 안 된다
+  if (header.filter((c) => (PASTE_COLUMNS as readonly string[]).includes(c)).length >= 3) {
+    index_of = Object.fromEntries(PASTE_COLUMNS.map((c) => [c, header.indexOf(c)])) as Record<PasteColumn, number>;
+    table.shift();
+  }
+  const get = (cells: string[], col: PasteColumn) => (index_of[col] >= 0 ? (cells[index_of[col]] ?? '').trim() : '');
+
+  return table
+    .filter((cells) => !(get(cells, '카테고리명') === '합계' && !get(cells, '작업')))
+    .map((cells) => {
+      const project_text = get(cells, '작업');
+      const project = projects.find((p) => p.code === project_text) ?? projects.find((p) => p.name === project_text);
+      const code_cell = get(cells, '카테고리 코드');
+      const name_cell = get(cells, '카테고리명');
+      const category_code = code_cell || (name_cell ? getCategoryCode(name_cell) : '9999');
+      const work_type = get(cells, '업무형');
+      return {
+        id: uuidv4(),
+        checked: false,
+        project_name: project ? project.code : project_text === '-' ? '' : project_text,
+        work_type: work_types.includes(work_type) ? work_type : default_work_type,
+        schedule_name: get(cells, '거래형(일정명)'),
+        category_code,
+        category_name: getCategoryName(category_code) || name_cell || '기타',
+        time_minutes: parseInt(get(cells, '시간(분)').replace(/[^\d]/g, ''), 10) || 0,
+        note: index_of['비고'] >= 0 ? (cells[index_of['비고']] ?? '') : '',
+        date,
+        end_date: toDateString(get(cells, '종료예정일'), date),
+      };
+    });
+}
+
+/** 다른 날짜의 줄을 이 날짜로 복사. 새 id, 날짜·종료예정일은 입력하는 날짜, 타이머 연결은 끊는다 */
+export function copyRowsToDate(rows: TimeManagementRow[], date: string): TimeManagementRow[] {
+  return rows.map(({ original_log_id: _drop, ...row }) => ({ ...row, id: uuidv4(), checked: false, date, end_date: date }));
 }

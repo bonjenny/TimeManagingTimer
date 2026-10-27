@@ -72,7 +72,11 @@ const HalloweenScene: React.FC<{ isDark: boolean }> = ({ isDark }) => {
           },
         }}
       />
-      <Box aria-hidden data-no-glitch data-no-haunt sx={{ position: 'fixed', inset: 0, zIndex: -1, pointerEvents: 'none', overflow: 'hidden' }}>
+      <Box aria-hidden data-no-glitch data-no-haunt sx={{
+          // inset:0 이면 메뉴·창이 열릴 때(MUI 스크롤 잠금으로 스크롤바가 사라질 때) 폭이 늘어 달·성이 움찔한다.
+          // 100vw·100vh 는 스크롤바와 상관없이 같은 크기라 배경이 안 움직인다 (스크롤바 밑은 가려질 뿐)
+          position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: -1, pointerEvents: 'none', overflow: 'hidden',
+        }}>
         {/* 달 (라이트모드에선 저무는 해처럼 주황빛) */}
         <Box
           sx={{

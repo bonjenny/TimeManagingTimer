@@ -171,4 +171,25 @@ describe('PresetPanel', () => {
       expect(screen.getByText(/드래그하여 순서 변경 • 클릭하여 수정 • ▶ 타이머 시작/)).toBeInTheDocument();
     });
   });
+
+  it('진행 중인 업무도 「최근 작업에서 추가」에 나온다 (멈추기 전엔 기록 목록에 없어도)', async () => {
+    const user = userEvent.setup();
+    useTimerStore.setState({
+      activeTimer: { id: 'run', title: '지금 하는 일', projectCode: 'A26_00001', startTime: Date.now(), status: 'RUNNING', pausedDuration: 0 },
+    });
+    render(<PresetPanel />);
+    await user.click(screen.getByRole('button', { name: /프리셋 추가/i }));
+    expect(screen.getByText('최근 작업에서 추가')).toBeInTheDocument();
+    expect(screen.getByText('지금 하는 일')).toBeInTheDocument();
+    useTimerStore.setState({ activeTimer: null });
+  });
+
+  it('새 프리셋 창에 프로젝트 코드·프로젝트 명 칸이 처음부터 따로 있다', async () => {
+    const user = userEvent.setup();
+    render(<PresetPanel />);
+    await user.click(screen.getByRole('button', { name: /프리셋 추가/i }));
+    await user.click(screen.getByText('새 프리셋 추가'));
+    expect(screen.getByLabelText('프로젝트 코드')).toBeInTheDocument();
+    expect(screen.getByLabelText('프로젝트 명')).toBeInTheDocument();
+  });
 });
