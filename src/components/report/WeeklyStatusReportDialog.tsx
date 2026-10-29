@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Autocomplete,
   Box,
@@ -185,6 +185,10 @@ const WeeklyStatusReportDialog: React.FC<Props> = ({ open, onClose, week_start, 
     }
     setPicSearching(false);
   };
+  // 열 때마다 그 주 월요일 ~ 금요일(아직 안 왔으면 오늘)로 되돌린다. 연 뒤에 고친 기간은 닫을 때까지 유지
+  useEffect(() => {
+    if (open) report.setErpReport({ from: formatDateToString(week_start), to: default_to });
+  }, [open, week_start.getTime()]); // eslint-disable-line react-hooks/exhaustive-deps
   const from = er.from || formatDateToString(week_start);
   const to = er.to || default_to;
   const [include_admin, setIncludeAdmin] = useState(false);
@@ -233,8 +237,9 @@ const WeeklyStatusReportDialog: React.FC<Props> = ({ open, onClose, week_start, 
     const pic = { sid: pic_sid, name: pic_name };
     const errors: string[] = [];
     try {
+      // 기간 안에 실제로 쓴 시간이 있는 작업만 (0분 줄만 있는 작업은 빼기)
       const period_works = (await fetchErpTimeByWork(session, pic, to8(from), to8(to))).filter(
-        (w) => include_admin || w.work_status !== '관리업무'
+        (w) => w.minutes > 0 && (include_admin || w.work_status !== '관리업무')
       );
       const works: ErpReportWork[] = [];
       for (const w of period_works) {

@@ -194,6 +194,7 @@ describe('fetchErpWorkSummary (작업 기준)', () => {
       dates: ['2026-09-14', '2026-09-15', '2026-10-07', '2026-10-12'],
       board: 'work',
       dev_statuses: ['배포완료', '테스트중'],
+      dev_done_dates: ['2026-09-15', '2026-10-12'], // 개발스프린트 종료일(dt_003), 폐기 · 다른 작업 제외
       test_dates: undefined,
     });
   });

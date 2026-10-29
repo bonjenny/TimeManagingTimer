@@ -325,6 +325,11 @@ describe('테스트/배포 게시글 이력 (7534 deploy flag 관리 개선, 202
   it('10/19 주(기준 10/20): 수시확인 → 배포완료', () => {
     expect(testPostAtRef(post, '2026-10-19', '2026-10-20')).toEqual({ status: '배포완료', note: '10/19(월) 수시배포' });
   });
+  it('배포일은 수시확인 날. 동기화완료가 이번 기간이어도 수시확인이 전이면 이번 기간 배포 아님 (7807: 10/22 수시확인 · 10/26 동기화완료)', () => {
+    const synced = { ...post, history: [...post.history.slice(0, -1), { date: '2026-10-22', status: '수시확인(B,E,I)' }, { date: '2026-10-26', status: '동기화완료' }] };
+    expect(testPostAtRef(synced, '2026-10-19', '2026-10-23')).toEqual({ status: '배포완료', note: '10/22(목) 수시배포' });
+    expect(testPostAtRef(synced, '2026-10-26', '2026-10-29')).toBeNull();
+  });
   it('지난 주에 끝난 배포, 아직 글이 없던 주는 null', () => {
     expect(testPostAtRef(post, '2026-10-26', '2026-10-30')).toBeNull();
     expect(testPostAtRef(post, '2026-09-21', '2026-09-25')).toBeNull();
@@ -426,6 +431,33 @@ describe('ERP 기준 현황표: 테스트/배포 게시글이 없는 작업', ()
       ['작업.1', '배포완료'],
       ['작업.2', '진행중'],
     ]);
+  });
+
+  it('기간 전에 수시확인된 작업도 줄은 남기고 비고는 수시확인 날 (12221 · 7807: 10/22 수시확인 · 10/26 동기화완료)', () => {
+    const test_posts = [{ created: '2026-10-14', history: [{ date: '2026-10-14', status: 'QC배정완료' }, { date: '2026-10-22', status: '수시확인(B,E,I)' }, { date: '2026-10-26', status: '동기화완료' }] }];
+    const work = { key: '작업.12221', title: 'PageSetup', total_minutes: 60, created: '2026-09-11', summary: { status: '배포완료', changed: '2026-10-26', dates: [], board: 'work', test_posts, status_history: [{ date: '2026-10-26', status: '배포완료' }] } };
+    const keys = (from_str: string, to_str: string, now: string) =>
+      buildErpWeeklyReport({ ...base, from_str, to_str, now: new Date(now).getTime(), works: [work] }).map((r: { key: string; note: string }) => [r.key, r.note]);
+    expect(keys('2026-10-26', '2026-10-29', '2026-10-29T12:00:00')).toEqual([['작업.12221', '10/22(목) 수시배포']]);
+    expect(keys('2026-10-19', '2026-10-23', '2026-10-23T12:00:00')).toEqual([['작업.12221', '10/22(목) 수시배포']]);
+  });
+
+  it('테스트/배포 게시글이 없으면 개발 게시글이 배포완료여도 개발완료 + 개발스프린트 종료일 (작업.13065)', () => {
+    const [row] = buildErpWeeklyReport({
+      ...base,
+      works: [{ key: '작업.13065', title: 'writable', total_minutes: 60, created: '2026-10-12', summary: { status: '개발진행중', changed: '2026-10-14', dates: [], board: 'work', dev_statuses: ['개발완료', '배포완료'], dev_done_dates: ['2026-10-16', '2026-10-21'], test_posts: [] } }],
+    });
+    expect(row).toMatchObject({ status: '개발완료', note: '10/21(수) 개발완료' });
+  });
+
+  it('개발완료 비고는 개발스프린트 종료일(기준일까지 가장 늦은 날), 없으면 게시글 상태 바뀐 날', () => {
+    const note = (dev_done_dates?: string[]) =>
+      buildErpWeeklyReport({
+        ...base,
+        works: [{ key: '작업.3', title: 'C', total_minutes: 60, created: '2026-10-01', summary: { status: '개발진행중', changed: '2026-10-14', dates: [], board: 'work', dev_statuses: ['개발완료'], dev_done_dates } }],
+      })[0].note;
+    expect(note(['2026-10-20', '2026-10-21', '2026-10-27'])).toBe('10/21(수) 개발완료');
+    expect(note(undefined)).toBe('10/14(수) 개발완료');
   });
 
   it('기준일 뒤에 고친 글이라 그 주 상태를 모르면 지금 상태, 게시글 조회가 실패했으면 시간 로그의 작업 상태', () => {

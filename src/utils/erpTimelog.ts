@@ -529,6 +529,8 @@ export interface ErpPostSummary {
   board: 'work' | 'dev';
   /** 작업 기준일 때: 연결된 개발 게시글들의 진행상태 (폐기 제외) */
   dev_statuses?: string[];
+  /** 작업 기준일 때: 연결된 개발 게시글(개발스프린트)의 종료일(dt_003) YYYY-MM-DD, 오름차순 (폐기 제외) */
+  dev_done_dates?: string[];
   /** 게시글 작성일 YYYY-MM-DD */
   created?: string;
   /** 게시글 record_sid (연결 칸 조건에 같이 넘겨야 한다) */
@@ -679,11 +681,13 @@ export async function fetchErpWorkSummary(session: ErpSession, work: ErpPost): P
   } catch (e) {
     return { ...work_summary, dev_error: (e as Error).message };
   }
-  const devs = rows
+  const dev_rows = rows
     .filter((r) => r['b_000000e074008_001$board_s$data_sid'] === work.sid)
-    .map((r) => summarizeErpRow(r, 'dev'))
-    .filter((d) => d.status !== '폐기');
+    .filter((r) => summarizeErpRow(r, 'dev').status !== '폐기');
+  const devs = dev_rows.map((r) => summarizeErpRow(r, 'dev'));
   const dev_dates = devs.flatMap((d) => d.dates).sort();
+  // 개발 게시글(= 개발스프린트) 날짜 칸: dt_004 시작일 · dt_002 종료예정일 · dt_003 종료일. 개발완료일은 종료일이 가장 정확하다
+  const dev_done_dates = dev_rows.map((r) => parseErpDate(r['board_s$dt_003'])).filter(Boolean).sort();
 
   // 테스트 요청일 = 연결된 테스트/배포 게시글 작성일. 실패해도 나머지 값은 살린다
   let test_dates: string[] | undefined;
@@ -739,6 +743,7 @@ export async function fetchErpWorkSummary(session: ErpSession, work: ErpPost): P
     ...work_summary,
     dates: dev_dates.length ? dev_dates : work_summary.dates,
     dev_statuses: devs.map((d) => d.status).filter(Boolean),
+    dev_done_dates,
     test_dates,
     test_posts,
     status_history,

@@ -199,6 +199,9 @@ export function resolveErpStatus(erp: ErpPostSummary): string {
     (best, s) => (DEV_STAGES.indexOf(s) > DEV_STAGES.indexOf(best) ? s : best),
     '예정'
   );
+  // 테스트/배포 게시글이 없으면 배포가 있는 작업이 아니다. 개발 게시글이 테스트중·배포완료여도 개발완료까지만
+  // (예: 작업.13065 는 작업 개발진행중 · 테스트/배포 글 없음 ➡️ 개발완료, 비고는 개발스프린트 종료일)
+  if (!erp.test_posts?.length && DEV_STAGES.indexOf(top) > DEV_STAGES.indexOf('개발완료')) return '개발완료';
   return mapErpStatus(top);
 }
 
@@ -240,8 +243,11 @@ export function testPostAtRef(
   const s = at.status;
   if (/폐기/.test(s)) return null;
   if (/수시확인|동기화완료/.test(s)) {
-    if (at.date < week_start_str) return null;
-    return { status: '배포완료', note: `${formatMonthDay(at.date)} 수시배포` };
+    // 배포일은 수시확인 날. 뒤에 동기화완료가 와도 배포일은 그대로 (예: 10/22 수시확인 · 10/26 동기화완료 ➡️ 10/22 배포)
+    // 배포일이 기간 전이면 그 기간 일이 아니다 → null (작업·개발 게시글로 판단, 배포 비고는 쓰지 않음)
+    const released = [...upto].reverse().find((h) => /수시확인/.test(h.status))?.date ?? at.date;
+    if (released < week_start_str) return null;
+    return { status: '배포완료', note: `${formatMonthDay(released)} 수시배포` };
   }
   if (/스테이지|배포프로그램|푸시확인/.test(s)) {
     const stage = [...upto].reverse().find((h) => /스테이지확정/.test(h.status))?.date ?? at.date;
@@ -253,14 +259,23 @@ export function testPostAtRef(
   return { status: '테스트', note: `${formatMonthDay(post.created)} 테스트요청` };
 }
 
+type TestPost = { created: string; history: { date: string; status: string }[] };
+const latestTestPost = (posts: TestPost[], ref_str: string) =>
+  posts.filter((p) => p.created && p.created <= ref_str).sort((a, b) => b.created.localeCompare(a.created))[0];
+
 /** 기준일까지 작성된 테스트/배포 게시글 중 가장 최근 글 기준 */
-function latestTestState(
-  posts: { created: string; history: { date: string; status: string }[] }[],
-  week_start_str: string,
-  ref_str: string
-): { status: string; note: string } | null {
-  const post = posts.filter((p) => p.created && p.created <= ref_str).sort((a, b) => b.created.localeCompare(a.created))[0];
+function latestTestState(posts: TestPost[], week_start_str: string, ref_str: string): { status: string; note: string } | null {
+  const post = latestTestPost(posts, ref_str);
   return post ? testPostAtRef(post, week_start_str, ref_str) : null;
+}
+
+/** 가장 최근 테스트/배포 게시글이 기준일까지 배포(수시확인)까지 끝났으면 그 수시확인 날, 아니면 '' */
+function releasedDate(posts: TestPost[] | undefined, ref_str: string): string {
+  const post = posts?.length ? latestTestPost(posts, ref_str) : undefined;
+  if (!post) return '';
+  const upto = post.history.filter((h) => h.date <= ref_str);
+  if (!/수시확인|동기화완료/.test(upto[upto.length - 1]?.status ?? '')) return '';
+  return [...upto].reverse().find((h) => /수시확인/.test(h.status))?.date ?? upto[upto.length - 1].date;
 }
 
 /** 비고에 남길 만한 진행상황: 개발완료 이후 단계만 (진행중·시작 같은 건 쓰지 않는다) */
@@ -281,6 +296,11 @@ function erpNote(erp: ErpPostSummary, calendar_note: string, ref_str: string): s
     if (requested) return `${formatMonthDay(requested)} 테스트요청`;
     if (/테스트/.test(calendar_note)) return calendar_note;
   }
+  // 개발완료는 개발스프린트 종료일(기준일까지 가장 늦은 날)로. 없으면 게시글 상태 바뀐 날
+  if (status === '개발완료') {
+    const done = (erp.dev_done_dates || []).filter((d) => d <= ref_str).pop();
+    if (done) return `${formatMonthDay(done)} 개발완료`;
+  }
   if (!erp.changed) return '';
   const label = status === '배포완료' ? '수시배포' : status === '테스트' ? '테스트요청' : status;
   return `${formatMonthDay(erp.changed)} ${label}`;
@@ -300,7 +320,12 @@ function autoStatusNote(
   if (test_state) return test_state;
   const erp_at_ref = erp ? erpAtRef(erp, ref_str) : null;
   const erp_status = erp_at_ref ? resolveErpStatus(erp_at_ref) : '';
-  return erp_status ? { status: erp_status, note: erpNote(erp_at_ref!, calendar.note, ref_str) } : calendar;
+  if (!erp_status) return calendar;
+  // 배포 날짜는 테스트/배포 게시글의 수시확인 날이 기준. 앞 주에 배포한 작업도 그 날로 쓴다
+  // (작업 게시글은 동기화완료 날에 배포완료로 바뀌어 그 날이 배포일처럼 보인다. 예: 10/22 수시확인 · 10/26 동기화완료 ➡️ 10/22 수시배포)
+  const released = erp_status === '배포완료' ? releasedDate(erp?.test_posts, ref_str) : '';
+  if (released) return { status: erp_status, note: `${formatMonthDay(released)} 수시배포` };
+  return { status: erp_status, note: erpNote(erp_at_ref!, calendar.note, ref_str) };
 }
 
 const status_rank = (status: string) => {
