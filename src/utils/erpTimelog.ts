@@ -432,7 +432,7 @@ const like = (value = '') => ({ type: 'like', value });
 const eq = () => ({ type: '=', value: '' });
 
 // ERP 게시판 목록 화면에서 캡처한 조건 그대로. 기본 기간은 최근 1년 (전체 기간은 DB 시간 초과가 난다).
-// ponytail: 1년보다 오래된 게시글은 못 찾는다. 필요하면 호출하는 쪽에서 board_s$data_dt 를 넘긴다
+// 1년보다 오래된 게시글은 listBoardBack 으로 1년씩 거슬러 찾는다
 function listBody(bizz_sid: string, template: string, menu_sid: string, condition: Row) {
   return {
     menu_type: 'list', bizz_sid, page: { current_index: 1, row_count: 50 }, limit: 5000,
@@ -466,6 +466,23 @@ async function listBoard(session: ErpSession, body: unknown): Promise<Row[]> {
   return data.data;
 }
 
+// 작성일(data_dt) 1년 창을 최근부터 한 해씩 거슬러 올라가며 찾는다. 맞는 줄이 나온 창에서 멈춘다.
+// 예) 2025-09 에 쓴 작업 4091 은 최근 1년 창에 없어 다음 창에서 찾는다.
+// ponytail: 최대 5년 = 요청 5번. 더 오래된 글이 필요하면 SEARCH_YEARS 를 늘린다 (한 번에 넓히면 DB 시간 초과)
+const SEARCH_YEARS = 5;
+async function listBoardBack(session: ErpSession, body: ReturnType<typeof listBody>, match: (r: Row) => boolean): Promise<Row[]> {
+  for (let y = 0; y < SEARCH_YEARS; y++) {
+    const to = new Date();
+    to.setFullYear(to.getFullYear() - y);
+    const from = new Date(to);
+    from.setFullYear(from.getFullYear() - 1);
+    const data_dt = { type: 'range', value: { from: ymd8(from), to: ymd8(to) } };
+    const hits = (await listBoard(session, { ...body, condition: { ...body.condition, 'board_s$data_dt': data_dt } })).filter(match);
+    if (hits.length > 0) return hits;
+  }
+  return [];
+}
+
 /** 작업 게시글 후보. query 가 숫자면 게시글 번호, 아니면 프로젝트 코드로 검색. */
 export async function findErpWorkPosts(session: ErpSession, query: string): Promise<ErpPost[]> {
   const q = query.trim();
@@ -478,9 +495,9 @@ export async function findErpWorkPosts(session: ErpSession, query: string): Prom
     if (!pjt) throw new Error(`ERP에 프로젝트 코드 ${q} 가 없습니다. 작업 게시글 번호로 찾아주세요.`);
     condition = { 'board_s$pjt': contains([{ sid: pjt.code, code: pjt.code, name: pjt.name }]) };
   }
-  const rows = await listBoard(session, listBody(BOARD_WORK, 'BRDUSCRM0043501', 'M_000000N000351', condition));
-  const posts = rows.map((r) => toPost(r));
-  return by_no ? posts.filter((p) => String(p.no) === q) : posts;
+  const body = listBody(BOARD_WORK, 'BRDUSCRM0043501', 'M_000000N000351', condition);
+  const rows = await listBoardBack(session, body, (r) => !by_no || String(r['board_s$data_no']) === q);
+  return rows.map((r) => toPost(r));
 }
 
 /**
@@ -489,15 +506,13 @@ export async function findErpWorkPosts(session: ErpSession, query: string): Prom
  */
 export async function findErpDevPosts(session: ErpSession, work: ErpPost, dev_no = ''): Promise<ErpPost[]> {
   const no = dev_no.trim();
-  const rows = await listBoard(
-    session,
-    listBody(BOARD_DEV, 'BRDUSCRM0043901', 'M_000000N000353', {
-      ...(no ? { 'board_s$data_no': like(no) } : { 'board_s$title_ctt': like(work.title) }),
-      'board_s$pic': contains(), 'board_s$num_010': { type: 'range' },
-      'board_s$dt_002': range(), 'board_s$dt_003': range(), 'board_s$dt_004': range(),
-    })
-  );
-  return rows.filter((r) => r['b_000000e074008_001$board_s$data_sid'] === work.sid).map((r) => toPost(r));
+  const body = listBody(BOARD_DEV, 'BRDUSCRM0043901', 'M_000000N000353', {
+    ...(no ? { 'board_s$data_no': like(no) } : { 'board_s$title_ctt': like(work.title) }),
+    'board_s$pic': contains(), 'board_s$num_010': { type: 'range' },
+    'board_s$dt_002': range(), 'board_s$dt_003': range(), 'board_s$dt_004': range(),
+  });
+  const rows = await listBoardBack(session, body, (r) => r['b_000000e074008_001$board_s$data_sid'] === work.sid);
+  return rows.map((r) => toPost(r));
 }
 
 // ---------------------------------------------------------------------------
@@ -594,8 +609,7 @@ export async function fetchErpPostSummary(session: ErpSession, board: 'work' | '
           'board_s$dt_002': range(), 'board_s$dt_003': range(), 'board_s$dt_004': range(),
         })
       : listBody(BOARD_WORK, 'BRDUSCRM0043501', 'M_000000N000351', { 'board_s$data_no': like(String(no)) });
-  const rows = await listBoard(session, body);
-  const hit = rows.find((r) => Number(r['board_s$data_no']) === no);
+  const [hit] = await listBoardBack(session, body, (r) => Number(r['board_s$data_no']) === no);
   return hit ? summarizeErpRow(hit, board) : null;
 }
 

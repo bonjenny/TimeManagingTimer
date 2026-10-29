@@ -123,6 +123,16 @@ describe('게시글 매핑 자동 찾기', () => {
     expect(bodies[0].body.condition['board_s$data_no']).toEqual({ type: 'like', value: '12101' });
   });
 
+  it('작업 번호: 최근 1년에 없으면 1년씩 거슬러 찾는다 (예: 25년 9월에 쓴 4091)', async () => {
+    mockFetch({ data: [] }, { data: [{ 'board_s$data_no': 4091, 'board_s$data_sid': 'OLD', 'board_s$title_ctt': '입력 및 표시 소수점 정리' }] });
+    const posts = await findErpWorkPosts(session, '4091');
+    expect(posts.map((p: any) => p.sid)).toEqual(['OLD']);
+    expect(bodies).toHaveLength(2);
+    const [first, second] = bodies.map((b) => b.body.condition['board_s$data_dt'].value);
+    expect(second.to).toBe(first.from); // 앞 창 시작일까지가 다음 창
+    expect(Number(first.to) - Number(second.from)).toBe(20000); // 창 두 개 = 2년
+  });
+
   it('개발 게시글: 작업 data_sid 로 연결된 것만 고른다', async () => {
     mockFetch({ data: [
       { 'board_s$data_no': 22247, 'board_s$data_sid': 'DEV1', 'board_s$title_ctt': 't', 'b_000000e074008_001$board_s$data_sid': '87FA7HFA5O755GB' },
