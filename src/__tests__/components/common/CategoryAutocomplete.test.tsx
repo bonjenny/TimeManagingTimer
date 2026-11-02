@@ -120,6 +120,17 @@ describe('CategoryAutocomplete 관련 기능', () => {
       });
     });
 
+    it('부모가 다시 그려져도 목록을 새로 만들지 않는다 (스크롤해서 고르려는데 맨 위로 튀던 문제)', async () => {
+      const { rerender } = render(<CategoryAutocomplete value={null} onChange={jest.fn()} placeholder="카테고리 선택" />);
+      await userEvent.click(screen.getByPlaceholderText('카테고리 선택'));
+      const list = await screen.findByRole('listbox');
+      list.scrollTop = 120;
+      // 매초 타이머 등으로 부모가 다시 그려지면 onChange 가 새 함수로 들어온다
+      rerender(<CategoryAutocomplete value={null} onChange={jest.fn()} placeholder="카테고리 선택" />);
+      expect(screen.getByRole('listbox')).toBe(list);
+      expect(list.scrollTop).toBe(120);
+    });
+
     it('ERP 카테고리 목록에서 눌러 추가할 수 있다', async () => {
       render(<CategoryAutocomplete value={null} onChange={jest.fn()} placeholder="카테고리 선택" />);
       await userEvent.click(screen.getByPlaceholderText('카테고리 선택'));

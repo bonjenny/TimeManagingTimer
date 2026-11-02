@@ -385,8 +385,9 @@ const HalloweenEggs: React.FC = () => {
     window.setTimeout(() => document.body.classList.remove('tk-upside'), 3000);
   };
 
-  // 7) 불길한 숫자 (경과 시간 칸은 ActiveTimer 의 data-tk-elapsed)
+  // 7) 불길한 숫자 (경과 시간 칸은 ActiveTimer 의 data-tk-elapsed). 타이머가 돌 때만 본다
   useEffect(() => {
+    if (!working) return;
     let bleeding: Element | null = null;
     const t = window.setInterval(() => {
       document.querySelectorAll('[data-tk-elapsed]').forEach((el) => {
@@ -401,14 +402,16 @@ const HalloweenEggs: React.FC = () => {
       });
     }, 500);
     return () => window.clearInterval(t);
-  }, []);
+  }, [working]);
 
   // 8) 귀신 붙은 업무
   useEffect(() => {
     const root = document.getElementById('root');
     if (!root) return;
-    // ponytail: 3초마다 글자 전체를 훑는다. 화면이 수천 줄로 커지면 MutationObserver 로
+    // ponytail: 10초마다 글자 전체를 훑는다 (줄 많은 화면에서도 가볍게, 다른 탭을 보는 동안엔 쉼).
+    // 새 업무명에 👻 가 붙기까지 최대 10초. 바로 붙어야 하면 MutationObserver 로
     const scan = () => {
+      if (document.hidden) return;
       const keep = new Set<Element>();
       const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
       for (let n = walker.nextNode(); n; n = walker.nextNode()) {
@@ -420,7 +423,7 @@ const HalloweenEggs: React.FC = () => {
       root.querySelectorAll('.tk-haunted').forEach((el) => !keep.has(el) && el.classList.remove('tk-haunted'));
     };
     scan();
-    const t = window.setInterval(scan, 3000);
+    const t = window.setInterval(scan, 10000);
     return () => {
       window.clearInterval(t);
       root.querySelectorAll('.tk-haunted').forEach((el) => el.classList.remove('tk-haunted'));

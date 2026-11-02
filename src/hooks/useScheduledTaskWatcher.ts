@@ -5,8 +5,11 @@ const CHECK_INTERVAL_MS = 5000;
 
 export const useScheduledTaskWatcher = () => {
   const interval_ref = useRef<number | null>(null);
+  // 예약 업무나 끝날 시각이 정해진 타이머가 없으면 쉰다 (생기는 순간 다시 돈다)
+  const has_schedule = useTimerStore((s) => !!s.activeTimer?.scheduledEndTime || s.logs.some((log) => log.status === 'SCHEDULED'));
 
   useEffect(() => {
+    if (!has_schedule) return;
     const check = () => {
       const { logs, activeTimer, activateScheduledTask, completeTimer, updateLog } = useTimerStore.getState();
       const now = Date.now();
@@ -65,5 +68,5 @@ export const useScheduledTaskWatcher = () => {
         clearInterval(interval_ref.current);
       }
     };
-  }, []);
+  }, [has_schedule]);
 };

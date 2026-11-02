@@ -102,7 +102,7 @@ const CompactTimelineFrame: React.FC<{
 const LABEL_WIDTH_STORAGE_KEY = 'timekeeper-gantt-label-width';
 
 const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
-  const { logs, activeTimer, addLog, updateLog, deleteLog, stopTimer, themeConfig, getOrAssignColorIndex, activateScheduledTask } = useTimerStore();
+  const { logs, activeTimer, addLog, updateLog, deleteLog, stopTimer, themeConfig, getOrAssignColorIndex, titleColorIndexMap, nextColorIndex, activateScheduledTask } = useTimerStore();
   const { getProjectName, projects, addProject } = useProjectStore();
 
   // 컬러 팔레트 설정 로드 (다크모드일 때 색상 보정 적용)
@@ -168,47 +168,9 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
     };
   }, [loadSettings]);
 
-  // 실시간 업데이트를 위한 현재 시간 상태 (1초마다 갱신)
+  // 실시간 업데이트를 위한 현재 시간 상태
   const [currentTime, setCurrentTime] = useState(Date.now());
   const currentTimeRef = useRef(Date.now());
-
-  useEffect(() => {
-    // 탭이 활성화 상태일 때만 interval 실행
-    let interval: number | null = null;
-    
-    const startInterval = () => {
-      if (interval) clearInterval(interval);
-      interval = window.setInterval(() => {
-        if (!document.hidden) {
-          const now = Date.now();
-          setCurrentTime(now);
-          currentTimeRef.current = now;
-        }
-      }, 1000);
-    };
-
-    const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        // 탭이 다시 활성화되면 즉시 시간 갱신
-        const now = Date.now();
-        setCurrentTime(now);
-        currentTimeRef.current = now;
-        // interval 재시작
-        startInterval();
-      }
-    };
-
-    // 초기 interval 시작
-    startInterval();
-    
-    // visibilitychange 이벤트 리스너 등록
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      if (interval) clearInterval(interval);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, []);
 
   // 오늘 날짜인지 확인
   const isToday = useMemo(() => {
@@ -223,6 +185,41 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
       selectedDate.getDate() === today.getDate()
     );
   }, [selectedDate]);
+
+  // 진행 중인 타이머가 있고 오늘을 볼 때만 1초마다(진행 중 막대·소요 시간), 그 밖엔 1분마다(지금 시각 선).
+  // 갱신마다 간트차트 전체(안에 든 업무 기록 창 포함)가 다시 그려지므로 필요 없을 땐 드물게
+  const tick_ms = activeTimer && isToday ? 1000 : 60000;
+  useEffect(() => {
+    // 탭이 활성화 상태일 때만 interval 실행
+    let interval: number | null = null;
+    const tick = () => {
+      const now = Date.now();
+      setCurrentTime(now);
+      currentTimeRef.current = now;
+    };
+    const startInterval = () => {
+      if (interval) clearInterval(interval);
+      interval = window.setInterval(() => {
+        if (!document.hidden) tick();
+      }, tick_ms);
+    };
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        // 탭이 다시 활성화되면 즉시 시간 갱신 후 interval 재시작
+        tick();
+        startInterval();
+      }
+    };
+
+    tick(); // 간격이 바뀌는 순간(타이머 시작·날짜 이동)에도 바로 맞춘다
+    startInterval();
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      if (interval) clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [tick_ms]);
 
   // 드래그 상태 관리 (새 작업 생성용)
   const [isDragging, setIsDragging] = useState(false);
@@ -646,6 +643,15 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
       return (effective_end - start) / 1000 / 60; // 분
     };
     
+    // 글로벌 색상 인덱스 (색상 충돌 방지). 그리는 중엔 저장소에 쓰지 않고 읽기만 한다:
+    // 처음 보는 제목은 배정될 번호(next 부터 차례로)를 미리 쓰고, 실제 배정은 아래 effect 에서
+    const pending = new Map<string, number>();
+    const colorIndexOf = (title: string) => {
+      if (title in titleColorIndexMap) return titleColorIndexMap[title];
+      if (!pending.has(title)) pending.set(title, nextColorIndex + pending.size);
+      return pending.get(title)!;
+    };
+
     // 1. 제목별로 그룹화하고 row_index 할당
     const title_to_row_index = new Map<string, number>();
     const rows: { title: string; projectCode?: string; category?: string; color: string }[] = [];
@@ -654,8 +660,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
       if (!title_to_row_index.has(log.title)) {
         const row_index = rows.length;
         title_to_row_index.set(log.title, row_index);
-        // 글로벌 색상 인덱스 기반 색상 할당 (색상 충돌 방지)
-        const colorIndex = getOrAssignColorIndex(log.title);
+        const colorIndex = colorIndexOf(log.title);
         const color = getColorByIndex(colorIndex, colorPalette);
         rows.push({
           title: log.title,
@@ -678,9 +683,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
       const left_percent = Math.max(0, (start_offset / totalMinutes) * 100);
       const width_percent = Math.min((width / totalMinutes) * 100, 100 - left_percent);
 
-      // 글로벌 색상 인덱스 기반 색상 할당
-      const colorIndex = getOrAssignColorIndex(log.title);
-      const color = getColorByIndex(colorIndex, colorPalette);
+      const color = getColorByIndex(colorIndexOf(log.title), colorPalette);
 
       const row_index = title_to_row_index.get(log.title) ?? 0;
 
@@ -694,7 +697,14 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
     });
 
     return { chartItems: items, uniqueRows: rows };
-  }, [todayLogs, currentTime, colorPalette, getOffsetMinutes, totalMinutes, getOrAssignColorIndex]);
+  }, [todayLogs, currentTime, colorPalette, getOffsetMinutes, totalMinutes, titleColorIndexMap, nextColorIndex]);
+
+  // 처음 보는 제목에 색 번호 배정 (그린 뒤에, 위에서 미리 쓴 번호와 같은 순서로)
+  useEffect(() => {
+    todayLogs.forEach((log) => {
+      if (!(log.title in useTimerStore.getState().titleColorIndexMap)) getOrAssignColorIndex(log.title);
+    });
+  }, [todayLogs, getOrAssignColorIndex]);
 
   // 시간축 라벨 생성 (동적 범위에 맞게)
   const timeLabels = useMemo(() => {

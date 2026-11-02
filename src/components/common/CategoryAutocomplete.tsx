@@ -402,26 +402,32 @@ const CategoryAutocomplete: React.FC<CategoryAutocompleteProps> = ({
     );
   }, [handleAddCategory, handleInputFocus, handleInputBlur]);
 
-  // 커스텀 Listbox 컴포넌트
+  // 커스텀 Listbox 컴포넌트.
+  // 컴포넌트 종류는 한 번만 만든다: 값이 바뀔 때마다 새로 만들면 목록이 다시 그려지며 스크롤이 맨 위로 튄다
+  // (부모가 매초 다시 그려지면 onChange·sensors 가 새로 생겨, 스크롤을 내려 고르려 해도 계속 위로 올라갔다).
+  // 최신 값은 ref 로 읽고, Autocomplete 가 다시 그릴 때 같이 다시 그려진다
+  const listbox_latest = useRef({ sensors, handleDragStart, handleDragEnd, categories, handleSelectCategory, handleRemoveCategory });
+  listbox_latest.current = { sensors, handleDragStart, handleDragEnd, categories, handleSelectCategory, handleRemoveCategory };
   const ListboxComponent = useMemo(() => {
     return React.forwardRef<HTMLUListElement, React.HTMLAttributes<HTMLUListElement>>(
       function ListboxComponent(props, ref) {
         const { children, ...other } = props;
+        const l = listbox_latest.current;
         return (
           <DndContext
-            sensors={sensors}
+            sensors={l.sensors}
             collisionDetection={closestCenter}
-            onDragStart={handleDragStart}
-            onDragEnd={handleDragEnd}
+            onDragStart={l.handleDragStart}
+            onDragEnd={l.handleDragEnd}
           >
-            <SortableContext items={categories} strategy={verticalListSortingStrategy}>
+            <SortableContext items={l.categories} strategy={verticalListSortingStrategy}>
               <ul ref={ref} {...other} style={{ listStyle: 'none', padding: 0, margin: 0, maxHeight: '40vh', overflowY: 'auto' }}>
-                {categories.map((category) => (
+                {l.categories.map((category) => (
                   <SortableOption
                     key={category}
                     id={category}
-                    onSelect={handleSelectCategory}
-                    onRemove={handleRemoveCategory}
+                    onSelect={l.handleSelectCategory}
+                    onRemove={l.handleRemoveCategory}
                   />
                 ))}
               </ul>
@@ -430,7 +436,7 @@ const CategoryAutocomplete: React.FC<CategoryAutocompleteProps> = ({
         );
       }
     );
-  }, [sensors, handleDragStart, handleDragEnd, categories, handleSelectCategory, handleRemoveCategory]);
+  }, []);
 
   return (
     <Autocomplete

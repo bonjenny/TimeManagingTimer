@@ -63,10 +63,13 @@ function App() {
   const [current_page, setCurrentPage] = useState<PageType>('daily');
   const [is_new_task_modal_open, setIsNewTaskModalOpen] = useState(false);
   const is_mobile = useMediaQuery('(max-width:900px)');
-  const activeTimer = useTimerStore((state) => state.activeTimer);
-  const pauseTimer = useTimerStore((state) => state.pauseTimer);
-  const resumeTimer = useTimerStore((state) => state.resumeTimer);
-  const { themeConfig, setThemeConfig, viewConfig, setZoomLevel } = useTimerStore();
+  // 쓰는 값만 구독한다. 저장소 전체를 구독하면 기록 하나만 바뀌어도 앱 전체가 다시 그려진다
+  // (진행 중 타이머는 단축키 누를 때 getState 로 읽는다)
+  const themeConfig = useTimerStore((state) => state.themeConfig);
+  const setThemeConfig = useTimerStore((state) => state.setThemeConfig);
+  const viewConfig = useTimerStore((state) => state.viewConfig);
+  const setZoomLevel = useTimerStore((state) => state.setZoomLevel);
+  const has_active_timer = useTimerStore((state) => !!state.activeTimer); // 있는지만 (비고·일시정지로는 다시 안 그림)
   const timer_input_ref = useRef<HTMLInputElement>(null);
   const date_input_ref = useRef<HTMLInputElement>(null);
   const [zoom_toast_open, setZoomToastOpen] = useState(false);
@@ -234,8 +237,9 @@ function App() {
             break;
 
           // Alt + S: 타이머 일시정지/재개
-          case 's':
+          case 's': {
             e.preventDefault();
+            const { activeTimer, pauseTimer, resumeTimer } = useTimerStore.getState();
             if (activeTimer) {
               if (activeTimer.status === 'RUNNING') {
                 pauseTimer();
@@ -244,6 +248,7 @@ function App() {
               }
             }
             break;
+          }
 
           // Alt + 1: 일간 타이머 페이지
           case '1':
@@ -289,7 +294,7 @@ function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeTimer, pauseTimer, resumeTimer, current_page, handlePageChange]);
+  }, [current_page, handlePageChange]);
 
   // Ctrl + 마우스 휠로 줌 레벨 조절
   useEffect(() => {
@@ -438,11 +443,11 @@ function App() {
           minWidth: 0,
           display: 'flex',
           flexDirection: 'column',
-          gap: activeTimer ? 2 : 0,
+          gap: has_active_timer ? 2 : 0,
         }}
       >
         <TimerInput />
-        {activeTimer && <ActiveTimer />}
+        {has_active_timer && <ActiveTimer />}
       </Box>
 
       {/* 3. 하단: 최근 업무 기록 리스트 */}

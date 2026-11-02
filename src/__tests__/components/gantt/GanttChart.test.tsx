@@ -30,6 +30,29 @@ describe('GanttChart', () => {
     jest.clearAllMocks();
   });
 
+  describe('지금 시각 갱신 간격', () => {
+    // 갱신마다 간트차트 전체(업무 기록 창 포함)가 다시 그려진다 → 진행 중 타이머가 있고 오늘일 때만 1초
+    const intervals = () => (window.setInterval as unknown as jest.SpyInstance).mock.calls.map((c) => c[1]);
+    // 간트의 하루는 06시 시작이라 새벽에 돌려도 '오늘'이 되게 6시간 앞으로
+    const today = () => new Date(Date.now() - 6 * 3600 * 1000);
+    beforeEach(() => jest.spyOn(window, 'setInterval'));
+    afterEach(() => (window.setInterval as unknown as jest.SpyInstance).mockRestore());
+
+    it('진행 중인 타이머가 없으면 1분마다', () => {
+      render(<GanttChart selectedDate={today()} />);
+      expect(intervals()).toContain(60000);
+      expect(intervals()).not.toContain(1000);
+    });
+
+    it('진행 중인 타이머가 있어도 다른 날을 보면 1분마다, 오늘이면 1초마다', () => {
+      act(() => useTimerStore.getState().startTimer('진행 중 업무'));
+      render(<GanttChart selectedDate={selectedDate} />);
+      expect(intervals()).not.toContain(1000);
+      render(<GanttChart selectedDate={today()} />);
+      expect(intervals()).toContain(1000);
+    });
+  });
+
   describe('기본 렌더링', () => {
     it('시간축 헤더가 표시된다', () => {
       render(<GanttChart selectedDate={selectedDate} />);

@@ -62,7 +62,11 @@ const MOBILE_BAR_HEIGHT = 56;
 const ADMIN_PASSWORD_HASH = simpleHash(getAdminPassword());
 
 const Layout: React.FC<LayoutProps> = ({ children, currentPage, onPageChange }) => {
-  const { themeConfig, toggleDarkMode, logs, deleted_logs } = useTimerStore();
+  // 쓰는 값만 구독 (기록은 개수만): 저장소 전체를 구독하면 기록 하나만 바뀌어도 머리·메뉴가 다시 그려진다
+  const themeConfig = useTimerStore((s) => s.themeConfig);
+  const toggleDarkMode = useTimerStore((s) => s.toggleDarkMode);
+  const logs_count = useTimerStore((s) => s.logs.length);
+  const deleted_count = useTimerStore((s) => s.deleted_logs.length);
   const current_tab_index = PAGE_MAP.findIndex(p => p.page === currentPage);
   // 할로윈 팔레트: 주간 일정 → 죽어 일정, 프로젝트 분석 → 프로젝트 부검
   const is_halloween = useIsHalloween();
@@ -83,7 +87,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, onPageChange }) 
   const [visitors, setVisitors] = useState<VisitorRecord[]>([]);
   const [visitor_loading, setVisitorLoading] = useState(false);
 
-  const storageUsage = useMemo(() => getStorageUsage(), [logs.length, deleted_logs.length]);
+  const storageUsage = useMemo(() => getStorageUsage(), [logs_count, deleted_count]);
 
   // 페이지 로드 시 저장된 화면 크기 설정 적용 + 방문 기록
   useEffect(() => {

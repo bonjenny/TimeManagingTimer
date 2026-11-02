@@ -278,3 +278,31 @@ describe('Scheduled Task Feature', () => {
     });
   });
 });
+
+describe('useScheduledTaskWatcher 쉬기', () => {
+  const { renderHook } = jest.requireActual('@testing-library/react');
+  const { useScheduledTaskWatcher } = jest.requireActual('../../hooks/useScheduledTaskWatcher');
+
+  beforeEach(() => {
+    jest.useFakeTimers();
+    useTimerStore.setState({ logs: [], deleted_logs: [], activeTimer: null });
+  });
+  afterEach(() => jest.useRealTimers());
+
+  it('예약이 없으면 돌지 않고, 예약이 생기면 돌아 시작 시각에 활성화한다', () => {
+    const spy = jest.spyOn(window, 'setInterval');
+    renderHook(() => useScheduledTaskWatcher());
+    expect(spy).not.toHaveBeenCalled();
+
+    act(() => {
+      useTimerStore.getState().addLog({ id: 's1', title: '회의', startTime: Date.now() + 3000, endTime: Date.now() + 60 * 60 * 1000, status: 'SCHEDULED', pausedDuration: 0 });
+    });
+    expect(spy).toHaveBeenCalled();
+
+    act(() => {
+      jest.advanceTimersByTime(5000);
+    });
+    expect(useTimerStore.getState().activeTimer?.title).toBe('회의');
+    spy.mockRestore();
+  });
+});
