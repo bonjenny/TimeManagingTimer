@@ -55,6 +55,11 @@ const HalloweenScene: React.FC<{ isDark: boolean }> = ({ isDark }) => {
               },
           ...(!isDark && {
             ':root:root .MuiPaper-root, :root:root header': { backdropFilter: 'blur(8px)' },
+            // backdrop-filter 가 걸린 상자는 안쪽 position:fixed 드롭다운(disablePortal Popper: 카테고리·진행상태)의 기준이 되어
+            // 드롭다운이 화면 밖으로 밀려 고를 수가 없다. 불투명한 창·메뉴는 흐림이 필요 없으니 끄고, 카드는 드롭다운이 열린 동안만 끈다
+            ':root:root :is(.MuiDialog-paper, .MuiPopover-paper, .MuiMenu-paper, .MuiAutocomplete-paper), :root:root .MuiPaper-root:has(.MuiPopper-root)': {
+              backdropFilter: 'none',
+            },
             // 대화상자·메뉴는 글을 읽고 고르는 곳이라 불투명하게
             ':root:root .MuiDialog-paper, :root:root .MuiPopover-paper, :root:root .MuiMenu-paper, :root:root .MuiAutocomplete-paper': {
               backgroundColor: '#fffaf2 !important',
