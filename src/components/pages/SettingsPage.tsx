@@ -92,6 +92,7 @@ import { AUTO_BACKUP_ENABLED_KEY, AUTO_BACKUP_DATE_KEY } from '../../utils/autoB
 import PruneOldDataSection from './PruneOldDataSection';
 import { useTimeManagementStore } from '../../store/useTimeManagementStore';
 import BackupDirectorySetting from './BackupDirectorySetting';
+import { ZOOM_MODIFIERS } from '../../utils/zoom';
 
 // 설정 저장 키
 const SETTINGS_STORAGE_KEY = 'timekeeper-settings';
@@ -257,7 +258,7 @@ const SettingsPage: React.FC = () => {
   const { setThemeConfig, themeConfig } = useTimerStore();
   const { categories, addCategory, removeCategory, reorderCategories, resetToDefault: resetCategories } = useCategoryStore();
   const { statuses, addStatus, removeStatus, reorderStatuses, resetToDefault: resetStatuses } = useStatusStore();
-  const { weeks_to_show, setWeeksToShow, show_today, setShowToday, view_mode, setViewMode } = useDeployCalendarStore();
+  const { weeks_to_show, setWeeksToShow, view_mode, setViewMode } = useDeployCalendarStore();
   const { time_input_style, setTimeInputStyle } = useTimeInputStore();
   const [time_preview, setTimePreview] = useState('09:00');
   const [halloween_flyers, setHalloweenFlyers] = useState(loadFlyersOn);
@@ -769,12 +770,12 @@ const SettingsPage: React.FC = () => {
         </Box>
       </Paper>
 
-      {/* 배포 캘린더 표시 주 수 */}
+      {/* 캘린더 */}
       <Paper variant="outlined" sx={SECTION_SX}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
           <CalendarMonthIcon sx={{ color: 'text.secondary' }} />
           <Typography variant="h6" sx={SECTION_TITLE_SX}>
-            배포 캘린더
+            캘린더
           </Typography>
         </Box>
 
@@ -782,28 +783,19 @@ const SettingsPage: React.FC = () => {
           보기 방식
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-          배포 캘린더를 열 때 보여줄 방식입니다. 캘린더 상단의 「주 | 월」 버튼과 같은 설정이며 자동으로 저장됩니다.
+          캘린더를 열 때 보여줄 방식입니다. 캘린더 상단의 「주 | 월」 버튼과 같은 설정이며 자동으로 저장됩니다.
         </Typography>
         <ToggleButtonGroup
           value={view_mode}
           exclusive
           size="small"
           onChange={(_, mode) => mode && setViewMode(mode)}
-          aria-label="배포 캘린더 보기 방식"
+          aria-label="캘린더 보기 방식"
           sx={{ mb: 3 }}
         >
           <ToggleButton value="week" sx={{ px: 2 }}>주 단위</ToggleButton>
           <ToggleButton value="month" sx={{ px: 2 }}>월 단위 (한 달 고정)</ToggleButton>
         </ToggleButtonGroup>
-
-        <FormControlLabel
-          control={<Switch checked={show_today} onChange={(e) => setShowToday(e.target.checked)} />}
-          label="오늘 날짜 강조"
-          sx={{ display: 'flex' }}
-        />
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 3, ml: { xs: 0, md: 6 } }}>
-          오늘 칸에 「오늘」 표시와 색을 넣습니다. 화면을 캡처해 공유할 때는 끄세요. (HTML 복사에는 켜져 있어도 들어가지 않습니다)
-        </Typography>
 
         <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
           주 단위 보기 - 표시할 주 수
@@ -820,7 +812,7 @@ const SettingsPage: React.FC = () => {
               setWeeksToShow(new_value);
             }
           }}
-          aria-label="배포 캘린더 표시 주 수"
+          aria-label="캘린더 표시 주 수"
           sx={{
             display: 'flex',
             // 모바일: 한 줄 꽉 찬 세그먼트
@@ -1355,7 +1347,7 @@ const SettingsPage: React.FC = () => {
         </Typography>
         
         {/* 카테고리 목록 (드래그앤드롭) */}
-        <DndContext
+        <DndContext modifiers={ZOOM_MODIFIERS}
           sensors={sensors}
           collisionDetection={closestCenter}
           onDragEnd={handleCategoryDragEnd}
@@ -1437,7 +1429,7 @@ const SettingsPage: React.FC = () => {
         </Typography>
         
         {/* 진행상태 목록 (드래그앤드롭) */}
-        <DndContext
+        <DndContext modifiers={ZOOM_MODIFIERS}
           sensors={sensors}
           collisionDetection={closestCenter}
           onDragEnd={handleStatusDragEnd}
@@ -1663,7 +1655,7 @@ const SettingsPage: React.FC = () => {
             <li>설정 (테마, 점심시간 등)</li>
             <li>프리셋 (즐겨찾기, 수동 프리셋)</li>
             <li>시간관리 표 데이터</li>
-            <li>배포 캘린더 이벤트</li>
+            <li>캘린더 이벤트</li>
           </Box>
           <Typography variant="body2" color="info.main" sx={{ mb: 2 }}>
             💡 게시글(Q&A)은 서버에 저장되어 삭제되지 않습니다.

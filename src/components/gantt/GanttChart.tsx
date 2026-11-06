@@ -39,6 +39,7 @@ import { PointerSample, pointerSpeed, recordPointer, snapThresholdForSpeed } fro
 import CategoryAutocomplete from '../common/CategoryAutocomplete';
 import { getPalette, getAdjustedPalette, getColorByIndex, loadPaletteSettings } from '../../utils/colorPalette';
 import { getItem, setItem as setStorageItem } from '../../utils/storage';
+import { unzoom } from '../../utils/zoom';
 
 // Snackbar 슬라이드 트랜지션 (위에서 아래로 나타남, 위로 사라짐)
 const SlideTransition = (props: SlideProps) => {
@@ -1274,8 +1275,9 @@ const GanttChart: React.FC<GanttChartProps> = ({ selectedDate }) => {
     event.stopPropagation();
     if (contextMenu === null) {
       setContextMenu({
-        mouseX: event.clientX + 2,
-        mouseY: event.clientY - 6,
+        // 확대(zoom)된 화면에서도 메뉴가 마우스 자리에 뜨게
+        mouseX: unzoom(event.clientX + 2),
+        mouseY: unzoom(event.clientY - 6),
         log: log,
       });
     } else {

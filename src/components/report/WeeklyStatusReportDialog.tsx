@@ -357,7 +357,7 @@ const WeeklyStatusReportDialog: React.FC<Props> = ({ open, onClose, week_start, 
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
           {is_erp
             ? '일간 기록이 없어도 됩니다. 담당자가 그 기간에 ERP 시간 로그에 시간을 쓴 작업마다 한 줄이 생기고, 진행상태·날짜·비고는 작업·개발·테스트/배포 게시글에서, 누적시간은 작업 시작일부터 기간 끝까지의 시간 로그 합계로 채웁니다.'
-            : '이번 주 기록으로 채우고, ERP에서 가져온 게시글이 있으면 진행상태·날짜·비고는 그 값을 씁니다(없으면 배포 캘린더). 칸을 눌러 고치면 기억합니다. 진행상태·비고는 이 주에만, 작업·날짜는 다음 주에도 그대로 씁니다.'}
+            : '이번 주 기록으로 채우고, ERP에서 가져온 게시글이 있으면 진행상태·날짜·비고는 그 값을 씁니다(없으면 캘린더). 칸을 눌러 고치면 기억합니다. 진행상태·비고는 이 주에만, 작업·날짜는 다음 주에도 그대로 씁니다.'}
         </Typography>
 
         <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start', mb: 1.5, flexWrap: 'wrap' }}>
@@ -442,7 +442,7 @@ const WeeklyStatusReportDialog: React.FC<Props> = ({ open, onClose, week_start, 
         )}
         {fetch_errors.length > 0 && (
           <Alert severity="warning" sx={{ mb: 1.5, whiteSpace: 'pre-wrap' }} onClose={() => setFetchErrors([])}>
-            {`${is_erp ? '조회하지 못한 것' : '못 가져온 줄 (배포 캘린더 값으로 채움)'}\n${fetch_errors.join('\n')}`}
+            {`${is_erp ? '조회하지 못한 것' : '못 가져온 줄 (캘린더 값으로 채움)'}\n${fetch_errors.join('\n')}`}
           </Alert>
         )}
         <TableContainer sx={{ overflowX: 'auto' }}>
@@ -535,7 +535,7 @@ const WeeklyStatusReportDialog: React.FC<Props> = ({ open, onClose, week_start, 
           <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto' }}>
             {is_erp
               ? '진행상태: 테스트/배포 게시글 이력 → 작업·개발 게시글 · 날짜: 개발 게시글 · 누적시간: 작업 시작일 ~ 기간 끝 시간 로그(10분 단위 반올림)'
-              : '자동값 순서: ERP 게시글 → 배포 캘린더 · 종료예정일: 개발 게시글 → 시간관리 표 · 누적시간: 그 주까지 전체 기록(10분 단위 반올림)'}
+              : '자동값 순서: ERP 게시글 → 캘린더 · 종료예정일: 개발 게시글 → 시간관리 표 · 누적시간: 그 주까지 전체 기록(10분 단위 반올림)'}
           </Typography>
         </Box>
       </DialogContent>
@@ -564,7 +564,7 @@ const WeeklyStatusReportDialog: React.FC<Props> = ({ open, onClose, week_start, 
           <Button onClick={() => setPicChoices(null)}>취소</Button>
         </DialogActions>
       </Dialog>
-      {/* 다크모드·테마와 상관없이 읽히게 (배포 캘린더 토스트와 같은 색) */}
+      {/* 다크모드·테마와 상관없이 읽히게 (캘린더 토스트와 같은 색) */}
       <Snackbar
         open={!!toast}
         autoHideDuration={2500}

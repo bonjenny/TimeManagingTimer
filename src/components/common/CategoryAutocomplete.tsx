@@ -30,6 +30,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { useCategoryStore } from '../../store/useCategoryStore';
 import { getAllCategoryNames } from '../../constants/categoryCodeMap';
+import { ZOOM_MODIFIERS } from '../../utils/zoom';
 
 interface CategoryAutocompleteProps {
   value: string | null;
@@ -414,7 +415,7 @@ const CategoryAutocomplete: React.FC<CategoryAutocompleteProps> = ({
         const { children, ...other } = props;
         const l = listbox_latest.current;
         return (
-          <DndContext
+          <DndContext modifiers={ZOOM_MODIFIERS}
             sensors={l.sensors}
             collisionDetection={closestCenter}
             onDragStart={l.handleDragStart}

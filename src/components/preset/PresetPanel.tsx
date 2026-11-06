@@ -54,6 +54,7 @@ import { getItem, setItem } from '../../utils/storage';
 import CategoryAutocomplete from '../common/CategoryAutocomplete';
 import { renderProjectOption } from '../common/projectOptions';
 import ProjectCodeNameFields from '../common/ProjectCodeNameFields';
+import { ZOOM_MODIFIERS } from '../../utils/zoom';
 
 // 프리셋 데이터 타입
 interface PresetItem {
@@ -715,7 +716,7 @@ const PresetPanel: React.FC = () => {
             </Typography>
           </Box>
         ) : (
-          <DndContext
+          <DndContext modifiers={ZOOM_MODIFIERS}
             sensors={sensors}
             collisionDetection={closestCenter}
             onDragEnd={handleDragEnd}

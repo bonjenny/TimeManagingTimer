@@ -1,0 +1,235 @@
+<!-- 게시판 붙여넣기용: 시간관리 타이머 홍보 (시간 로그 등록 · 주간 진행 현황표)
+     게시판 편집기가 <style> 을 지울 수 있어 모든 스타일을 인라인으로 둔다. 화면 그림도 이미지가 아니라 HTML 표로 그렸다 -->
+<div style="max-width:860px;font-size:14px;line-height:1.7;color:#222;">
+
+<h2 style="font-size:20px;margin:0 0 4px;">시간관리 타이머: 시간 로그 등록과 주간 현황표를 대신 해 줍니다</h2>
+<p style="margin:0 0 16px;color:#888;font-size:12px;">2026-11-04 · 엄지희</p>
+
+<div style="background:#f4f8fb;border-left:4px solid #1a8fc4;padding:10px 14px;margin:0 0 20px;">
+  <div>• 타이머로 기록한 하루 업무를 ERP 시간 로그에 버튼 한 번으로 올립니다.</div>
+  <div>• 주간보고 진행 현황표를 ERP 게시글을 읽어 채워 줍니다. 표 복사 후 붙여넣기만 하면 됩니다.</div>
+  <div>• 설치는 필요 없습니다. <a href="https://developer.ecount.com/EFA/time-managing.html" target="_blank">https://developer.ecount.com/EFA/time-managing.html</a> 에 접속하면 바로 씁니다.</div>
+  <div>• 기록은 내 브라우저에만 저장되고 서버로 보내지 않습니다.</div>
+</div>
+
+<h3 style="font-size:16px;margin:24px 0 6px;">배경</h3>
+<p style="margin:0 0 8px;">ERP 시간 로그에 업무를 한 줄씩 옮겨 적는 일과, 금요일마다 게시글을 하나씩 열어 주간보고 표를 채우는 일을 줄이려고 만들었습니다.<br>업무를 시작할 때 타이머만 눌러 두면 나머지는 앱이 정리합니다.</p>
+
+<h3 style="font-size:16px;margin:24px 0 6px;">무엇이 바뀌나</h3>
+
+<p style="margin:12px 0 4px;font-weight:bold;">시간 로그는 미리 보고 한 번에 저장</p>
+<p style="margin:0 0 10px;">일간 타이머 기록을 시간관리 표로 불러와 [시간관리 등록]을 누르면 ERP 시간 로그 게시판에 저장됩니다.<br>저장 전에 ERP에 들어갈 모습(작업 · 업무 · 거래 · 카테고리 · 시간 · 비고)과 합계 시간을 보여 줍니다.<br>프로젝트 코드에 작업 · 개발 게시글을 한 번 연결해 두면 다음부터는 자동으로 붙습니다.</p>
+
+<!-- 화면 1: 시간관리 등록 미리보기 -->
+<div style="border:1px solid #ddd;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.08);background:#fff;margin:6px 0 4px;overflow:hidden;font-size:12px;">
+  <div style="padding:10px 14px;border-bottom:1px solid #eee;font-weight:bold;font-size:14px;">ERP 시간관리 등록 <span style="font-weight:normal;color:#888;font-size:12px;">2026-10-26</span></div>
+  <div style="padding:10px 14px;">
+    <div style="border:1px solid #ccc;border-radius:4px;padding:6px 8px;color:#555;margin-bottom:10px;">
+      <span style="font-size:10px;color:#888;display:block;">ERP 세션 (로그인된 ERP 주소창 URL 전체 또는 ec_req_sid)</span>
+      https://logine.ecount.com/ec56/view/erp?w_flag=1&amp;ec_req_sid=E-••••••••
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <tr style="background:#f5f5f5;">
+        <th style="border:1px solid #e0e0e0;padding:5px 6px;text-align:left;">작업</th>
+        <th style="border:1px solid #e0e0e0;padding:5px 6px;text-align:left;">업무</th>
+        <th style="border:1px solid #e0e0e0;padding:5px 6px;text-align:left;">거래</th>
+        <th style="border:1px solid #e0e0e0;padding:5px 6px;text-align:left;">카테고리</th>
+        <th style="border:1px solid #e0e0e0;padding:5px 6px;text-align:right;">시간</th>
+        <th style="border:1px solid #e0e0e0;padding:5px 6px;text-align:left;">비고</th>
+      </tr>
+      <tr>
+        <td style="border:1px solid #e0e0e0;padding:5px 6px;">관리업무</td>
+        <td style="border:1px solid #e0e0e0;padding:5px 6px;">작업</td>
+        <td style="border:1px solid #e0e0e0;padding:5px 6px;">문서작업</td>
+        <td style="border:1px solid #e0e0e0;padding:5px 6px;">11 문서작업</td>
+        <td style="border:1px solid #e0e0e0;padding:5px 6px;text-align:right;">24</td>
+        <td style="border:1px solid #e0e0e0;padding:5px 6px;">시간관리 회고보고서 작성</td>
+      </tr>
+      <tr>
+        <td style="border:1px solid #e0e0e0;padding:5px 6px;">관리업무</td>
+        <td style="border:1px solid #e0e0e0;padding:5px 6px;">작업</td>
+        <td style="border:1px solid #e0e0e0;padding:5px 6px;">질의응답</td>
+        <td style="border:1px solid #e0e0e0;padding:5px 6px;">10 질의응답</td>
+        <td style="border:1px solid #e0e0e0;padding:5px 6px;text-align:right;">20</td>
+        <td style="border:1px solid #e0e0e0;padding:5px 6px;">5.6 배포플래그 미적용 부분 안내</td>
+      </tr>
+      <tr>
+        <td style="border:1px solid #e0e0e0;padding:5px 6px;">[5.6] Static P - progress_status</td>
+        <td style="border:1px solid #e0e0e0;padding:5px 6px;">개발</td>
+        <td style="border:1px solid #e0e0e0;padding:5px 6px;">개발.23633</td>
+        <td style="border:1px solid #e0e0e0;padding:5px 6px;">05 회의</td>
+        <td style="border:1px solid #e0e0e0;padding:5px 6px;text-align:right;">65</td>
+        <td style="border:1px solid #e0e0e0;padding:5px 6px;">중간리뷰</td>
+      </tr>
+      <tr>
+        <td style="border:1px solid #e0e0e0;padding:5px 6px;">[5.6] Static P - progress_status</td>
+        <td style="border:1px solid #e0e0e0;padding:5px 6px;">개발</td>
+        <td style="border:1px solid #e0e0e0;padding:5px 6px;">개발.23633</td>
+        <td style="border:1px solid #e0e0e0;padding:5px 6px;">17 분석</td>
+        <td style="border:1px solid #e0e0e0;padding:5px 6px;text-align:right;">202</td>
+        <td style="border:1px solid #e0e0e0;padding:5px 6px;">내용 파악 및 남은 view_type 진행</td>
+      </tr>
+    </table>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;">
+      <span style="font-weight:bold;">합계 311분 (5시간 11분)</span>
+      <span>
+        <span style="display:inline-block;border:1px solid #ccc;border-radius:4px;padding:4px 10px;color:#555;margin-right:6px;">콘솔 스크립트 복사</span>
+        <span style="display:inline-block;background:#1a8fc4;color:#fff;border-radius:4px;padding:4px 12px;font-weight:bold;">ERP에 저장</span>
+      </span>
+    </div>
+  </div>
+</div>
+<p style="margin:0 0 16px;color:#888;font-size:11px;text-align:center;">[화면 1] 시간관리 등록 미리보기 (예시 화면)</p>
+
+<p style="margin:12px 0 4px;font-weight:bold;">표 채우기는 엑셀처럼</p>
+<p style="margin:0 0 10px;">같은 작업이 이어지면 Ctrl+D로 윗줄 값을 복사합니다.<br>엑셀에서 복사한 표를 그대로 붙여넣거나, 다른 날짜의 줄을 골라 가져올 수도 있습니다.<br>작업이 비어 ERP에 못 올라가는 줄은 빨간 칸으로 표시됩니다.</p>
+
+<p style="margin:12px 0 4px;font-weight:bold;">주간 진행 현황표는 담당자와 기간만</p>
+<p style="margin:0 0 10px;">[주간 일정] → [진행 현황표] → [ERP 기준]에서 담당자와 기간을 넣으면, 그 기간 시간 로그에 시간을 쓴 작업마다 한 줄이 생깁니다.<br>진행상태 · 시작일자 · 종료예정일 · 비고는 작업 · 개발 · 테스트/배포 게시글에서, 누적시간은 시간 로그 합계에서 가져옵니다.<br>[표 복사]를 누르면 녹색 머리 표 그대로 주간보고에 붙여넣을 수 있습니다.</p>
+
+<!-- 화면 2: 주간 진행 현황표 -->
+<div style="border:1px solid #ddd;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.08);background:#fff;margin:6px 0 4px;overflow:hidden;font-size:12px;">
+  <div style="padding:10px 14px;border-bottom:1px solid #eee;font-weight:bold;font-size:14px;">주간 진행 현황표 <span style="font-weight:normal;color:#888;font-size:12px;">2026/10/26 ~ 2026/10/29 (ERP 기준)</span></div>
+  <div style="padding:10px 14px;">
+    <div style="margin-bottom:10px;">
+      <span style="display:inline-block;border:1px solid #ccc;border-radius:4px;padding:3px 8px;margin-right:4px;">담당자 엄지희 (2023-026)</span>
+      <span style="display:inline-block;border:1px solid #ccc;border-radius:4px;padding:3px 8px;margin-right:4px;">2026-10-26 ~ 2026-10-29</span>
+      <span style="display:inline-block;background:#e8641b;color:#fff;border-radius:4px;padding:3px 10px;font-weight:bold;">ERP로 현황표 만들기</span>
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <tr style="background:#a9d18e;">
+        <th style="border:1px solid #7f7f7f;padding:5px 6px;">담당자</th>
+        <th style="border:1px solid #7f7f7f;padding:5px 6px;">진행상태</th>
+        <th style="border:1px solid #7f7f7f;padding:5px 6px;">작업</th>
+        <th style="border:1px solid #7f7f7f;padding:5px 6px;">시작일자</th>
+        <th style="border:1px solid #7f7f7f;padding:5px 6px;">종료예정일</th>
+        <th style="border:1px solid #7f7f7f;padding:5px 6px;">누적시간</th>
+        <th style="border:1px solid #7f7f7f;padding:5px 6px;">비고</th>
+      </tr>
+      <tr>
+        <td style="border:1px solid #bfbfbf;padding:5px 6px;">엄지희</td>
+        <td style="border:1px solid #bfbfbf;padding:5px 6px;">배포완료</td>
+        <td style="border:1px solid #bfbfbf;padding:5px 6px;">PageSetup v2 Page내 함수 개발 및 적용</td>
+        <td style="border:1px solid #bfbfbf;padding:5px 6px;text-align:center;">2026-09-14</td>
+        <td style="border:1px solid #bfbfbf;padding:5px 6px;text-align:center;">2026-10-12</td>
+        <td style="border:1px solid #bfbfbf;padding:5px 6px;text-align:right;">41:50</td>
+        <td style="border:1px solid #bfbfbf;padding:5px 6px;">10/22(목) 수시배포</td>
+      </tr>
+      <tr>
+        <td style="border:1px solid #bfbfbf;padding:5px 6px;"></td>
+        <td style="border:1px solid #bfbfbf;padding:5px 6px;">개발완료</td>
+        <td style="border:1px solid #bfbfbf;padding:5px 6px;">[5.6] Static P - writable</td>
+        <td style="border:1px solid #bfbfbf;padding:5px 6px;text-align:center;">2026-10-19</td>
+        <td style="border:1px solid #bfbfbf;padding:5px 6px;text-align:center;">2026-10-21</td>
+        <td style="border:1px solid #bfbfbf;padding:5px 6px;text-align:right;">24:20</td>
+        <td style="border:1px solid #bfbfbf;padding:5px 6px;">10/21(수) 개발완료</td>
+      </tr>
+      <tr>
+        <td style="border:1px solid #bfbfbf;padding:5px 6px;"></td>
+        <td style="border:1px solid #bfbfbf;padding:5px 6px;">개발완료</td>
+        <td style="border:1px solid #bfbfbf;padding:5px 6px;">[5.6] Static P - progress_status</td>
+        <td style="border:1px solid #bfbfbf;padding:5px 6px;text-align:center;">2026-10-22</td>
+        <td style="border:1px solid #bfbfbf;padding:5px 6px;text-align:center;">2026-10-26</td>
+        <td style="border:1px solid #bfbfbf;padding:5px 6px;text-align:right;">07:30</td>
+        <td style="border:1px solid #bfbfbf;padding:5px 6px;">10/26(월) 개발완료</td>
+      </tr>
+      <tr>
+        <td style="border:1px solid #bfbfbf;padding:5px 6px;"></td>
+        <td style="border:1px solid #bfbfbf;padding:5px 6px;">진행중</td>
+        <td style="border:1px solid #bfbfbf;padding:5px 6px;">[5.6] Static P - current_template</td>
+        <td style="border:1px solid #bfbfbf;padding:5px 6px;text-align:center;">2026-10-28</td>
+        <td style="border:1px solid #bfbfbf;padding:5px 6px;text-align:center;">2026-10-29</td>
+        <td style="border:1px solid #bfbfbf;padding:5px 6px;text-align:right;">05:10</td>
+        <td style="border:1px solid #bfbfbf;padding:5px 6px;"></td>
+      </tr>
+    </table>
+    <div style="text-align:right;margin-top:10px;">
+      <span style="display:inline-block;background:#e8641b;color:#fff;border-radius:4px;padding:4px 12px;font-weight:bold;">표 복사</span>
+    </div>
+  </div>
+</div>
+<p style="margin:0 0 16px;color:#888;font-size:11px;text-align:center;">[화면 2] 주간 진행 현황표 (예시 화면)</p>
+
+<p style="margin:0 0 10px;">주간 일정 화면의 [복사]는 한 주 기록을 간단형 · 상세형 · 라벨형 텍스트로 복사합니다.</p>
+
+<h3 style="font-size:16px;margin:24px 0 6px;">사용 방법</h3>
+<p style="margin:8px 0 2px;font-weight:bold;">시간 로그 등록</p>
+<ol style="margin:0 0 10px;padding-left:22px;">
+  <li>일간 타이머에서 업무를 시작하고 끝냅니다.</li>
+  <li>[시간관리] 탭에서 날짜를 고르고 [일간 타이머에서 다시 불러오기]를 누릅니다.</li>
+  <li>ERP에 로그인한 탭의 주소창 URL을 복사합니다.</li>
+  <li>[시간관리 등록]을 누르고 「ERP 세션」 칸에 붙여넣습니다.</li>
+  <li>미리보기와 합계를 확인하고 [ERP에 저장]을 누릅니다.<br><span style="color:#888;">→ 새로 만들어진 시간 로그 번호가 표시됩니다.</span></li>
+</ol>
+<p style="margin:8px 0 2px;font-weight:bold;">주간 진행 현황표</p>
+<ol style="margin:0 0 10px;padding-left:22px;">
+  <li>[주간 일정]에서 주를 고르고 [진행 현황표]를 누릅니다.</li>
+  <li>[ERP 기준] 탭에서 ERP 세션과 담당자를 넣습니다.</li>
+  <li>[ERP로 현황표 만들기]를 누릅니다.</li>
+  <li>고칠 칸이 있으면 눌러서 고치고, [표 복사]를 누릅니다.</li>
+</ol>
+
+<h3 style="font-size:16px;margin:24px 0 6px;">주의사항</h3>
+<ul style="margin:0 0 10px;padding-left:22px;">
+  <li>기록은 그 브라우저에만 남습니다. 브라우저 데이터를 지우면 사라지니, 설정에서 「일일 자동 백업」을 켜 두세요(하루 한 번 JSON 파일 저장).</li>
+  <li>붙여넣은 ERP 세션은 탭을 닫으면 지워지고 백업 파일에도 들어가지 않습니다.</li>
+  <li>처음 쓰는 프로젝트는 [시간관리 등록] 화면의 [게시글 매핑 찾기]에서 작업 게시글 번호로 한 번 연결해야 저장됩니다.</li>
+  <li>화면마다 움직이는 사용 예시는 앱의 [가이드] 탭에 있습니다.</li>
+</ul>
+
+<h3 style="font-size:16px;margin:24px 0 6px;">ERP API 목록</h3>
+<p style="margin:0 0 8px;">세션을 가지고 사용하는 API 목록은 아래 표와 같으며, LLM에서 처리하지 않습니다.<br>모두 <code style="background:#f3f3f3;padding:1px 4px;border-radius:3px;">/ec5/api/{Action}?ec_req_sid={세션}</code> 으로 브라우저에서 바로 호출하고, ERP에 쓰는 것은 1번 하나뿐입니다.</p>
+<table style="width:100%;border-collapse:collapse;font-size:12px;margin:0 0 4px;">
+  <tr style="background:#f5f5f5;">
+    <th style="border:1px solid #e0e0e0;padding:5px 6px;">#</th>
+    <th style="border:1px solid #e0e0e0;padding:5px 6px;text-align:left;">Action</th>
+    <th style="border:1px solid #e0e0e0;padding:5px 6px;white-space:nowrap;">읽기/쓰기</th>
+    <th style="border:1px solid #e0e0e0;padding:5px 6px;text-align:left;">하는 일</th>
+    <th style="border:1px solid #e0e0e0;padding:5px 6px;text-align:left;">쓰는 곳</th>
+  </tr>
+  <tr>
+    <td style="border:1px solid #e0e0e0;padding:5px 6px;text-align:center;">1</td>
+    <td style="border:1px solid #e0e0e0;padding:5px 6px;font-family:monospace;">app.board/action/CreateBoardAction:board:input</td>
+    <td style="border:1px solid #e0e0e0;padding:5px 6px;text-align:center;">쓰기</td>
+    <td style="border:1px solid #e0e0e0;padding:5px 6px;">시간 로그 게시글 등록</td>
+    <td style="border:1px solid #e0e0e0;padding:5px 6px;">시간관리 등록 [ERP에 저장]</td>
+  </tr>
+  <tr>
+    <td style="border:1px solid #e0e0e0;padding:5px 6px;text-align:center;">2</td>
+    <td style="border:1px solid #e0e0e0;padding:5px 6px;font-family:monospace;">app.board/action/SelectBoardSearchListAction:board:list</td>
+    <td style="border:1px solid #e0e0e0;padding:5px 6px;text-align:center;">읽기</td>
+    <td style="border:1px solid #e0e0e0;padding:5px 6px;">작업 · 개발 · 테스트/배포 게시판 목록 검색</td>
+    <td style="border:1px solid #e0e0e0;padding:5px 6px;">게시글 매핑 찾기, 진행 현황표</td>
+  </tr>
+  <tr>
+    <td style="border:1px solid #e0e0e0;padding:5px 6px;text-align:center;">3</td>
+    <td style="border:1px solid #e0e0e0;padding:5px 6px;font-family:monospace;">app.basiccode/action/SelectBasicCodeSearchPopupAction:board:list</td>
+    <td style="border:1px solid #e0e0e0;padding:5px 6px;text-align:center;">읽기</td>
+    <td style="border:1px solid #e0e0e0;padding:5px 6px;">프로젝트 코드 검색</td>
+    <td style="border:1px solid #e0e0e0;padding:5px 6px;">게시글 매핑 찾기 (프로젝트 코드로 찾을 때)</td>
+  </tr>
+  <tr>
+    <td style="border:1px solid #e0e0e0;padding:5px 6px;text-align:center;">4</td>
+    <td style="border:1px solid #e0e0e0;padding:5px 6px;font-family:monospace;">app.common/action/GetHistoryCommonAction:slip_history:input</td>
+    <td style="border:1px solid #e0e0e0;padding:5px 6px;text-align:center;">읽기</td>
+    <td style="border:1px solid #e0e0e0;padding:5px 6px;">게시글 진행상태 변경 이력 조회</td>
+    <td style="border:1px solid #e0e0e0;padding:5px 6px;">진행 현황표 (진행상태 · 테스트 요청일 · 수시배포일)</td>
+  </tr>
+  <tr>
+    <td style="border:1px solid #e0e0e0;padding:5px 6px;text-align:center;">5</td>
+    <td style="border:1px solid #e0e0e0;padding:5px 6px;font-family:monospace;">app.board/action/SelectBoardSearchStatusAction:board:status</td>
+    <td style="border:1px solid #e0e0e0;padding:5px 6px;text-align:center;">읽기</td>
+    <td style="border:1px solid #e0e0e0;padding:5px 6px;">시간 로그 작업별 집계</td>
+    <td style="border:1px solid #e0e0e0;padding:5px 6px;">진행 현황표 (작업 목록 · 누적시간)</td>
+  </tr>
+  <tr>
+    <td style="border:1px solid #e0e0e0;padding:5px 6px;text-align:center;">6</td>
+    <td style="border:1px solid #e0e0e0;padding:5px 6px;font-family:monospace;">app.basiccode/action/SelectBasicCodeSearchPopupAction:emp:search</td>
+    <td style="border:1px solid #e0e0e0;padding:5px 6px;text-align:center;">읽기</td>
+    <td style="border:1px solid #e0e0e0;padding:5px 6px;">사원 검색 (이름 · 사번)</td>
+    <td style="border:1px solid #e0e0e0;padding:5px 6px;">진행 현황표 담당자 칸</td>
+  </tr>
+</table>
+<p style="margin:0 0 16px;color:#888;font-size:11px;text-align:center;">[표 1] 시간관리 타이머가 ERP 세션으로 호출하는 API</p>
+
+</div>

@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Box, Button, GlobalStyles, Paper, Typography } from '@mui/material';
 import { loadPaletteSettings } from '../utils/colorPalette';
 import { useTimerStore } from '../store/useTimerStore';
+import { unzoom } from '../utils/zoom'; // 화면 확대(zoom) 중에도 마우스 자리에 그리기
 
 // 할로윈 팔레트의 이스터에그 2탄. HalloweenEffects 가 할로윈일 때만 띄운다.
 // 화면 효과만 낸다 — 기록 데이터는 절대 건드리지 않는다.
@@ -130,7 +131,8 @@ const HalloweenEggs: React.FC = () => {
       useTimerStore.subscribe((state, prev) => {
         // 앱을 막 열어 저장소를 불러올 때나, 사람이 손대지 않은 변화(자동 처리)는 무시
         if (Date.now() - mounted_at.current < 3000 || Date.now() - last_action.current > 3000) return;
-        const { x, y } = last_pointer.current;
+        const x = unzoom(last_pointer.current.x);
+        const y = unzoom(last_pointer.current.y);
         const prev_deleted = new Set(prev.deleted_logs.map((l) => l.id));
         const gone = state.deleted_logs.filter((l) => !prev_deleted.has(l.id));
         if (gone.length) {
@@ -180,7 +182,7 @@ const HalloweenEggs: React.FC = () => {
     if (blackout !== 'flashlight') return;
     const paint = (x: number, y: number) => {
       if (flashlight_ref.current) {
-        flashlight_ref.current.style.background = `radial-gradient(circle at ${x}px ${y}px, rgba(0,0,0,0) 0, rgba(0,0,0,0) 90px, rgba(0,0,0,0.95) 170px)`;
+        flashlight_ref.current.style.background = `radial-gradient(circle at ${unzoom(x)}px ${unzoom(y)}px, rgba(0,0,0,0) 0, rgba(0,0,0,0) 90px, rgba(0,0,0,0.95) 170px)`;
       }
     };
     paint(last_pointer.current.x, last_pointer.current.y);
@@ -222,7 +224,7 @@ const HalloweenEggs: React.FC = () => {
       const el = night_ref.current;
       if (el) {
         const lit = (night_dim * 0.2).toFixed(3);
-        el.style.background = `radial-gradient(circle at ${x}px ${y}px, rgba(0,0,0,${lit}) 0, rgba(0,0,0,${lit}) 70px, rgba(0,0,0,${night_dim}) 220px)`;
+        el.style.background = `radial-gradient(circle at ${unzoom(x)}px ${unzoom(y)}px, rgba(0,0,0,${lit}) 0, rgba(0,0,0,${lit}) 70px, rgba(0,0,0,${night_dim}) 220px)`;
       }
       const r = switch_ref.current?.getBoundingClientRect();
       if (r) setSwitchNear(Math.hypot(x - (r.left + r.width / 2), y - (r.top + r.height / 2)) < 160);

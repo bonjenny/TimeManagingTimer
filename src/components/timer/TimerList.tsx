@@ -57,6 +57,7 @@ import { NEW_PROJECT_OPTION, filterProjectCodeOptions, renderNewProjectOption, r
 import { formatDuration, formatDurationShort, getDurationSecondsExcludingLunch } from '../../utils/timeUtils';
 import { getItem, setItem as setStorageItem } from '../../utils/storage';
 import CategoryAutocomplete from '../common/CategoryAutocomplete';
+import { ZOOM_MODIFIERS } from '../../utils/zoom';
 
 // 하루 시작 기준 (06:00)
 const DAY_START_HOUR = 6;
@@ -1257,7 +1258,7 @@ const TimerList: React.FC<TimerListProps> = ({ selectedDate }) => {
         )}
 
         {/* 업무 목록 (손잡이 ⠿ 를 끌어 순서 변경) */}
-        <DndContext sensors={drag_sensors} collisionDetection={closestCenter} onDragEnd={handleTaskDragEnd}>
+        <DndContext modifiers={ZOOM_MODIFIERS} sensors={drag_sensors} collisionDetection={closestCenter} onDragEnd={handleTaskDragEnd}>
         <SortableContext items={groupedTasks.map((t) => t.group_key)} strategy={verticalListSortingStrategy}>
         {groupedTasks.map((task) => (
           <SortableTaskRow key={task.group_key} id={task.group_key}>

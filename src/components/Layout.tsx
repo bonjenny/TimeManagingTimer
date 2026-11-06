@@ -47,7 +47,7 @@ interface LayoutProps {
 const PAGE_MAP: { page: PageType; label: string; icon: React.ReactNode }[] = [
   { page: 'daily', label: '일간 타이머', icon: <AccessTimeIcon sx={{ fontSize: 20, mr: 1, mb: '0px !important' }} /> },
   { page: 'weekly', label: '주간 일정', icon: <CalendarMonthIcon sx={{ fontSize: 20, mr: 1, mb: '0px !important' }} /> },
-  { page: 'monthly', label: '배포 캘린더', icon: <EventNoteIcon sx={{ fontSize: 20, mr: 1, mb: '0px !important' }} /> },
+  { page: 'monthly', label: '캘린더', icon: <EventNoteIcon sx={{ fontSize: 20, mr: 1, mb: '0px !important' }} /> },
   { page: 'analysis', label: '프로젝트 분석', icon: <AssessmentIcon sx={{ fontSize: 20, mr: 1, mb: '0px !important' }} /> },
   { page: 'timeManagement', label: '시간관리', icon: <TableChartIcon sx={{ fontSize: 20, mr: 1, mb: '0px !important' }} /> },
   { page: 'settings', label: '설정', icon: <SettingsIcon sx={{ fontSize: 20, mr: 1, mb: '0px !important' }} /> },

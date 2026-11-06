@@ -300,3 +300,12 @@ describe('useDeployCalendarStore', () => {
     });
   });
 });
+
+describe('근태 조회 대상 저장값 옮기기 (v0 → v1)', () => {
+  it('예전 부서 하나(attendance_site)를 대상 목록으로 옮긴다', () => {
+    const { useDeployCalendarStore: store } = jest.requireActual('../../store/useDeployCalendarStore');
+    const migrate = store.persist.getOptions().migrate;
+    expect(migrate({ attendance_site: 'EFA팀', events: [] }, 0)).toEqual({ events: [], attendance_targets: [{ type: 'site', code: 'EFA팀', name: 'EFA팀' }] });
+    expect(migrate({ attendance_site: '' }, 0)).toEqual({ attendance_targets: [] });
+  });
+});

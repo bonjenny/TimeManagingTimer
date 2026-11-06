@@ -33,9 +33,9 @@ describe('App', () => {
       expect(screen.getByRole('tab', { name: /주간 일정/i })).toBeInTheDocument();
     });
 
-    it('배포 캘린더 탭이 렌더링된다', () => {
+    it('캘린더 탭이 렌더링된다', () => {
       render(<App />);
-      expect(screen.getByRole('tab', { name: /배포 캘린더/i })).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: /^캘린더$/ })).toBeInTheDocument();
     });
 
     it('설정 탭이 렌더링된다', () => {

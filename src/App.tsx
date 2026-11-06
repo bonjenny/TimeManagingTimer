@@ -262,7 +262,7 @@ function App() {
             handlePageChange('weekly');
             break;
 
-          // Alt + 3: 배포 캘린더 페이지
+          // Alt + 3: 캘린더 페이지
           case '3':
             e.preventDefault();
             handlePageChange('monthly');

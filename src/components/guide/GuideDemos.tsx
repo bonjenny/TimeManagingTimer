@@ -716,7 +716,7 @@ export const WeeklyCopyDemo: React.FC = () => {
 };
 
 // ---------------------------------------------------------------------------
-// 배포 캘린더
+// 캘린더
 // ---------------------------------------------------------------------------
 
 export const DeployDragDemo: React.FC = () => {
@@ -1299,7 +1299,7 @@ export const DayFlowDemo: React.FC = () => {
 /** Alt+1~5 로 탭 이동 */
 export const ShortcutDemo: React.FC = () => {
   const D = 7;
-  const tabs = ['일간 타이머', '주간 일정', '배포 캘린더', '프로젝트 분석', '시간관리'];
+  const tabs = ['일간 타이머', '주간 일정', '캘린더', '프로젝트 분석', '시간관리'];
   const at = (i: number) => 8 + i * 18;
   const W = 94 / 5; // 탭 한 칸 폭(%)
   return (

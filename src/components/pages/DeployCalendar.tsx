@@ -14,6 +14,17 @@ import {
   ToggleButtonGroup,
   useMediaQuery,
   useTheme,
+  Switch,
+  FormControlLabel,
+  Alert,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  CircularProgress,
+  Autocomplete,
+  Chip,
 } from '@mui/material';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
@@ -25,6 +36,9 @@ import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ViewWeekIcon from '@mui/icons-material/ViewWeek';
 import CalendarViewMonthIcon from '@mui/icons-material/CalendarViewMonth';
+import EventBusyIcon from '@mui/icons-material/EventBusy';
+import SettingsIcon from '@mui/icons-material/Settings';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import {
   DndContext,
   PointerSensor,
@@ -49,12 +63,51 @@ import {
 import DeployEventModal from '../calendar/DeployEventModal';
 import JobColorManager from '../calendar/JobColorManager';
 import { getHolidayName } from '../../constants/krHolidays';
+import { ZOOM_MODIFIERS, unzoom } from '../../utils/zoom';
+import { parseErpSession } from '../../utils/erpTimelog';
+import { AttendanceTarget, ErpAttendance, fetchErpAttendance, searchAttendanceTargets, SITE_SEARCH_PATH, targetKey } from '../../utils/erpAttendance';
 
 // 드래그 시 활성화 거리(px) - 클릭과 구분
 const DRAG_ACTIVATION_DISTANCE = 8;
 const DROPPABLE_PREFIX = 'cell-';
 const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토'];
 const HOLIDAY_COLOR = '#ca3626';
+// 시간관리 등록 · 진행 현황표와 같은 칸: 한 번 넣으면 이 탭을 닫을 때까지 같이 쓴다 (백업 파일엔 안 들어감)
+const SESSION_KEY = 'erp-session-input';
+// 이 탭에서 이미 ERP 에서 받아 온 「대상|기간」. 같은 화면을 다시 열 때 또 부르지 않는다 (↻ 는 무시하고 다시 받는다)
+const attendance_fetched = new Set<string>();
+
+/** 근태 한 줄: 이름 + 오후반차 처럼. 일정 칩과 달리 끌거나 누를 수 없다 */
+const AttendanceChip: React.FC<{ item: ErpAttendance; big?: boolean }> = ({ item, big }) => (
+  <Box
+    component="span"
+    onClick={(e) => e.stopPropagation()}
+    title={`${item.name} · ${item.kind} ${item.days}일${item.note ? ` · ${item.note}` : ''}`}
+    sx={{
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: 0.5,
+      maxWidth: '100%',
+      minHeight: big ? 32 : undefined,
+      px: 0.75,
+      py: big ? 0 : 0.25,
+      borderRadius: '4px',
+      border: '1px dashed',
+      borderColor: 'divider',
+      color: 'text.secondary',
+      fontSize: big ? 13 : '0.8rem',
+      whiteSpace: 'nowrap',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+      cursor: 'default',
+    }}
+  >
+    <EventBusyIcon sx={{ fontSize: big ? 16 : 14, flexShrink: 0 }} />
+    <Box component="span" sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+      {item.name} {item.label}
+    </Box>
+  </Box>
+);
 
 // ----------------------------------------------------------------------
 // Draggable event chip (날짜 이동용)
@@ -178,7 +231,7 @@ const DroppableCell: React.FC<DroppableCellProps> = ({
 const getWeekViewStart = (weeks: number) => addDays(getMonday(new Date()), -7 * Math.floor(weeks / 2));
 
 const DeployCalendar: React.FC = () => {
-  const { events, job_colors, weeks_to_show, view_mode, show_today, setViewMode, getJobColor, updateEvent, deleteEvent } =
+  const { events, job_colors, weeks_to_show, view_mode, show_today, setShowToday, setViewMode, getJobColor, updateEvent, deleteEvent, show_attendance, setShowAttendance, attendance_targets, setAttendanceTargets, attendance_records, attendance_fetched_at, replaceAttendance } =
     useDeployCalendarStore();
   const is_month_view = view_mode === 'month';
   const today_str = formatDateToString(new Date());
@@ -238,6 +291,158 @@ const DeployCalendar: React.FC = () => {
     return mondays.map((monday) => [0, 1, 2, 3, 4].map((day) => addDays(monday, day)));
   }, [is_month_view, month_anchor, start_date, weeks_to_show]);
   const total_weeks = date_range.length;
+
+  // ERP 근태(연차·반차). 상단 「근태」 스위치로 켜고, 부서·세션은 「근태 설정」 창에서 (부서는 설정 화면에서도)
+  const [session_input, setSessionInput] = useState(() => sessionStorage.getItem(SESSION_KEY) || '');
+  const [session_dialog, setSessionDialog] = useState(false);
+  const [session_draft, setSessionDraft] = useState('');
+  const [targets_draft, setTargetsDraft] = useState<AttendanceTarget[]>([]);
+  const [target_input, setTargetInput] = useState(''); // 칸에 치는 글자
+  const [target_options, setTargetOptions] = useState<AttendanceTarget[]>([]);
+  const [target_searching, setTargetSearching] = useState(false);
+  const [target_error, setTargetError] = useState('');
+  const [attendance_loading, setAttendanceLoading] = useState(false);
+  const [attendance_error, setAttendanceError] = useState('');
+  const erp_session = parseErpSession(session_input);
+  const range_from = date_range.length ? formatDateToString(date_range[0][0]) : '';
+  const range_to = date_range.length ? formatDateToString(date_range[date_range.length - 1][4]) : '';
+  const targets_key = attendance_targets.map(targetKey).join(',');
+
+  // ERP 에서 근태를 받아 저장소(IndexedDB)에 넣는다. 화면엔 저장소 값을 보여주므로 세션이 없어도 전에 받은 근태가 보인다
+  const loadAttendance = async (session: { sid: string; origin: string }, targets: AttendanceTarget[]) => {
+    if (!targets.length || !range_from) return;
+    const fetch_key = `${targets.map(targetKey).join(',')}|${range_from}|${range_to}`;
+    attendance_fetched.add(fetch_key);
+    setAttendanceLoading(true);
+    setAttendanceError('');
+    try {
+      // ERP 는 전표일자로 거른다. 여러 날 휴가는 첫날 전표에 몰려 있어(11/30 전표 = 11/30·12/1·12/2) 한 달 앞당겨 부르고,
+      // 근태일자(적요의 기간을 펼친 날)가 보는 기간 안인 것만 남긴다
+      const from8 = formatDateToString(addDays(new Date(range_from), -31)).replace(/-/g, '');
+      const lists = await Promise.all(
+        targets.map((t) =>
+          fetchErpAttendance(session, t, from8, range_to.replace(/-/g, '')).then((list) => list.map((a) => ({ ...a, target: targetKey(t) })))
+        )
+      );
+      const records = lists.flat().filter((a) => a.date >= range_from && a.date <= range_to);
+      replaceAttendance(targets.map(targetKey), range_from, range_to, records);
+    } catch (e) {
+      attendance_fetched.delete(fetch_key);
+      setAttendanceError((e as Error).message);
+    }
+    setAttendanceLoading(false);
+  };
+  // 세션이 있으면 처음 보는 기간을 저절로 받아 온다. 세션이 없으면 저장된 근태만
+  useEffect(() => {
+    if (!show_attendance || !attendance_targets.length || !erp_session || !range_from) return;
+    if (attendance_fetched.has(`${targets_key}|${range_from}|${range_to}`)) return;
+    loadAttendance(erp_session, attendance_targets);
+  }, [show_attendance, targets_key, erp_session?.sid, erp_session?.origin, range_from, range_to]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const attendance_by_date = useMemo(() => {
+    const keys = new Set(attendance_targets.map(targetKey));
+    const map = new Map<string, ErpAttendance[]>();
+    // 부서와 그 부서 사람을 같이 고르면 같은 근태가 두 번 저장된다 → 하나만
+    const seen = new Set<string>();
+    attendance_records.forEach((a) => {
+      const k = `${a.emp_cd}|${a.date}|${a.kind}|${a.label}`;
+      if (!keys.has(a.target) || seen.has(k)) return;
+      seen.add(k);
+      map.set(a.date, [...(map.get(a.date) || []), a]);
+    });
+    return map;
+  }, [attendance_records, targets_key]); // eslint-disable-line react-hooks/exhaustive-deps
+  const getAttendanceForDate = (date: Date) => (show_attendance ? attendance_by_date.get(formatDateToString(date)) || [] : []);
+  const has_attendance_in_view = date_range.flat().some((d) => getAttendanceForDate(d).length > 0);
+
+  // 근태 설정 창: 켜는 순간 대상이나 세션이 없으면 바로 연다. 켠 뒤엔 스위치 옆 ⚙ 로 다시 연다
+  const openAttendanceSettings = () => {
+    setSessionDraft(session_input);
+    setTargetsDraft(attendance_targets);
+    setTargetInput('');
+    setTargetOptions([]);
+    setTargetError('');
+    setSessionDialog(true);
+  };
+  const toggleAttendance = (on: boolean) => {
+    setShowAttendance(on);
+    if (on && !attendance_targets.length) openAttendanceSettings();
+  };
+  // ↻ 근태 새로고침: 세션이 있으면 바로 다시 받고, 없으면 근태 설정 창에서 세션을 받는다
+  const refreshAttendance = () => {
+    if (erp_session && attendance_targets.length) loadAttendance(erp_session, attendance_targets);
+    else openAttendanceSettings();
+  };
+  const closeAttendanceSettings = () => {
+    setSessionDialog(false);
+    if (!attendance_targets.length) setShowAttendance(false); // 대상 없이 닫으면 켤 수 없다
+  };
+  // 친 글자의 검색 결과가 하나뿐이면 목록에서 고르지 않아도 그 대상까지 넣는다 (예: "EFA" → EFA팀)
+  const pending_target = target_input.trim() && target_options.length === 1 ? target_options[0] : null;
+  const targets_to_save = pending_target && !targets_draft.some((t) => targetKey(t) === targetKey(pending_target))
+    ? [...targets_draft, pending_target]
+    : targets_draft;
+  const can_apply_attendance = !!parseErpSession(session_draft) && targets_to_save.length > 0;
+  const applyAttendanceSettings = () => {
+    const session = parseErpSession(session_draft);
+    if (!can_apply_attendance || !session) return;
+    sessionStorage.setItem(SESSION_KEY, session_draft);
+    setSessionInput(session_draft);
+    setAttendanceTargets(targets_to_save);
+    setShowAttendance(true);
+    setSessionDialog(false);
+    loadAttendance(session, targets_to_save); // 새로 받는다 (전에 받은 기간이어도)
+  };
+  // 대상 칸에 칠 때마다 부서·사원 검색 (0.3초 쉬면). 창이 열려 있고 세션이 있을 때만
+  const draft_session = parseErpSession(session_draft);
+  useEffect(() => {
+    const q = target_input.trim();
+    if (!session_dialog || !draft_session || !q) {
+      setTargetOptions([]);
+      return;
+    }
+    let alive = true;
+    const t = window.setTimeout(() => {
+      setTargetSearching(true);
+      searchAttendanceTargets(draft_session, q)
+        .then((found) => {
+          if (!alive) return;
+          setTargetOptions(found);
+          setTargetError(found.length ? '' : `「${q}」 부서·사원을 찾지 못했습니다`);
+        })
+        .catch((e) => alive && setTargetError((e as Error).message))
+        .finally(() => alive && setTargetSearching(false));
+    }, 300);
+    return () => {
+      alive = false;
+      window.clearTimeout(t);
+    };
+  }, [target_input, session_dialog, draft_session?.sid, draft_session?.origin]); // eslint-disable-line react-hooks/exhaustive-deps
+  const targets_label = attendance_targets.map((t) => t.name).join(', ');
+  let attendance_notice: React.ReactNode = null;
+  if (show_attendance && attendance_error) {
+    attendance_notice = (
+      <Alert severity="warning" sx={{ mb: 1.5 }} action={<Button size="small" onClick={openAttendanceSettings}>근태 설정</Button>}>
+        근태를 불러오지 못했습니다{has_attendance_in_view ? ' (저장된 근태를 보여줍니다)' : ''} - {attendance_error}
+      </Alert>
+    );
+  } else if (show_attendance && !attendance_targets.length) {
+    attendance_notice = (
+      <Alert severity="info" sx={{ mb: 1.5 }} action={<Button size="small" onClick={openAttendanceSettings}>근태 설정</Button>}>
+        근태를 보려면 조회 대상(부서·사원)을 고르세요.
+      </Alert>
+    );
+  } else if (show_attendance && !erp_session && !has_attendance_in_view) {
+    attendance_notice = (
+      <Alert severity="info" sx={{ mb: 1.5 }} action={<Button size="small" startIcon={<RefreshIcon />} onClick={refreshAttendance}>근태 새로고침</Button>}>
+        이 기간에 저장된 근태가 없습니다. ERP 세션을 넣고 새로 불러오세요.
+      </Alert>
+    );
+  }
+  const fetched_label = attendance_fetched_at
+    ? `${new Date(attendance_fetched_at).getMonth() + 1}/${new Date(attendance_fetched_at).getDate()} ${String(new Date(attendance_fetched_at).getHours()).padStart(2, '0')}:${String(new Date(attendance_fetched_at).getMinutes()).padStart(2, '0')}`
+    : '';
+
 
   // 월 보기에서 앞뒤 달 날짜(첫 주·마지막 주에 섞인 날)는 흐리게
   const isOtherMonth = (date: Date) => is_month_view && date.getMonth() !== month_anchor.getMonth();
@@ -355,7 +560,8 @@ const DeployCalendar: React.FC = () => {
   const handleContextMenu = (e: React.MouseEvent, event: DeployEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setContextMenu({ x: e.clientX, y: e.clientY, event });
+    // 확대(zoom)된 화면에서도 메뉴가 마우스 자리에 뜨게
+    setContextMenu({ x: unzoom(e.clientX), y: unzoom(e.clientY), event });
   };
   
   const handleDeleteEvent = () => {
@@ -408,6 +614,102 @@ const DeployCalendar: React.FC = () => {
         date={selected_date}
         event={selected_event}
       />
+
+      {/* 근태 설정: ERP 세션 + 조회 대상 부서 */}
+      <Dialog open={session_dialog} onClose={closeAttendanceSettings} maxWidth="sm" fullWidth>
+        <DialogTitle>근태 설정</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+            고른 부서·사원의 연차·반차(ERP 근태현황)를 근태일자 칸에 보여줍니다. 불러온 근태는 저장되어 세션이 없어도 보입니다.
+            ERP 세션은 이 탭을 닫으면 지워지고 백업 파일에도 들어가지 않습니다.
+          </Typography>
+          <TextField
+            autoFocus={!session_draft}
+            fullWidth
+            size="small"
+            label="ERP 세션 (로그인된 ERP 주소창 URL 전체 또는 ec_req_sid)"
+            value={session_draft}
+            onChange={(e) => setSessionDraft(e.target.value)}
+            error={!!session_draft.trim() && !parseErpSession(session_draft)}
+            helperText={session_draft.trim() && !parseErpSession(session_draft) ? 'ec_req_sid 를 찾지 못했습니다' : ' '}
+          />
+          <Autocomplete<AttendanceTarget, true, false, true>
+            multiple
+            freeSolo
+            autoHighlight
+            filterSelectedOptions
+            options={target_options}
+            value={targets_draft}
+            filterOptions={(options) => options} // 걸러 내기는 ERP 검색이 한다
+            getOptionLabel={(o) => (typeof o === 'string' ? o : o.name)}
+            isOptionEqualToValue={(o, v) => targetKey(o) === targetKey(v)}
+            inputValue={target_input}
+            onInputChange={(_, value, reason) => {
+              if (reason === 'input') setTargetInput(value);
+              if (reason === 'reset') setTargetInput('');
+            }}
+            onChange={(_, values) => {
+              // 목록에 없는 글자를 Enter 로 넣으면 부서명으로 본다
+              const next = values.map((v) => (typeof v === 'string' ? { type: 'site' as const, code: v.trim(), name: v.trim() } : v)).filter((t) => t.code);
+              setTargetsDraft(next.filter((t, i) => next.findIndex((x) => targetKey(x) === targetKey(t)) === i));
+              setTargetInput('');
+            }}
+            loading={target_searching}
+            noOptionsText="부서명이나 사원 이름 일부를 입력하세요"
+            renderOption={(props, o) => (
+              <li {...props} key={targetKey(o)}>
+                <Box>
+                  <Typography sx={{ fontSize: 14 }}>
+                    {o.name}
+                    <Typography component="span" sx={{ fontSize: 11, color: 'text.secondary', ml: 0.75 }}>
+                      {o.type === 'site' ? '부서' : '사원'}
+                    </Typography>
+                  </Typography>
+                  {o.sub && <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>{o.sub}</Typography>}
+                </Box>
+              </li>
+            )}
+            renderTags={(values, getTagProps) =>
+              values.map((t, index) => (
+                <Chip {...getTagProps({ index })} key={targetKey(t)} size="small" label={`${t.name}${t.type === 'emp' ? ' (사원)' : ''}`} />
+              ))
+            }
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                autoFocus={!!session_draft}
+                size="small"
+                label="조회 대상 (부서·사원)"
+                placeholder={targets_draft.length ? '' : '부서명이나 사원 이름 일부 (예: EFA, 엄지희)'}
+                error={!!target_error}
+                helperText={
+                  target_error ||
+                  (pending_target && !targets_draft.some((t) => targetKey(t) === targetKey(pending_target))
+                    ? `검색 결과 「${pending_target.name}」 도 함께 저장합니다`
+                    : SITE_SEARCH_PATH
+                      ? '부서·사원을 여러 개 고를 수 있습니다'
+                      : '사원은 검색해서 고르고, 부서는 이름을 정확히 적고 Enter (예: EFA팀)')
+                }
+                InputProps={{
+                  ...params.InputProps,
+                  endAdornment: (
+                    <>
+                      {target_searching && <CircularProgress size={14} />}
+                      {params.InputProps.endAdornment}
+                    </>
+                  ),
+                }}
+              />
+            )}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeAttendanceSettings}>닫기</Button>
+          <Button variant="contained" disabled={!can_apply_attendance} onClick={applyAttendanceSettings}>
+            근태 불러오기
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* 잡 색상 설정 모달 */}
       <JobColorManager
@@ -500,6 +802,38 @@ const DeployCalendar: React.FC = () => {
             <MenuItem
               onClick={() => {
                 setMoreAnchor(null);
+                setShowToday(!show_today);
+              }}
+              sx={{ minHeight: 44 }}
+            >
+              <ListItemIcon><TodayIcon fontSize="small" /></ListItemIcon>
+              {show_today ? '오늘 강조 끄기' : '오늘 강조 켜기'}
+            </MenuItem>
+            <MenuItem
+              onClick={() => {
+                setMoreAnchor(null);
+                toggleAttendance(!show_attendance);
+              }}
+              sx={{ minHeight: 44 }}
+            >
+              <ListItemIcon><EventBusyIcon fontSize="small" /></ListItemIcon>
+              {show_attendance ? '근태 숨기기' : '근태 보기'}
+            </MenuItem>
+            {show_attendance && (
+              <MenuItem
+                onClick={() => {
+                  setMoreAnchor(null);
+                  refreshAttendance();
+                }}
+                sx={{ minHeight: 44 }}
+              >
+                <ListItemIcon><RefreshIcon fontSize="small" /></ListItemIcon>
+                근태 새로고침
+              </MenuItem>
+            )}
+            <MenuItem
+              onClick={() => {
+                setMoreAnchor(null);
                 handleCopyHtml();
               }}
               sx={{ minHeight: 44 }}
@@ -509,6 +843,8 @@ const DeployCalendar: React.FC = () => {
             </MenuItem>
           </Menu>
         </Box>
+
+        {attendance_notice}
 
         {/* 주차별 아젠다 */}
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -616,6 +952,9 @@ const DeployCalendar: React.FC = () => {
                                 </Box>
                               );
                             })}
+                            {getAttendanceForDate(date).map((a) => (
+                              <AttendanceChip key={`${a.emp_cd}-${a.kind}-${a.label}`} item={a} big />
+                            ))}
                           </Box>
                           <IconButton
                             aria-label={`${formatDateToDisplay(date)} 이벤트 추가`}
@@ -695,6 +1034,45 @@ const DeployCalendar: React.FC = () => {
               <CalendarViewMonthIcon fontSize="small" />월
             </ToggleButton>
           </ToggleButtonGroup>
+
+          {/* 오늘 칸 강조. 화면을 캡처해 공유할 때 끈다 (HTML 복사에는 켜져 있어도 안 들어감) */}
+          <Tooltip title="오늘 칸에 「오늘」 표시와 색을 넣습니다. 화면을 캡처해 공유할 때는 끄세요">
+            <FormControlLabel
+              control={<Switch size="small" checked={show_today} onChange={(e) => setShowToday(e.target.checked)} />}
+              label={<Box component="span" sx={{ fontSize: 14 }}>오늘</Box>}
+              sx={{ ml: 1, mr: 0 }}
+            />
+          </Tooltip>
+
+          {/* 근태(연차·반차) 보기. 켜면 부서·세션이 없을 때 근태 설정 창이 뜬다 */}
+          <Tooltip title={targets_label ? `${targets_label} 연차·반차 (ERP 근태현황)` : '켜면 조회 대상(부서·사원)을 고릅니다'}>
+            <FormControlLabel
+              control={<Switch size="small" checked={show_attendance} onChange={(e) => toggleAttendance(e.target.checked)} />}
+              label={
+                <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, fontSize: 14 }}>
+                  근태
+                  {attendance_loading && <CircularProgress size={12} />}
+                </Box>
+              }
+              sx={{ ml: 1, mr: 0 }}
+            />
+          </Tooltip>
+          {show_attendance && (
+            <>
+              <Tooltip title={`근태 새로고침 (ERP에서 다시 받기)${fetched_label ? ` · 마지막 ${fetched_label}` : ''}`}>
+                <span>
+                  <IconButton size="small" aria-label="근태 새로고침" onClick={refreshAttendance} disabled={attendance_loading}>
+                    <RefreshIcon fontSize="small" />
+                  </IconButton>
+                </span>
+              </Tooltip>
+              <Tooltip title="근태 설정 (조회 대상 · ERP 세션)">
+                <IconButton size="small" aria-label="근태 설정" onClick={openAttendanceSettings}>
+                  <SettingsIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            </>
+          )}
         </Box>
         
         {/* 버튼들 */}
@@ -719,8 +1097,10 @@ const DeployCalendar: React.FC = () => {
         </Box>
       </Box>
       
+      {attendance_notice}
+
       {/* 캘린더 그리드 - 열 너비 고정, 드래그앤드롭 */}
-      <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+      <DndContext modifiers={ZOOM_MODIFIERS} sensors={sensors} onDragEnd={handleDragEnd}>
         <Paper
           elevation={0}
           sx={{
@@ -814,6 +1194,7 @@ const DeployCalendar: React.FC = () => {
               {/* 데이터 행 (이벤트) - Droppable 셀 */}
               {week.map((date, day_idx) => {
                 const day_events = getEventsForDate(date);
+                const day_attendance = getAttendanceForDate(date);
                 return (
                   <DroppableCell
                     key={`b-${day_idx}`}
@@ -824,7 +1205,7 @@ const DeployCalendar: React.FC = () => {
                     total_weeks={total_weeks}
                     onCellClick={handleCellClick}
                   >
-                    {day_events.length === 0 ? (
+                    {day_events.length === 0 && day_attendance.length === 0 ? (
                       <Box
                         sx={{
                           display: 'flex',
@@ -874,6 +1255,9 @@ const DeployCalendar: React.FC = () => {
                             />
                           );
                         })}
+                        {day_attendance.map((a) => (
+                          <AttendanceChip key={`${a.emp_cd}-${a.kind}-${a.label}`} item={a} />
+                        ))}
                       </Box>
                     )}
                   </DroppableCell>

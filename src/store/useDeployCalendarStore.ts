@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { idbStorage } from '../utils/storage';
 import { loadPaletteSettings, getAdjustedPalette } from '../utils/colorPalette';
 import { useTimerStore } from './useTimerStore';
+import type { AttendanceTarget, ErpAttendance } from '../utils/erpAttendance';
 
 // ----------------------------------------------------------------------
 // Types
@@ -23,7 +24,10 @@ export interface JobColor {
   color: string;          // "#b3e5fc"
 }
 
-/** 배포 캘린더에 한 번에 표시할 주 수 (1~4) */
+/** 저장해 두는 근태 한 건 (어느 조회 대상에서 왔는지 target 키를 단다) */
+export type StoredAttendance = ErpAttendance & { target: string };
+
+/** 캘린더에 한 번에 표시할 주 수 (1~4) */
 export const DEPLOY_CALENDAR_WEEKS_MIN = 1;
 export const DEPLOY_CALENDAR_WEEKS_MAX = 4;
 export const DEPLOY_CALENDAR_WEEKS_DEFAULT = 2;
@@ -40,6 +44,14 @@ interface DeployCalendarState {
   view_mode: DeployCalendarViewMode;
   /** 오늘 날짜 강조 표시. 설정에서 끄고 켠다 */
   show_today: boolean;
+  /** ERP 근태(연차·반차) 표시. 캘린더 상단 스위치 */
+  show_attendance: boolean;
+  /** 근태를 볼 대상: 부서·사원 여러 개 (ERP 근태현황 조회 조건) */
+  attendance_targets: AttendanceTarget[];
+  /** 마지막으로 불러온 근태 (대상 키 target 이 붙어 있다). 세션이 없어도 이걸 보여준다 */
+  attendance_records: StoredAttendance[];
+  /** 마지막으로 근태를 불러온 시각 (ms) */
+  attendance_fetched_at: number;
 
   // --- Actions ---
   addEvent: (event: Omit<DeployEvent, 'id'>) => string;
@@ -49,6 +61,10 @@ interface DeployCalendarState {
   setWeeksToShow: (weeks: number) => void;
   setViewMode: (mode: DeployCalendarViewMode) => void;
   setShowToday: (show: boolean) => void;
+  setShowAttendance: (show: boolean) => void;
+  setAttendanceTargets: (targets: AttendanceTarget[]) => void;
+  /** from~to(YYYY-MM-DD) 근태일자의 그 대상들 근태를 새로 받은 것으로 바꾼다 */
+  replaceAttendance: (target_keys: string[], from: string, to: string, records: StoredAttendance[]) => void;
 
   // 잡 색상 관리
   setJobColor: (job_code: string, color: string) => void;
@@ -85,9 +101,23 @@ export const useDeployCalendarStore = create<DeployCalendarState>()(
       weeks_to_show: DEPLOY_CALENDAR_WEEKS_DEFAULT,
       view_mode: 'week',
       show_today: true,
+      show_attendance: false,
+      attendance_targets: [],
+      attendance_records: [],
+      attendance_fetched_at: 0,
 
       setViewMode: (mode) => set({ view_mode: mode }),
       setShowToday: (show) => set({ show_today: show }),
+      setShowAttendance: (show) => set({ show_attendance: show }),
+      setAttendanceTargets: (targets) => set({ attendance_targets: targets }),
+      replaceAttendance: (target_keys, from, to, records) =>
+        set((state) => ({
+          attendance_records: [
+            ...state.attendance_records.filter((r) => !(target_keys.includes(r.target) && r.date >= from && r.date <= to)),
+            ...records,
+          ],
+          attendance_fetched_at: Date.now(),
+        })),
 
       setWeeksToShow: (weeks) => set(() => ({
         weeks_to_show: Math.max(DEPLOY_CALENDAR_WEEKS_MIN, Math.min(DEPLOY_CALENDAR_WEEKS_MAX, Math.floor(weeks))),
@@ -160,6 +190,17 @@ export const useDeployCalendarStore = create<DeployCalendarState>()(
     {
       name: STORAGE_KEY,
       storage: createJSONStorage(() => idbStorage),
+      // v1: 근태 부서 하나(attendance_site) → 대상 여러 개(부서·사원)
+      version: 1,
+      migrate: (persisted, version) => {
+        const state = persisted as Partial<DeployCalendarState> & { attendance_site?: string };
+        if (version < 1 && state) {
+          const site = (state.attendance_site || '').trim();
+          state.attendance_targets = site ? [{ type: 'site', code: site, name: site }] : [];
+          delete state.attendance_site;
+        }
+        return state as DeployCalendarState;
+      },
     }
   )
 );

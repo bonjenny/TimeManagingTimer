@@ -5,6 +5,7 @@ import { loadPaletteSettings } from '../utils/colorPalette';
 import HalloweenEggs from './HalloweenEggs';
 import HalloweenScene from './HalloweenScene';
 import { useTimerStore } from '../store/useTimerStore';
+import { unzoom } from '../utils/zoom'; // 화면 확대(zoom) 중에도 유령 손에 가짜 커서를 붙이기
 
 // 할로윈 팔레트를 고르면 켜지는 장식과 이스터에그.
 // 0) 배경: 밤하늘 · 달 · 성 · 호박 (HalloweenScene)
@@ -303,7 +304,7 @@ const HalloweenEffects: React.FC = () => {
       }
       if (cursor) {
         const r = ghost.getBoundingClientRect();
-        cursor.style.transform = `translate(${r.left + r.width * 0.55}px, ${r.top + r.height * 0.7}px)`;
+        cursor.style.transform = `translate(${unzoom(r.left + r.width * 0.55)}px, ${unzoom(r.top + r.height * 0.7)}px)`;
       }
       frame = requestAnimationFrame(follow);
     };

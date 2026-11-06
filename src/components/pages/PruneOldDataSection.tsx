@@ -84,7 +84,7 @@ const PruneOldDataSection: React.FC<Props> = ({ onBackup }) => {
       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
         {counts
           ? `삭제 대상: 타이머 기록 ${counts.logs}건 · 휴지통 ${counts.trash}건 · 시간관리 행 ${counts.rows}건 (선택한 날짜 당일 기록은 남습니다)`
-          : '백업 파일이 너무 커지면 지난 기록을 지워 용량을 줄일 수 있습니다. 프리셋·설정·배포 캘린더는 그대로 남습니다.'}
+          : '백업 파일이 너무 커지면 지난 기록을 지워 용량을 줄일 수 있습니다. 프리셋·설정·캘린더는 그대로 남습니다.'}
       </Typography>
     </Box>
   );
