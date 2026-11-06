@@ -76,7 +76,8 @@ function applyWindowFlags() {
   if (!win) return;
   win.setAlwaysOnTop(settings.alwaysOnTop);
   // 클릭 통과: 위젯 아래 바탕화면·창을 그대로 누를 수 있다 (트레이에서 풀기)
-  win.setIgnoreMouseEvents(settings.clickThrough, { forward: true });
+  // forward 는 끈다. 켜면 전역 마우스 훅으로 움직임이 계속 들어와 다른 창에 가려져 있어도 칩 툴팁이 뜬다
+  win.setIgnoreMouseEvents(settings.clickThrough);
 }
 
 function buildTrayMenu() {

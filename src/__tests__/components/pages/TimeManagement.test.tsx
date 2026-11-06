@@ -618,6 +618,26 @@ describe('TimeManagement 컴포넌트', () => {
       const b = useTimeManagementStore.getState().rows.find((r) => r.id === 'b')!;
       expect(b).toMatchObject({ project_name: 'A26_05557', work_type: '개발', schedule_name: '조사', category_code: '17', category_name: '분석', end_date: '2026-10-30', time_minutes: 15, note: '내 비고' });
     });
+
+    it('카테고리 칸: 치면 목록이 좁혀지고 Enter 로 고르며, 목록에 없는 코드는 친 그대로 저장', () => {
+      useTimeManagementStore.setState({
+        rows: [{ ...base, id: 'a', project_name: '', work_type: '작업', schedule_name: '', category_code: '9999', category_name: '기타', time_minutes: 0, end_date: date_string }],
+      });
+      renderWithTheme(<TimeManagement />);
+      const code_cell = () => within(screen.getAllByRole('row')[1]).getAllByRole('cell')[4];
+      fireEvent.click(within(code_cell()).getByText('9999'));
+      const input = within(code_cell()).getByLabelText('카테고리 코드');
+      fireEvent.change(input, { target: { value: '분석' } });
+      expect(screen.getAllByRole('option').map((o) => o.textContent)).toContain('17 - 분석');
+      fireEvent.keyDown(input, { key: 'Enter' });
+      expect(useTimeManagementStore.getState().rows[0]).toMatchObject({ category_code: '17', category_name: '분석' });
+
+      fireEvent.click(within(code_cell()).getByText('17'));
+      const again = within(code_cell()).getByLabelText('카테고리 코드');
+      fireEvent.change(again, { target: { value: '4242' } });
+      fireEvent.blur(again);
+      expect(useTimeManagementStore.getState().rows[0]).toMatchObject({ category_code: '4242', category_name: '' });
+    });
   });
 
   describe('일괄 변경 · 필수값 · 작업 검색 · 줄 가져오기', () => {

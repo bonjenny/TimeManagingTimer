@@ -351,6 +351,7 @@ const TimeManagement: React.FC = () => {
     setSelectedField(field);
     setEditingCell({ row_id: row.id, field });
     setProjectQuery('');
+    setCategoryTyped(false);
     setEditValue(field === 'end_date' ? row.end_date || row.date : String(row[field]));
   };
 
@@ -665,48 +666,60 @@ const TimeManagement: React.FC = () => {
     setSelectMode(false);
   };
 
+  // 카테고리 칸: 코드나 이름을 그냥 쳐도 되고, 누르면 목록이 떠서 고를 수도 있다.
+  // 치는 동안 목록이 코드 앞자리·이름 포함으로 좁혀지고, Enter 는 맨 위 후보를 고른다. 목록에 없는 값은 친 그대로 저장
+  const [category_typed, setCategoryTyped] = useState(false);
+  const saveCategoryText = (field: 'category_code' | 'category_name', text: string) => {
+    const typed = text.trim();
+    const row_id = editing_cell?.row_id;
+    handleCancelEdit();
+    if (!row_id || !typed) return;
+    const code = CATEGORY_CODE_MAP[typed] ? typed : getCategoryCode(typed);
+    updateRow(row_id, CATEGORY_CODE_MAP[code] ? getFieldPatch('category_code', code) : getFieldPatch(field, typed));
+  };
+  const renderCategoryEditor = (field: 'category_code' | 'category_name') => (
+    <Autocomplete<string, false, false, true>
+      size="small"
+      freeSolo
+      openOnFocus
+      autoHighlight
+      options={getAllCategoryCodes()}
+      inputValue={edit_value}
+      onInputChange={(_e, value, reason) => {
+        if (reason !== 'input') return;
+        setCategoryTyped(true);
+        setEditValue(value);
+      }}
+      // 막 열었을 땐 전체 목록, 치기 시작하면 좁힌다
+      filterOptions={(codes, state) => {
+        const query = state.inputValue.trim().toLowerCase();
+        if (!category_typed || !query) return codes;
+        return codes.filter((code) => code.startsWith(query) || getCategoryName(code).toLowerCase().includes(query));
+      }}
+      getOptionLabel={(code) => (field === 'category_code' ? code : getCategoryName(code) || code)}
+      onChange={(_e, value) => value != null && saveCategoryText(field, value)}
+      onBlur={() => saveCategoryText(field, edit_value)}
+      onKeyDown={(e) => e.key === 'Escape' && handleCancelEdit()}
+      renderOption={(props, code) => (
+        <li {...props} key={code}>
+          {code} - {getCategoryName(code)}
+        </li>
+      )}
+      renderInput={(params) => (
+        // 열면 기존 값이 선택돼 있어 바로 치면 덮어쓴다
+        <TextField {...params} autoFocus placeholder="코드·이름" onFocus={(e) => (e.target as HTMLInputElement).select?.()} inputProps={{ ...params.inputProps, 'aria-label': field === 'category_code' ? '카테고리 코드' : '카테고리명' }} />
+      )}
+      slotProps={{ popper: { sx: { minWidth: 220 }, placement: 'bottom-start' } }}
+      sx={{ minWidth: field === 'category_code' ? 100 : 140 }}
+    />
+  );
+
   const renderCell = (row: TimeManagementRow, field: keyof TimeManagementRow) => {
     const is_editing = editing_cell?.row_id === row.id && editing_cell?.field === field;
 
     if (is_editing) {
-      if (field === 'category_code') {
-        return (
-          <Select
-            value={edit_value}
-            onChange={(e) => setEditValue(e.target.value)}
-            onBlur={handleSaveEdit}
-            onKeyDown={handleKeyDown}
-            size="small"
-            autoFocus
-            sx={{ minWidth: 80 }}
-          >
-            {getAllCategoryCodes().map((code) => (
-              <MenuItem key={code} value={code}>
-                {code} - {getCategoryName(code)}
-              </MenuItem>
-            ))}
-          </Select>
-        );
-      }
-
-      if (field === 'category_name') {
-        return (
-          <Select
-            value={edit_value}
-            onChange={(e) => setEditValue(e.target.value)}
-            onBlur={handleSaveEdit}
-            onKeyDown={handleKeyDown}
-            size="small"
-            autoFocus
-            sx={{ minWidth: 100 }}
-          >
-            {getAllCategoryNames().map((name) => (
-              <MenuItem key={name} value={name}>
-                {name}
-              </MenuItem>
-            ))}
-          </Select>
-        );
+      if (field === 'category_code' || field === 'category_name') {
+        return renderCategoryEditor(field);
       }
 
       if (field === 'project_name') {
