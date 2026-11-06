@@ -122,6 +122,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
     tips: [
       '이벤트 창은 열 때마다 새로 초기화되어 이전에 쓴 값이 남지 않습니다.',
       '「오래된 기록 정리」로 기록을 지워도 캘린더 이벤트는 남습니다.',
+      '바탕화면 위젯: 자동 백업 폴더를 정해 두면 캘린더가 바뀔 때마다 그 폴더에 timekeeper-calendar-widget.json 을 씁니다. 「TimeKeeper 캘린더 위젯」(설치형)이 이 파일을 읽어 바탕화면에 반투명 캘린더로 보여줍니다.',
     ],
   },
 

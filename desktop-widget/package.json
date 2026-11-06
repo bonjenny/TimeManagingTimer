@@ -1,0 +1,24 @@
+{
+  "name": "timekeeper-calendar-widget",
+  "version": "1.0.1",
+  "description": "TimeKeeper 캘린더 바탕화면 위젯 (투명 창). 앱이 자동 백업 폴더에 쓰는 timekeeper-calendar-widget.json 을 지켜보다 그린다",
+  "main": "main.js",
+  "private": true,
+  "author": "Jihee Eom",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win portable"
+  },
+  "devDependencies": {
+    "electron": "^45.2.3",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "com.timekeeper.calendarwidget",
+    "productName": "TimeKeeperCalendarWidget",
+    "files": ["main.js", "preload.js", "snapshot.js", "holidays.json", "renderer/**", "icon.png"],
+    "win": { "target": "portable", "icon": "icon.png" },
+    "portable": { "artifactName": "TimeKeeper-캘린더-위젯-${version}.exe" },
+    "directories": { "output": "dist" }
+  }
+}

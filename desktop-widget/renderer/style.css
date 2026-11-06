@@ -1,0 +1,133 @@
+/* 바탕화면 위에 얹는 반투명 캘린더. 배경만 투명하게 하고 글자는 그대로 (--bg-alpha 를 위젯이 바꾼다) */
+:root {
+  --bg-alpha: 0.55;
+  --line: rgba(255, 255, 255, 0.22);
+  --text: #ffffff;
+  --muted: rgba(255, 255, 255, 0.7);
+  --holiday: #ff8a80;
+  --saturday: #8ab4ff;
+  --today: #ffd54f;
+}
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  height: 100%;
+  background: transparent;
+  color: var(--text);
+  font-family: 'Pretendard', 'Malgun Gothic', sans-serif;
+  font-size: 12px;
+  overflow: hidden;
+  user-select: none;
+}
+/* 라이트: 밝은 판에 진한 글자. 어두운 배경화면에서도 읽히게 글자 그림자는 흰빛 */
+:root[data-theme='light'] {
+  --panel: 255, 255, 255;
+  --line: rgba(0, 0, 0, 0.14);
+  --text: #1f2430;
+  --muted: rgba(31, 36, 48, 0.65);
+  --holiday: #d32f2f;
+  --saturday: #1e63d6;
+  --today: #f59e0b;
+  --shadow: 0 1px 2px rgba(255, 255, 255, 0.85);
+  --btn: rgba(0, 0, 0, 0.06);
+  --btn-hover: rgba(0, 0, 0, 0.14);
+  --menu: rgba(255, 255, 255, 0.97);
+}
+:root, :root[data-theme='dark'] {
+  --panel: 16, 22, 40;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.75); /* 밝은 배경화면에서도 읽히게 */
+  --btn: rgba(255, 255, 255, 0.08);
+  --btn-hover: rgba(255, 255, 255, 0.2);
+  --menu: rgba(16, 22, 40, 0.95);
+}
+.panel {
+  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  border-radius: 10px;
+  background: rgba(var(--panel), var(--bg-alpha));
+  border: 1px solid var(--line);
+  color: var(--text);
+  text-shadow: var(--shadow);
+}
+/* 머리: 끌어서 창을 옮긴다. 버튼은 끌기 대신 누르기 */
+.head {
+  -webkit-app-region: drag;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px 6px 14px;
+}
+.title { font-size: 16px; font-weight: 700; letter-spacing: 0.5px; }
+.tools { display: flex; align-items: center; gap: 4px; -webkit-app-region: no-drag; }
+.tools button, .menu button {
+  background: var(--btn);
+  border: 1px solid transparent;
+  color: var(--text);
+  border-radius: 6px;
+  padding: 2px 8px;
+  font: inherit;
+  cursor: pointer;
+}
+.tools button:hover, .menu button:hover { background: var(--btn-hover); }
+.opacity { display: flex; align-items: center; gap: 2px; margin: 0 4px; color: var(--muted); }
+.opacity input { width: 70px; accent-color: #9ecbff; }
+.weekdays, .grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.weekdays { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.weekdays div { text-align: center; padding: 4px 0; font-weight: 600; color: var(--muted); }
+.weekdays .sun { color: var(--holiday); }
+.weekdays .sat { color: var(--saturday); }
+.grid { flex: 1; min-height: 0; grid-auto-rows: minmax(0, 1fr); } /* min-height 0: 창을 줄이면 칸도 줄고 넘치는 칩은 +N */
+.cell {
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  padding: 3px 4px;
+  overflow: hidden;
+  min-width: 0;
+}
+.cell:nth-child(7n) { border-right: none; }
+.cell.other { opacity: 0.45; }
+.cell.today { box-shadow: inset 0 0 0 2px var(--today); background: rgba(255, 213, 79, 0.08); }
+.day { display: flex; gap: 4px; align-items: baseline; margin-bottom: 2px; white-space: nowrap; overflow: hidden; }
+.num { font-weight: 700; font-size: 13px; }
+.cell.sun .num, .cell.holiday .num { color: var(--holiday); }
+.cell.sat .num { color: var(--saturday); }
+.hname { color: var(--holiday); font-size: 11px; overflow: hidden; text-overflow: ellipsis; }
+.chip {
+  display: block;
+  margin-top: 2px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 11px;
+}
+.chip.event { color: #111; text-shadow: none; }
+.chip.holiday-ev { color: var(--holiday); padding-left: 0; }
+.chip.att { border: 1px dashed var(--muted); color: var(--text); }
+.more { color: var(--muted); font-size: 11px; margin-top: 1px; }
+.foot { padding: 4px 10px 6px; color: var(--muted); font-size: 11px; display: flex; justify-content: space-between; }
+.menu {
+  position: absolute;
+  top: 36px;
+  right: 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
+  border-radius: 8px;
+  background: var(--menu);
+  border: 1px solid var(--line);
+  -webkit-app-region: no-drag;
+}
+.hidden { display: none; }
+.empty {
+  grid-column: 1 / -1;
+  align-self: center;
+  text-align: center;
+  color: var(--muted);
+  line-height: 1.8;
+  padding: 20px;
+}

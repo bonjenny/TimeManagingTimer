@@ -31,6 +31,7 @@ import { useScheduledTaskWatcher } from './hooks/useScheduledTaskWatcher';
 const HALLOWEEN_LIGHT_PRIMARY = '#e8590c'; // 호박 주황 (흰 글씨가 읽히는 진하기)
 const HALLOWEEN_LIGHT_ACCENT = '#7c3aed';
 import { checkAndRunAutoBackup } from './utils/autoBackup';
+import { startWidgetSnapshot } from './utils/widgetSnapshot';
 import MigrationNoticeDialog from './components/common/MigrationNoticeDialog';
 import GithubReturnNoticeDialog from './components/common/GithubReturnNoticeDialog';
 
@@ -159,6 +160,9 @@ function App() {
     const day = String(selectedDate.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
   };
+
+  // 바탕화면 캘린더 위젯용 스냅숏: 캘린더 값이 바뀌면 자동 백업 폴더에 쓴다 (폴더·권한 없으면 건너뜀)
+  useEffect(() => startWidgetSnapshot(), []);
 
   // 저장된 테마 및 팔레트 적용 (초기 로드)
   useEffect(() => {

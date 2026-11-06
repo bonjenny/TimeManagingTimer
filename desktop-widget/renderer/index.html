@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'" />
+  <title>TimeKeeper 캘린더</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="panel" class="panel">
+    <header class="head">
+      <div class="title" id="title"></div>
+      <div class="tools">
+        <button id="prev" title="이전 달">‹</button>
+        <button id="today" title="이번 달">오늘</button>
+        <button id="next" title="다음 달">›</button>
+        <label class="opacity" title="배경 진하기">
+          <span>◐</span>
+          <input id="opacity" type="range" min="0" max="100" step="5" />
+        </label>
+        <button id="theme" title="라이트 / 다크">☀</button>
+        <button id="menu" title="폴더 바꾸기 · TimeKeeper 열기">⋯</button>
+        <button id="hide" title="숨기기 (트레이 아이콘을 누르면 다시 보임)">✕</button>
+      </div>
+    </header>
+    <div class="weekdays" id="weekdays"></div>
+    <div class="grid" id="grid"></div>
+    <footer class="foot" id="foot"></footer>
+    <div class="menu hidden" id="menuBox">
+      <button id="pickFolder">자동 백업 폴더 바꾸기…</button>
+      <button id="openApp">TimeKeeper 열기</button>
+    </div>
+  </div>
+  <script src="widget.js"></script>
+</body>
+</html>
