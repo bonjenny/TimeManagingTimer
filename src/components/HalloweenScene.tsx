@@ -1,5 +1,6 @@
 import React from 'react';
 import { Box, GlobalStyles } from '@mui/material';
+import { sceneGlobalStyles, SCENE_BOX_SX } from './sceneStyles';
 
 // 할로윈 팔레트의 배경: 밤하늘 · 달 · 언덕 위 성 · 마른 나무 · 묘비 · 불 켜진 호박.
 // 화면 맨 뒤(z-index -1)에 깔리고 클릭은 통과한다. 카드는 제 배경색이 있어 글자는 그대로 읽힌다.
@@ -31,57 +32,36 @@ const HalloweenScene: React.FC<{ isDark: boolean }> = ({ isDark }) => {
   return (
     <>
       <GlobalStyles
-        styles={{
-          // 테마가 #root 에 인라인으로 넣는 배경색 변수보다 우선해야 해서 !important
-          ':root': isDark
+        styles={sceneGlobalStyles({
+          vars: isDark
             ? {
-                '--bg-primary': '#120a1c !important',
-                '--bg-secondary': '#1c1229 !important',
-                '--bg-tertiary': '#261a37 !important',
-                '--bg-hover': '#2e2042 !important',
-                '--card-bg': 'rgba(28, 18, 41, 0.94) !important',
-                '--header-bg': 'rgba(18, 10, 28, 0.9) !important',
-                '--border-color': '#3a2952 !important',
+                '--bg-primary': '#120a1c',
+                '--bg-secondary': '#1c1229',
+                '--bg-tertiary': '#261a37',
+                '--bg-hover': '#2e2042',
+                '--card-bg': 'rgba(28, 18, 41, 0.94)',
+                '--header-bg': 'rgba(18, 10, 28, 0.9)',
+                '--border-color': '#3a2952',
               }
             : {
                 // 흰 카드가 노을 배경과 따로 놀지 않게: 크림색 반투명 + 뒤를 흐리게(유리 느낌)
-                '--bg-primary': '#fff4e6 !important',
-                '--bg-secondary': 'rgba(255, 251, 244, 0.7) !important',
-                '--bg-tertiary': 'rgba(255, 238, 214, 0.6) !important',
-                '--bg-hover': 'rgba(255, 226, 190, 0.55) !important',
-                '--card-bg': 'rgba(255, 248, 238, 0.66) !important',
-                '--header-bg': 'rgba(255, 246, 232, 0.72) !important',
-                '--border-color': 'rgba(214, 160, 100, 0.35) !important',
+                '--bg-primary': '#fff4e6',
+                '--bg-secondary': 'rgba(255, 251, 244, 0.7)',
+                '--bg-tertiary': 'rgba(255, 238, 214, 0.6)',
+                '--bg-hover': 'rgba(255, 226, 190, 0.55)',
+                '--card-bg': 'rgba(255, 248, 238, 0.66)',
+                '--header-bg': 'rgba(255, 246, 232, 0.72)',
+                '--border-color': 'rgba(214, 160, 100, 0.35)',
               },
-          ...(!isDark && {
-            ':root:root .MuiPaper-root, :root:root header': { backdropFilter: 'blur(8px)' },
-            // backdrop-filter 가 걸린 상자는 안쪽 position:fixed 드롭다운(disablePortal Popper: 카테고리·진행상태)의 기준이 되어
-            // 드롭다운이 화면 밖으로 밀려 고를 수가 없다. 불투명한 창·메뉴는 흐림이 필요 없으니 끄고, 카드는 드롭다운이 열린 동안만 끈다
-            ':root:root :is(.MuiDialog-paper, .MuiPopover-paper, .MuiMenu-paper, .MuiAutocomplete-paper), :root:root .MuiPaper-root:has(.MuiPopper-root)': {
-              backdropFilter: 'none',
-            },
-            // 대화상자·메뉴는 글을 읽고 고르는 곳이라 불투명하게
-            ':root:root .MuiDialog-paper, :root:root .MuiPopover-paper, :root:root .MuiMenu-paper, :root:root .MuiAutocomplete-paper': {
-              backgroundColor: '#fffaf2 !important',
-            },
-          }),
+          glass: isDark ? undefined : { dialog_bg: '#fffaf2', tone: 'light' },
+          sky: isDark
+            ? 'linear-gradient(180deg, #0b0614 0%, #170c2b 40%, #2c1340 72%, #4a1d3f 100%)'
+            : 'linear-gradient(180deg, #fff9ee 0%, #ffecc8 40%, #ffd08a 72%, #f6a24e 100%)',
           // 라이트모드: 아래쪽 어두운 땅 위에 놓이는 바닥글은 밝게
-          ...(!isDark && { 'footer, footer *': { color: '#fff6e5 !important', textShadow: '0 1px 3px rgba(60, 25, 5, 0.9)' } }),
-          // 기존 테마 CSS 가 [data-theme] body · body::before · #root 를 단색(!important)으로 칠해 풍경을 가린다 → 더 센 선택자로 비운다.
-          // 하늘은 html 에 칠한다 (body 에 칠하면 z-index -1 풍경 위를 덮는다)
-          ':root:root body, :root:root body::before, :root:root #root': { background: 'transparent !important' },
-          ':root:root': {
-            background: isDark
-              ? 'linear-gradient(180deg, #0b0614 0%, #170c2b 40%, #2c1340 72%, #4a1d3f 100%) fixed !important'
-              : 'linear-gradient(180deg, #fff9ee 0%, #ffecc8 40%, #ffd08a 72%, #f6a24e 100%) fixed !important',
-          },
-        }}
+          extra: isDark ? undefined : { 'footer, footer *': { color: '#fff6e5 !important', textShadow: '0 1px 3px rgba(60, 25, 5, 0.9)' } },
+        })}
       />
-      <Box aria-hidden data-no-glitch data-no-haunt sx={{
-          // inset:0 이면 메뉴·창이 열릴 때(MUI 스크롤 잠금으로 스크롤바가 사라질 때) 폭이 늘어 달·성이 움찔한다.
-          // 100vw·100vh 는 스크롤바와 상관없이 같은 크기라 배경이 안 움직인다 (스크롤바 밑은 가려질 뿐)
-          position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: -1, pointerEvents: 'none', overflow: 'hidden',
-        }}>
+      <Box aria-hidden data-no-glitch data-no-haunt sx={SCENE_BOX_SX}>
         {/* 달 (라이트모드에선 저무는 해처럼 주황빛) */}
         <Box
           sx={{

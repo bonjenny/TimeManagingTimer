@@ -13,6 +13,7 @@ export type PaletteType =
   | 'forest-green' 
   | 'pink-sky'
   | 'halloween'
+  | 'ocean'
   | 'custom';
 
 // 팔레트 설정 인터페이스
@@ -103,6 +104,14 @@ export const COOLORS_PALETTES: Record<Exclude<PaletteType, 'custom'>, Omit<Palet
     colors: ['#ff7a1a', '#7c3aed', '#f5b82e', '#22a06b', '#d6336c', '#4c3bcf', '#e2551f', '#a463f2', '#8fb339', '#b8621b'],
     primary: '#7c3aed',
     accent: '#ff7a1a',
+  },
+  // 바다 (청록 · 물빛 · 모래 · 산호). 고르면 배경이 바다가 된다 (OceanScene: 라이트=해변, 다크=바닷속)
+  'ocean': {
+    name: '바다 🌊',
+    // 청록 · 깊은 파랑 · 모래 · 산호 · 남색 · 에메랄드 · 조개 분홍 · 햇살 · 하늘 · 깊은 청록
+    colors: ['#0fb5c9', '#1e7fc4', '#d9a55c', '#ff7a5c', '#1a4f8b', '#20b38f', '#e88f9a', '#f2b632', '#3fa7d6', '#0b6e7f'],
+    primary: '#0b8fb0',
+    accent: '#ff7a5c',
   },
   // 핑크 스카이 (라벤더 → 스카이블루 → 핑크 → 딥블루 → 청록 → 베이지 그라데이션)
   'pink-sky': {

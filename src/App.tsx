@@ -16,6 +16,7 @@ const SettingsPage = lazy(() => import('./components/pages/SettingsPage'));
 const GuidePage = lazy(() => import('./components/pages/GuidePage'));
 import NewTaskModal from './components/modal/NewTaskModal';
 import HalloweenEffects from './components/HalloweenEffects';
+import OceanScene from './components/OceanScene';
 import { useIsHalloween } from './components/HalloweenEggs';
 import { Box, Typography, IconButton, Tooltip, useMediaQuery, Snackbar, CircularProgress } from '@mui/material';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
@@ -505,6 +506,8 @@ function App() {
       
       {/* 할로윈 팔레트일 때만: 유령 장식 + 빈 곳 5번 클릭 이스터에그 */}
       <HalloweenEffects />
+      {/* 바다 팔레트일 때만: 해변 · 바닷속 배경 */}
+      <OceanScene />
 
       {/* F8 새 작업 추가 모달 */}
       <NewTaskModal

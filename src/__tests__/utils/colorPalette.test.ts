@@ -45,9 +45,9 @@ describe('colorPalette', () => {
       expect(unique_names.size).toBe(names.length);
     });
 
-    it('11개의 Coolors 팔레트가 있다 (할로윈 포함)', () => {
+    it('12개의 Coolors 팔레트가 있다 (할로윈 · 바다 포함)', () => {
       const palette_count = Object.keys(COOLORS_PALETTES).length;
-      expect(palette_count).toBe(11);
+      expect(palette_count).toBe(12);
     });
   });
 
@@ -83,9 +83,9 @@ describe('colorPalette', () => {
   });
 
   describe('getPaletteList', () => {
-    it('11개의 팔레트 옵션을 반환한다', () => {
+    it('12개의 팔레트 옵션을 반환한다', () => {
       const list = getPaletteList();
-      expect(list.length).toBe(11); // Coolors 11개
+      expect(list.length).toBe(12); // Coolors 12개
     });
 
     it('각 팔레트에 type, name, colors가 포함된다', () => {

@@ -80,6 +80,13 @@ function applyWindowFlags() {
   win.setIgnoreMouseEvents(settings.clickThrough);
 }
 
+// portable exe 는 임시 폴더에 풀려서 돈다. process.execPath(임시 경로)를 등록하면 재부팅 때 그 폴더가 없어 안 뜨므로
+// 사용자가 둔 exe 경로(PORTABLE_EXECUTABLE_FILE)를 등록한다. 켤 때마다 다시 등록해서 exe 를 옮겨도 따라간다
+function applyLoginItem() {
+  const exe = process.env.PORTABLE_EXECUTABLE_FILE || process.execPath;
+  app.setLoginItemSettings({ openAtLogin: settings.launchAtLogin, path: exe });
+}
+
 function buildTrayMenu() {
   const opacityItems = [0.15, 0.3, 0.45, 0.55, 0.7, 0.85, 1].map((v) => ({
     label: `${Math.round(v * 100)}%`,
@@ -136,7 +143,7 @@ function buildTrayMenu() {
         checked: settings.launchAtLogin,
         click: (item) => {
           saveSettings({ launchAtLogin: item.checked });
-          app.setLoginItemSettings({ openAtLogin: item.checked });
+          applyLoginItem();
         },
       },
       { type: 'separator' },
@@ -185,6 +192,7 @@ if (!app.requestSingleInstanceLock()) {
 } else {
   app.whenReady().then(() => {
     createWindow();
+    if (app.isPackaged) applyLoginItem();
     const icon = nativeImage.createFromPath(path.join(__dirname, 'icon.png'));
     tray = new Tray(icon.resize({ width: 16, height: 16 }));
     tray.setToolTip('TimeKeeper 캘린더 위젯');
