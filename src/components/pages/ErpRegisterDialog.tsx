@@ -36,6 +36,7 @@ import {
   ErpProjectMapping,
   resolveErpRow,
 } from '../../utils/erpTimelog';
+import { syncMyClock } from '../../utils/clockSync';
 
 // ponytail: 세션키는 IndexedDB(백업 파일에 통째로 들어감)에 두지 않고 탭 단위 sessionStorage 에만 보관
 const SESSION_KEY = 'erp-session-input';
@@ -117,6 +118,7 @@ const ErpRegisterDialog: React.FC<Props> = ({ open, onClose, rows, date }) => {
 
   const handlePost = async () => {
     if (!session) return;
+    syncMyClock(session); // 위젯 야근 포도알판용 내 출퇴근 (세션당 한 번)
     if (!window.confirm(`${date} 시간 로그 ${result.resolved.length}행 ${result.total}분을 ERP에 저장할까요?`)) return;
     setPosting(true);
     setPostResult(null);

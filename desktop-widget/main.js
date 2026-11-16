@@ -7,6 +7,7 @@ const { app, BrowserWindow, Tray, Menu, dialog, ipcMain, shell, nativeImage, scr
 const fs = require('fs');
 const path = require('path');
 const { readSnapshotFrom, isWatchedFile } = require('./snapshot');
+const { setupGrape } = require('./grape-main');
 
 const APP_URL = 'https://developer.ecount.com/EFA/time-managing.html';
 const SETTINGS_PATH = path.join(app.getPath('userData'), 'settings.json');
@@ -39,10 +40,17 @@ let watcher = null;
 // 위젯 파일이 없거나 오래됐으면 가장 최근 자동 백업에서 캘린더를 꺼낸다 (snapshot.js)
 const readSnapshot = () => readSnapshotFrom(settings.folder);
 
-function sendState() {
-  if (!win || win.isDestroyed()) return;
+function statePayload() {
   const dark = settings.theme === 'system' ? nativeTheme.shouldUseDarkColors : settings.theme === 'dark';
-  win.webContents.send('state', { snapshot: readSnapshot(), settings: { ...settings, dark } });
+  return { snapshot: readSnapshot(), settings: { ...settings, dark } };
+}
+
+// 야근 포도알판 창 (grape-main.js). 캘린더와 같은 스냅숏 · 테마를 받는다. 기본은 꺼짐 (트레이 메뉴에서 켠다)
+const grape = setupGrape({ preload: path.join(__dirname, 'preload.js'), getState: statePayload, onChange: () => buildTrayMenu() });
+
+function sendState() {
+  if (win && !win.isDestroyed()) win.webContents.send('state', statePayload());
+  grape.push();
 }
 
 // 폴더를 지켜보다 위젯 파일이 바뀌면 다시 그린다 (앱이 1.5초 모아서 쓰므로 0.3초만 더 기다린다)
@@ -88,6 +96,7 @@ function applyLoginItem() {
 }
 
 function buildTrayMenu() {
+  if (!tray) return;
   const opacityItems = [0.15, 0.3, 0.45, 0.55, 0.7, 0.85, 1].map((v) => ({
     label: `${Math.round(v * 100)}%`,
     type: 'radio',
@@ -150,7 +159,8 @@ function buildTrayMenu() {
       { label: settings.folder ? `폴더: ${settings.folder}` : '폴더: (아직 안 고름)', enabled: false },
       { label: '자동 백업 폴더 바꾸기…', click: pickFolder },
       { label: 'TimeKeeper 열기', click: () => shell.openExternal(APP_URL) },
-      { label: '위치 초기화', click: () => win && win.center() },
+      { label: '야근 포도알판', type: 'checkbox', checked: grape.isVisible(), click: () => grape.toggle() },
+      { label: '위치 초기화', click: () => { if (win) win.center(); grape.resetPosition(); } },
       { type: 'separator' },
       { label: '종료', click: () => app.quit() },
     ])
@@ -187,11 +197,63 @@ function createWindow() {
   win.on('resize', remember);
 }
 
-if (!app.requestSingleInstanceLock()) {
-  app.quit();
-} else {
+// ── 하나만 띄우기 · 새 버전으로 바꿔 끼우기 ──
+// 위젯은 하나만 뜬다. 켜져 있을 때 exe 를 또 실행하면 새 것은 꺼지고 켜져 있던 창이 보인다.
+// 그런데 더 높은 버전 exe 를 실행했으면: 켜져 있던 위젯이 비켜 주고(종료) 새 버전이 뜬다.
+// 켜져 있는 위젯의 버전 · pid 는 running.json 에 적어 둔다 (1.0.5 이하엔 이 기능이 없어 안내 창을 띄운다)
+const VERSION = app.getVersion();
+const RUN_FILE = path.join(app.getPath('userData'), 'running.json');
+const isNewer = (a, b) => {
+  const x = String(a).split('.').map(Number);
+  const y = String(b).split('.').map(Number);
+  for (let i = 0; i < 3; i++) if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0);
+  return false;
+};
+const alive = (pid) => {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+};
+async function acquireLock() {
+  if (app.requestSingleInstanceLock({ version: VERSION })) return true;
+  let running = null;
+  try {
+    running = JSON.parse(fs.readFileSync(RUN_FILE, 'utf8'));
+  } catch {
+    // 1.0.5 이하가 켜져 있다 (기록 없음)
+  }
+  if (running && running.pid && alive(running.pid) && !isNewer(VERSION, running.version)) return false; // 같거나 높은 버전이 켜져 있다
+  // 예전 버전이 켜져 있다: 1.0.6 이상이면 위 요청(second-instance)을 받고 스스로 꺼진다. 꺼질 때까지 4초 기다린다
+  for (let i = 0; i < 16 && (!running || alive(running.pid)); i++) await new Promise((r) => setTimeout(r, 250));
+  if (app.requestSingleInstanceLock({ version: VERSION })) return true;
+  await app.whenReady();
+  dialog.showMessageBoxSync({
+    type: 'info',
+    title: 'TimeKeeper 캘린더 위젯',
+    message: '이전 버전 위젯이 켜져 있어요',
+    detail: '작업표시줄 오른쪽 트레이의 위젯 아이콘을 우클릭 › 「종료」한 뒤, 이 파일을 다시 실행해 주세요.\n(다음 버전부터는 새 파일을 실행하면 알아서 바뀌어요)',
+  });
+  return false;
+}
+
+acquireLock().then((ok) => {
+  if (!ok) return app.quit();
+  start();
+});
+
+function start() {
   app.whenReady().then(() => {
+    try {
+      fs.mkdirSync(path.dirname(RUN_FILE), { recursive: true });
+      fs.writeFileSync(RUN_FILE, JSON.stringify({ version: VERSION, pid: process.pid }));
+    } catch (e) {
+      console.error('running.json write failed', e);
+    }
     createWindow();
+    grape.create();
     if (app.isPackaged) applyLoginItem();
     const icon = nativeImage.createFromPath(path.join(__dirname, 'icon.png'));
     tray = new Tray(icon.resize({ width: 16, height: 16 }));
@@ -202,7 +264,11 @@ if (!app.requestSingleInstanceLock()) {
     nativeTheme.on('updated', sendState); // 윈도우 라이트/다크가 바뀌면 따라간다
     if (!settings.folder) setTimeout(pickFolder, 600); // 처음 켜면 폴더부터
   });
-  app.on('second-instance', () => win && win.show());
+  // exe 를 또 실행했다: 더 높은 버전이면 비켜 주고(종료), 아니면 창을 보여준다
+  app.on('second-instance', (_e, _argv, _cwd, data) => {
+    if (data && isNewer(data.version, VERSION)) return app.quit();
+    if (win) win.show();
+  });
   app.on('window-all-closed', () => app.quit());
 }
 

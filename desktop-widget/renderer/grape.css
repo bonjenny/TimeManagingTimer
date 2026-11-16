@@ -1,0 +1,182 @@
+/* 야근 포도알판: 레트로 · 심플. 크림 종이 + 남색 + 빨강 딱 세 색, 굵은 제목 글꼴, 얇은 테 한 줄.
+   장식은 그림(포도송이) 하나에 몰고 나머지는 비운다. 테마와 상관없이 같은 종이색 (공유하는 기념 카드와 같은 톤) */
+:root {
+  --paper: #f0e5c9;
+  --ink: #1d3461;
+  --red: #d8432e;
+  --muted: rgba(29, 52, 97, 0.6);
+  /* 옛날 신문 제목 같은 뭉툭한 글꼴 (한글 오피스에 든 HY헤드라인M). 없으면 나눔스퀘어 → 맑은 고딕 */
+  --head: 'HY헤드라인M', 'HYHeadLine-Medium', 'HY견고딕', 'HYGothic-Extra', 'NanumSquare ExtraBold', 'Malgun Gothic', sans-serif;
+}
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  height: 100%;
+  background: transparent;
+  color: var(--ink);
+  font-family: 'Malgun Gothic', sans-serif;
+  font-size: 12px;
+  overflow: hidden;
+  user-select: none;
+}
+button {
+  font: inherit;
+  font-weight: 700;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1.5px solid var(--ink);
+  border-radius: 3px;
+  padding: 5px 12px;
+  cursor: pointer;
+}
+button:hover { background: #e6d8b4; }
+button.primary { background: var(--ink); color: var(--paper); }
+button.primary:hover { background: #29447c; }
+button.link { border: none; background: none; color: var(--muted); text-decoration: underline; padding: 4px 6px; }
+.hidden { display: none !important; }
+
+/* 판 */
+.panel {
+  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.head {
+  -webkit-app-region: drag;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 6px 5px 12px;
+  background: var(--ink);
+  color: var(--paper);
+}
+.title { font-size: 11px; font-weight: 700; letter-spacing: 1px; opacity: 0.8; }
+.tools { display: flex; gap: 2px; -webkit-app-region: no-drag; }
+.tools button { padding: 0 6px; background: none; border: none; color: var(--paper); font-weight: 400; }
+.tools button:hover { background: rgba(240, 229, 201, 0.15); }
+#pin.off { opacity: 0.35; }
+
+/* 종이 안쪽: 얇은 테 한 줄 */
+.sheet { position: relative; flex: 1; min-height: 0; margin: 8px; border: 1.5px solid var(--ink); display: flex; flex-direction: column; }
+.banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 8px 8px 0;
+  padding: 6px 4px 5px;
+  background: var(--ink);
+  color: var(--paper);
+  text-align: center;
+  font-family: var(--head);
+  font-size: 21px;
+  letter-spacing: 1px;
+}
+.bunch { flex: 1; min-height: 0; display: flex; justify-content: center; align-items: center; padding: 2px 4px 0; }
+.bunch svg { width: 100%; height: 100%; }
+.banner button { font-family: 'Malgun Gothic', sans-serif; font-size: 11px; line-height: 1; padding: 6px 8px; border: none; background: none; color: var(--paper); }
+.banner button:hover { background: rgba(240, 229, 201, 0.15); }
+.banner button:disabled { opacity: 0.25; cursor: default; background: none; }
+.slot { cursor: pointer; }
+.slot.future { cursor: default; }
+.slot text { pointer-events: none; }
+.slot:not(.future):hover .empty { stroke-opacity: 0.8; }
+.slot .fill { transform-box: fill-box; transform-origin: center; }
+.slot .curl { opacity: 0; }
+
+/* 스티커 붙이기: 비스듬히 들린 채로 내려와 꾹 눌렸다가 자리 잡는다 (왼쪽 위 모서리가 마지막에 붙는다) */
+@keyframes stick {
+  0% { transform: translate(-8px, -14px) rotate(-18deg) scale(1.25); opacity: 0; }
+  40% { transform: translate(-2px, -3px) rotate(-5deg) scale(1.08); opacity: 1; }
+  68% { transform: scale(0.93); }
+  100% { transform: none; }
+}
+@keyframes curl-in { 0%, 45% { opacity: 1; } 100% { opacity: 0; } }
+.slot .fill.stick { animation: stick 0.42s cubic-bezier(0.3, 0.7, 0.3, 1) both; }
+.slot .fill.stick .curl { animation: curl-in 0.42s both; }
+/* 스티커 떼기: 왼쪽 위 모서리가 들리고(흰 뒷면이 보임) 비스듬히 떼어져 나간다 */
+@keyframes peel {
+  0% { transform: none; }
+  35% { transform: translate(-1px, -2px) rotate(-7deg) scale(1.06); }
+  100% { transform: translate(-14px, -32px) rotate(-32deg) scale(1.2); opacity: 0; }
+}
+@keyframes curl-out { 0% { opacity: 0; } 25%, 100% { opacity: 1; } }
+.slot .fill.peel { animation: peel 0.32s ease-in both; }
+.slot .fill.peel .curl { animation: curl-out 0.32s both; }
+@media (prefers-reduced-motion: reduce) { .slot .fill.stick, .slot .fill.peel, .slot .fill .curl { animation: none !important; } }
+
+.meter { display: flex; align-items: baseline; gap: 6px; margin: 0 12px; }
+.meter b { font-family: var(--head); font-size: 30px; line-height: 1; }
+.meter span { color: var(--muted); font-weight: 700; }
+.meter .left { margin-left: auto; font-size: 11px; }
+.progress { margin: 5px 12px 0; height: 2px; background: rgba(29, 52, 97, 0.15); }
+#bar { height: 100%; width: 0; background: var(--red); transition: width 0.4s; }
+/* 출퇴근 한 줄: 알에 마우스를 올린 날, 아니면 오늘 */
+.info { margin: 5px 12px 0; min-height: 15px; font-size: 11px; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
+.info b { color: var(--ink); }
+.actions { display: flex; align-items: center; gap: 4px; padding: 10px 12px 12px; }
+.actions .primary:disabled { opacity: 0.45; cursor: default; }
+.actions .primary { flex: 1; padding: 8px 10px; font-family: var(--head); font-size: 14px; font-weight: 400; letter-spacing: 1px; }
+
+.pop {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 10px;
+  z-index: 5;
+  padding: 12px;
+  background: #f7eed8;
+  border: 1.5px solid var(--ink);
+  border-radius: 4px;
+  box-shadow: 3px 3px 0 var(--ink);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.pop label { display: flex; align-items: center; gap: 8px; font-weight: 700; }
+.pop input { flex: 1; font: inherit; color: var(--ink); background: #fff; border: 1.5px solid var(--ink); border-radius: 3px; padding: 4px 6px; }
+.pop .row { display: flex; justify-content: flex-end; gap: 6px; }
+.pop .big { font-family: var(--head); font-size: 17px; }
+.pop .muted { color: var(--muted); }
+
+.mini { flex-direction: row; align-items: center; justify-content: space-between; padding: 0 6px 0 12px; -webkit-app-region: drag; font-family: var(--head); font-size: 15px; }
+.mini button { -webkit-app-region: no-drag; padding: 4px 6px; border: none; display: flex; color: var(--ink); }
+
+/* 기념 카드: 얇은 테 한 줄 안에 제목 · 그림 · 문구 · 빨간 줄 · 기록 */
+.cardView { height: 100%; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 8px; }
+.card { position: relative; width: 380px; padding: 10px; background: var(--paper); color: var(--ink); border: 2px solid var(--ink); }
+.card .frame { position: relative; border: 1.5px solid var(--ink); padding: 12px 16px 10px; }
+.card .top { display: flex; align-items: center; gap: 10px; }
+.card .badge { flex: none; width: 46px; height: 46px; background: var(--red); display: flex; align-items: center; justify-content: center; }
+.card .badge svg { width: 30px; height: 30px; }
+.card .ttl { flex: 1; text-align: center; font-family: var(--head); line-height: 1.12; }
+.card .ttl small { display: block; font-size: 15px; white-space: nowrap; }
+.card .ttl b { display: block; font-size: 27px; font-weight: 400; letter-spacing: 1px; white-space: nowrap; }
+.card .art { display: flex; justify-content: center; margin: 4px 0 0; }
+.card .art svg { width: 300px; height: 262px; }
+.card .msg { text-align: center; font-family: var(--head); line-height: 1.3; margin-top: -4px; }
+.card .msg b { display: block; font-size: 26px; font-weight: 400; }
+.card .msg span { display: block; font-size: 16px; }
+.card hr { border: none; border-top: 2px solid var(--red); margin: 10px 0 6px; }
+.card .sum { text-align: center; font-weight: 700; font-size: 11.5px; line-height: 1.6; }
+.card .sum b { color: var(--red); }
+.card .days { margin-top: 8px; display: grid; grid-template-columns: 1fr 1fr; column-gap: 16px; font-size: 10.5px; font-variant-numeric: tabular-nums; }
+.card .day { display: flex; justify-content: space-between; padding: 1px 0; }
+.card .day span:first-child { color: var(--muted); }
+.card .foot { margin-top: 8px; display: flex; justify-content: space-between; font-size: 10.5px; color: var(--muted); font-weight: 700; }
+.cardActions { display: flex; gap: 6px; }
+.cardActions button { padding: 7px 16px; }
+.toast { position: absolute; bottom: 60px; padding: 6px 12px; background: var(--ink); color: var(--paper); border-radius: 3px; font-weight: 700; }
+
+/* 종이결: 아주 고운 알갱이만 (얼룩 없음). 맨 위에 곱하기로 얹고 클릭은 통과 */
+.paper { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; mix-blend-mode: multiply; z-index: 3; }
+
+/* 완성 순간: 알이 하나씩 톡톡 (한 번만, 움직임 줄이기면 없음) */
+@keyframes pop { 0% { transform: scale(0.2); opacity: 0; } 70% { transform: scale(1.12); opacity: 1; } 100% { transform: scale(1); } }
+.card.fresh .fill { transform-box: fill-box; transform-origin: center; animation: pop 0.35s ease-out both; }
+.card .curl { display: none; }
+@media (prefers-reduced-motion: reduce) { .card.fresh .fill { animation: none; } }

@@ -52,6 +52,8 @@ interface DeployCalendarState {
   attendance_records: StoredAttendance[];
   /** 마지막으로 근태를 불러온 시각 (ms) */
   attendance_fetched_at: number;
+  /** 내 출퇴근 기록 (날짜 → 출근·퇴근 HH:MM). 근태를 불러올 때 같이 받는다. 위젯의 야근 포도알 기념 카드가 쓴다 */
+  clock_records: Record<string, { in: string; out: string }>;
 
   // --- Actions ---
   addEvent: (event: Omit<DeployEvent, 'id'>) => string;
@@ -65,6 +67,7 @@ interface DeployCalendarState {
   setAttendanceTargets: (targets: AttendanceTarget[]) => void;
   /** from~to(YYYY-MM-DD) 근태일자의 그 대상들 근태를 새로 받은 것으로 바꾼다 */
   replaceAttendance: (target_keys: string[], from: string, to: string, records: StoredAttendance[]) => void;
+  mergeClockRecords: (records: { date: string; in: string; out: string }[]) => void;
 
   // 잡 색상 관리
   setJobColor: (job_code: string, color: string) => void;
@@ -105,6 +108,7 @@ export const useDeployCalendarStore = create<DeployCalendarState>()(
       attendance_targets: [],
       attendance_records: [],
       attendance_fetched_at: 0,
+      clock_records: {},
 
       setViewMode: (mode) => set({ view_mode: mode }),
       setShowToday: (show) => set({ show_today: show }),
@@ -117,6 +121,11 @@ export const useDeployCalendarStore = create<DeployCalendarState>()(
             ...records,
           ],
           attendance_fetched_at: Date.now(),
+        })),
+
+      mergeClockRecords: (records) =>
+        set((state) => ({
+          clock_records: { ...state.clock_records, ...Object.fromEntries(records.map((r) => [r.date, { in: r.in, out: r.out }])) },
         })),
 
       setWeeksToShow: (weeks) => set(() => ({

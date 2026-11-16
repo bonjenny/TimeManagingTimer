@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'" />
+  <title>야근 포도알</title>
+  <link rel="stylesheet" href="grape.css" />
+</head>
+<body>
+  <!-- 판: 한 달이 한 송이. 알 자리마다 날짜가 있고, 누르면 스티커가 붙거나 떼진다 -->
+  <section id="board" class="panel">
+    <header class="head">
+      <div class="title">야근 포도알</div>
+      <div class="tools">
+        <button id="trophy" title="이 달 기념 카드">🏆</button>
+        <button id="pin" title="항상 위">📌</button>
+        <button id="fold" title="접기">–</button>
+        <button id="close" title="숨기기 (트레이 메뉴 「야근 포도알판」으로 다시 보임)">✕</button>
+      </div>
+    </header>
+    <div class="sheet">
+      <div class="banner">
+        <button id="prevMonth" title="지난달">◀</button>
+        <span id="monthTitle"></span>
+        <button id="nextMonth" title="다음 달">▶</button>
+      </div>
+      <div class="bunch" id="bunch"></div>
+      <div class="meter"><b id="num"></b><span id="goal"></span><span class="left" id="left"></span></div>
+      <div class="progress"><div id="bar"></div></div>
+      <div class="info" id="info"></div>
+      <div class="actions">
+        <button id="today" class="primary"></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 접힘 -->
+  <section id="mini" class="panel mini hidden">
+    <span>🍇 <b id="miniCount"></b></span>
+    <button id="unfold" title="펼치기"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+  </section>
+
+  <!-- 기념 카드 -->
+  <section id="cardView" class="cardView hidden">
+    <div id="card" class="card"></div>
+    <div class="cardActions">
+      <button id="savePng">PNG 저장</button>
+      <button id="copyPng" class="primary">이미지 복사</button>
+      <button id="cardClose">닫기</button>
+    </div>
+    <div id="toast" class="toast hidden"></div>
+  </section>
+  <script src="grape-board.js"></script>
+  <script src="grape.js"></script>
+</body>
+</html>

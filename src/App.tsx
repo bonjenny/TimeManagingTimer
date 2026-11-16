@@ -35,6 +35,7 @@ import { checkAndRunAutoBackup } from './utils/autoBackup';
 import { startWidgetSnapshot } from './utils/widgetSnapshot';
 import MigrationNoticeDialog from './components/common/MigrationNoticeDialog';
 import GithubReturnNoticeDialog from './components/common/GithubReturnNoticeDialog';
+import { syncMyClockFromStorage } from './utils/clockSync';
 
 // 줌 레벨 상수
 const ZOOM_STEP = 10; // 10% 단위
@@ -164,6 +165,8 @@ function App() {
 
   // 바탕화면 캘린더 위젯용 스냅숏: 캘린더 값이 바뀌면 자동 백업 폴더에 쓴다 (폴더·권한 없으면 건너뜀)
   useEffect(() => startWidgetSnapshot(), []);
+  // 이 탭에 ERP 세션이 남아 있으면 위젯 야근 포도알판용 내 출퇴근을 한 번 받아 둔다
+  useEffect(() => syncMyClockFromStorage(), []);
 
   // 저장된 테마 및 팔레트 적용 (초기 로드)
   useEffect(() => {

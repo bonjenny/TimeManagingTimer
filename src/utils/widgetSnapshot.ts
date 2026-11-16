@@ -20,6 +20,8 @@ export interface WidgetSnapshot {
   attendance: { date: string; text: string }[];
   /** 공휴일 이름 */
   holidays: Record<string, string>;
+  /** 내 출퇴근 (날짜 · HH:MM). 야근 포도알 기념 카드용 */
+  clock: { date: string; in: string; out: string }[];
 }
 
 interface SnapshotSource {
@@ -29,6 +31,7 @@ interface SnapshotSource {
   show_attendance: boolean;
   attendance_targets: AttendanceTarget[];
   attendance_records: StoredAttendance[];
+  clock_records?: Record<string, { in: string; out: string }>;
 }
 
 export function buildWidgetSnapshot(s: SnapshotSource, now = Date.now()): WidgetSnapshot {
@@ -57,6 +60,9 @@ export function buildWidgetSnapshot(s: SnapshotSource, now = Date.now()): Widget
     })),
     attendance,
     holidays: KR_HOLIDAYS,
+    clock: Object.entries(s.clock_records || {})
+      .map(([date, c]) => ({ date, in: c.in, out: c.out }))
+      .sort((a, b) => a.date.localeCompare(b.date)),
   };
 }
 

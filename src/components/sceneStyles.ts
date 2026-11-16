@@ -25,7 +25,9 @@ export const sceneGlobalStyles = ({ vars, sky, glass, extra }: SceneStyleOptions
 });
 
 // 유리 카드가 될 곳: 일반 카드 · 머리줄. 대화상자 · 메뉴 · 드롭다운 목록은 불투명하게 둔다
-const OPAQUE = '.MuiDialog-paper, .MuiPopover-paper, .MuiMenu-paper, .MuiAutocomplete-paper';
+// (드롭다운이 제 Paper 를 따로 쓰면 MuiAutocomplete-paper 가 안 붙으므로 Popper 안의 Paper 는 모두 드롭다운으로 본다:
+//  카테고리 고르기 등. 반투명이면 뒤 글자와 겹쳐 안 읽힌다)
+const OPAQUE = '.MuiDialog-paper, .MuiPopover-paper, .MuiMenu-paper, .MuiAutocomplete-paper, .MuiPopper-root .MuiPaper-root';
 const SURFACE = `:root:root .MuiPaper-root:not(:is(${OPAQUE})), :root:root header`;
 
 // 리퀴드 글래스: 진한 흐림 + 채도를 올려 뒤 색이 맑게 비치고, 위 가장자리에 빛 반사(하이라이트),
@@ -47,7 +49,8 @@ const glassStyles = ({ dialog_bg, tone, refract }: NonNullable<SceneStyleOptions
     [`:root:root .MuiPaper-root:not(:is(${OPAQUE})) .MuiPaper-root:not(:is(${OPAQUE}))`]: { backdropFilter: 'none', boxShadow: 'none' },
     // backdrop-filter 가 걸린 상자는 안쪽 position:fixed 드롭다운(disablePortal Popper: 카테고리·진행상태)의 기준이 되어
     // 드롭다운이 화면 밖으로 밀려 고를 수가 없다. 카드는 드롭다운이 열린 동안만 흐림을 끈다
-    ':root:root .MuiPaper-root:has(.MuiPopper-root)': { backdropFilter: 'none' },
+    // (!important: 위 유리 카드 선택자가 더 구체적이라 그냥 두면 진다)
+    ':root:root .MuiPaper-root:has(.MuiPopper-root)': { backdropFilter: 'none !important' },
     [`:root:root :is(${OPAQUE})`]: { backdropFilter: 'none', backgroundColor: `${dialog_bg} !important` },
   };
 };

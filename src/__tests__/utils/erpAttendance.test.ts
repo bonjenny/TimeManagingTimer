@@ -1,4 +1,4 @@
-import { attendanceDates, attendanceLabel, parseAttendance, parseEmployees, parseSites } from '../../utils/erpAttendance';
+import { attendanceDates, attendanceLabel, parseAttendance, parseClockRows, parseEmployees, parseSites } from '../../utils/erpAttendance';
 
 describe('ERP 근태현황 → 캘린더 근태', () => {
   // 2026-11-06 근태현황 응답 모양 그대로 (이름만 바꿈). 마지막 줄은 합계
@@ -136,4 +136,17 @@ it('한 줄짜리 전표도 열어서 근태일자를 쓴다 (9/22 전표 · 9/2
   );
   const [a] = await fetchErpAttendance({ sid: 'E-test', origin: 'https://logine.ecount.com' }, { type: 'emp', code: 'E9', name: '엄지희' }, '20260801', '20261002');
   expect(a).toMatchObject({ date: '2026-09-23', label: '연차' });
+});
+
+test('parseClockRows: 그룹웨어 출퇴근 → 날짜 · 출근 · 퇴근 (HH:MM, 아직 퇴근 전이면 빈칸)', () => {
+  expect(
+    parseClockRows([
+      { COL_DATE: '2026-11-02', S_TIME: '2026-11-02 08:58:03', E_TIME: '2026-11-02 22:22:24' },
+      { COL_DATE: '2026-11-12', S_TIME: '2026-11-12 08:59:55', E_TIME: '' },
+      { COL_DATE: '' },
+    ])
+  ).toEqual([
+    { date: '2026-11-02', in: '08:58', out: '22:22' },
+    { date: '2026-11-12', in: '08:59', out: '' },
+  ]);
 });

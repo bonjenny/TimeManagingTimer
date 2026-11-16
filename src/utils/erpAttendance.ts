@@ -323,3 +323,23 @@ export async function searchAttendanceTargets(session: ErpSession, keyword: stri
     : [];
   return [...site_targets, ...(emps.status === 'fulfilled' ? emps.value : [])];
 }
+
+/** 내 출퇴근 기록 (그룹웨어 출퇴근). 시각은 HH:MM, 아직 퇴근 안 했으면 out 은 '' */
+export interface ClockRecord {
+  date: string;
+  in: string;
+  out: string;
+}
+
+const hhmm = (t: unknown) => (String(t ?? '').match(/(\d{1,2}):(\d{2})/) || []).slice(1, 3).map((n) => n.padStart(2, '0')).join(':');
+
+export function parseClockRows(rows: Row[]): ClockRecord[] {
+  return rows
+    .filter((r) => /^\d{4}-\d{2}-\d{2}$/.test(String(r['COL_DATE'] ?? '')))
+    .map((r) => ({ date: String(r['COL_DATE']), in: hhmm(r['S_TIME']), out: hhmm(r['E_TIME']) }));
+}
+
+/** month_first(YYYY-MM-01) 이 든 달의 내 출퇴근. 그룹웨어 출퇴근 화면이 쓰는 API (세션 주인 것만 온다) */
+export async function fetchMyClockInOut(session: ErpSession, month_first: string): Promise<ClockRecord[]> {
+  return parseClockRows(await ecapiList(session, '/ECAPI/Groupware/ClockInOut/GetListClockInOutUser', { CURDATE: month_first }));
+}

@@ -63,6 +63,7 @@ import {
   weekKey,
 } from '../../utils/weeklyStatusReport';
 import { addDays, formatDateToString } from '../../utils/calendar_export';
+import { syncMyClock } from '../../utils/clockSync';
 
 const to8 = (d: string) => d.replace(/-/g, '');
 
@@ -232,6 +233,7 @@ const WeeklyStatusReportDialog: React.FC<Props> = ({ open, onClose, week_start, 
   const handleBuildErp = async () => {
     if (!session || !pic_sid || !pic_name || !from || !to) return;
     sessionStorage.setItem(SESSION_KEY, session_input);
+    syncMyClock(session); // 위젯 야근 포도알판용 내 출퇴근 (세션당 한 번)
     setFetching(true);
     setFetchErrors([]);
     const pic = { sid: pic_sid, name: pic_name };
@@ -280,6 +282,7 @@ const WeeklyStatusReportDialog: React.FC<Props> = ({ open, onClose, week_start, 
   const handleFetchErp = async () => {
     if (!session) return;
     sessionStorage.setItem(SESSION_KEY, session_input);
+    syncMyClock(session); // 위젯 야근 포도알판용 내 출퇴근 (세션당 한 번)
     setFetching(true);
     setFetchErrors([]);
     const targets = rows.filter((r) => !r.manual).map((r) => ({ key: r.key, ...findMappedPosts(erp_mapping, r.key) }));

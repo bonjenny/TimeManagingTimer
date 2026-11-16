@@ -38,6 +38,7 @@ function fromBackup(backup, mtime) {
     })),
     attendance,
     holidays: HOLIDAYS,
+    clock: Object.entries(s.clock_records || {}).map(([date, c]) => ({ date, in: c.in, out: c.out })),
     from_backup: true,
   };
 }

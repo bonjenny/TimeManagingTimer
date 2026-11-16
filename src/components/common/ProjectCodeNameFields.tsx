@@ -34,6 +34,10 @@ const ProjectCodeNameFields: React.FC<ProjectCodeNameFieldsProps> = ({
   const code_options = useMemo(() => projects.map((p) => p.code), [projects]);
   const name_options = useMemo(() => projects.map((p) => p.name), [projects]);
 
+  // 코드 칸 · 이름 칸 모두 「코드 + 이름」으로 찾는다 (코드 칸에 이름을 쳐도, 이름 칸에 코드를 쳐도 나온다)
+  const matches = (code: string, project_name: string, query: string) =>
+    `${code} ${project_name}`.toLowerCase().includes(query.trim().toLowerCase());
+
   const changeCode = (value: string) => {
     onCodeChange(value);
     const matched = projects.find((p) => p.code === value);
@@ -54,6 +58,9 @@ const ProjectCodeNameFields: React.FC<ProjectCodeNameFieldsProps> = ({
         value={null}
         inputValue={code}
         onInputChange={(_e, value) => changeCode(value)}
+        filterOptions={(options, state) =>
+          options.filter((c) => matches(c, projects.find((p) => p.code === c)?.name ?? '', state.inputValue))
+        }
         renderOption={(props, option) =>
           renderProjectOption(props, option, projects.find((p) => p.code === option)?.name, () => deleteProject(option))
         }
@@ -68,6 +75,9 @@ const ProjectCodeNameFields: React.FC<ProjectCodeNameFieldsProps> = ({
         value={null}
         inputValue={name}
         onInputChange={(_e, value) => changeName(value || '')}
+        filterOptions={(options, state) =>
+          options.filter((n) => matches(projects.find((p) => p.name === n)?.code ?? '', n, state.inputValue))
+        }
         renderOption={(props, option) =>
           renderProjectOption(props, option, projects.find((p) => p.name === option)?.code, () => {
             const target = projects.find((p) => p.name === option);

@@ -66,6 +66,8 @@ import { getHolidayName } from '../../constants/krHolidays';
 import { ZOOM_MODIFIERS, unzoom } from '../../utils/zoom';
 import { parseErpSession } from '../../utils/erpTimelog';
 import { AttendanceTarget, ErpAttendance, fetchErpAttendance, searchAttendanceTargets, SITE_SEARCH_PATH, targetKey } from '../../utils/erpAttendance';
+import { syncMyClock } from '../../utils/clockSync';
+import WidgetDownloadButton from './WidgetDownloadButton';
 
 // 드래그 시 활성화 거리(px) - 클릭과 구분
 const DRAG_ACTIVATION_DISTANCE = 8;
@@ -309,12 +311,14 @@ const DeployCalendar: React.FC = () => {
   const targets_key = attendance_targets.map(targetKey).join(',');
 
   // ERP 에서 근태를 받아 저장소(IndexedDB)에 넣는다. 화면엔 저장소 값을 보여주므로 세션이 없어도 전에 받은 근태가 보인다
-  const loadAttendance = async (session: { sid: string; origin: string }, targets: AttendanceTarget[]) => {
+  const loadAttendance = async (session: { sid: string; origin: string }, targets: AttendanceTarget[], force_clock = false) => {
     if (!targets.length || !range_from) return;
     const fetch_key = `${targets.map(targetKey).join(',')}|${range_from}|${range_to}`;
     attendance_fetched.add(fetch_key);
     setAttendanceLoading(true);
     setAttendanceError('');
+    // 내 출퇴근도 받아 둔다 (위젯 야근 포도알판용. 세션당 한 번, ↻ 를 누르면 다시)
+    syncMyClock(session, force_clock);
     try {
       // ERP 는 전표일자로 거른다. 여러 날 휴가는 첫날 전표에 몰려 있어(11/30 전표 = 11/30·12/1·12/2) 한 달 앞당겨 부르고,
       // 근태일자(적요의 기간을 펼친 날)가 보는 기간 안인 것만 남긴다
@@ -370,7 +374,7 @@ const DeployCalendar: React.FC = () => {
   };
   // ↻ 근태 새로고침: 세션이 있으면 바로 다시 받고, 없으면 근태 설정 창에서 세션을 받는다
   const refreshAttendance = () => {
-    if (erp_session && attendance_targets.length) loadAttendance(erp_session, attendance_targets);
+    if (erp_session && attendance_targets.length) loadAttendance(erp_session, attendance_targets, true);
     else openAttendanceSettings();
   };
   const closeAttendanceSettings = () => {
@@ -1077,6 +1081,7 @@ const DeployCalendar: React.FC = () => {
         
         {/* 버튼들 */}
         <Box sx={{ display: 'flex', gap: 1 }}>
+          <WidgetDownloadButton />
           <Button
             variant="outlined"
             startIcon={<PaletteIcon />}

@@ -8,4 +8,13 @@ contextBridge.exposeInMainWorld('tkDesktop', {
   toggleTheme: () => ipcRenderer.send('toggle-theme'),
   openApp: () => ipcRenderer.send('open-app'),
   hide: () => ipcRenderer.send('hide'),
+  // 야근 포도알판 창
+  grape: {
+    onBoard: (cb) => ipcRenderer.on('grape', (_e, b) => cb(b)),
+    toggle: (date) => ipcRenderer.send('grape-toggle', date),
+    mode: (m) => ipcRenderer.send('grape-mode', m),
+    pin: () => ipcRenderer.send('grape-pin'),
+    hide: () => ipcRenderer.send('grape-hide'),
+    capture: (rect, action, name) => ipcRenderer.invoke('grape-capture', rect, action, name),
+  },
 });
